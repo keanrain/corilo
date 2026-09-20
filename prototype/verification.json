@@ -1,0 +1,65 @@
+{
+  "checked_at_utc": "2026-09-20T09:11:00.364772+00:00",
+  "base_commit": "adb838438ecdf34e6698566d0dc87c17f9ae84ff",
+  "delivery": "isolated local prototype, not complete Xuye M0 or Files.md fork",
+  "implementation": {
+    "markdown_files": true,
+    "local_http_host": true,
+    "ui_source": true,
+    "upstream_editor_integrated": false,
+    "multi_file_transactions": false,
+    "agent": false,
+    "sync": false,
+    "native_container": false,
+    "notification": false
+  },
+  "environment": {
+    "python": "3.13.5",
+    "platform": "Linux",
+    "node": "v22.16.0"
+  },
+  "tests": {
+    "command": "python3 -m unittest discover -s prototype/tests -v",
+    "passed": 30,
+    "failed": 0,
+    "skipped": 0,
+    "scope": [
+      "actual temporary files",
+      "actual loopback HTTP requests",
+      "operation replay",
+      "real subprocess termination and CLI restart"
+    ],
+    "log": "verification.log"
+  },
+  "syntax": {
+    "python_compileall": "passed",
+    "node_check": "passed"
+  },
+  "browser": {
+    "status": "blocked",
+    "error": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at http://127.0.0.1:45553/",
+    "interactive_checks_passed": 0,
+    "visual_inspection": "not_performed",
+    "security_policy_bypassed": false
+  },
+  "github": {
+    "read_head_verified": true,
+    "branch_create_attempt": "feat/local-prototype",
+    "branch_create_http_status": 403,
+    "error": "Resource not accessible by integration",
+    "remote_writes_completed": false
+  },
+  "constraints": [
+    "test-only vault: initialization rejects nonempty unmarked directory",
+    "loopback only; no external network",
+    "single-file operations only",
+    "Linux tested; macOS/Windows not tested",
+    "no real personal knowledge accessed"
+  ],
+  "static_checks": {
+    "dom_ids": 34,
+    "referenced_js_ids_valid": true,
+    "inline_handlers": 0,
+    "local_links_valid": 44
+  }
+}

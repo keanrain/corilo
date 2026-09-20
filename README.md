@@ -2,73 +2,58 @@
 
 **接住想法，接着往前。**
 
-本地优先的个人知识与行动助手。Markdown 是真实内容，云同步可选，桌面和手机共用 Web 页面。
+本地优先的个人知识与行动助手。Markdown 是真实内容，同步可选，目标是桌面和手机共用 Web 页面。
 
-## 当前交付状态
+## 现在可以启动的内容
 
-本仓库初始化材料来自 v0.11 正式文档和固定 Files.md 提交的 P0 验证工作包。
-**目前是开发基线，不是可运行的续页应用。** 已有测试程序、两份候选补丁及原始测试日志；没有完整 Files.md checkout，补丁未集成到真实页面，Agent、Today、系统提醒和容器没有通过验收。
+2026-09-20 增加了独立的本地开发原型：随手保存原话、新建 Markdown、打开并修改、标题与正文关键词查找、重开读取已保存文件。输入不会自动生成任务；没有调用模型或同步服务。
 
-目标远端为 `keanrain/xuye`，计划私有；本地打包时没有创建或推送远端仓库。运行下方发布脚本成功后，才以返回的 GitHub 结果为准。
+这次不再只是函数补丁，但**仍不是完整续页应用**。`prototype/` 是 Python 标准库的临时本机宿主和普通 HTML/CSS/JS 入口，不是 Tauri 容器；编辑区暂用原生 textarea，尚未集成 Files.md 的完整页面、CodeMirror/HyperMD、Agent、Today 或通知。没有把这个替代入口冒充原定的上游复用已经完成。
 
-## 创建 GitHub 仓库并首次推送
+## 启动（不需要 npm、Go、模型密钥或同步账号）
 
-需要 Git、Python 3.10+ 和 GitHub CLI `gh`。解压保留 `.git/`，进入本目录执行：
-
-```bash
-python3 scripts/publish_github.py
-```
-
-脚本使用本机 GitHub CLI 的认证；未登录时引导浏览器登录，不要求向聊天提交 token。实际账户必须是 `keanrain`。它只创建私有 `xuye`、推送 `main`，并核对远端可见性和提交。不同账户、不同 origin、本地未提交修改或非预期远端内容都会停止；没有 force-push、删除仓库、公开发布或部署。
-
-如果仓库创建后推送失败，核对输出后显式续跑：
+需要 Python 3.10+。在仓库根目录执行：
 
 ```bash
-python3 scripts/publish_github.py --resume
+python3 scripts/run_local.py --init
 ```
 
-续跑只接受空的同名私有仓库，或其 `main` 已等于本机提交的状态；不会覆盖已有不同历史。
+在浏览器打开终端打印的本机地址，默认是 `http://127.0.0.1:8765`。只监听本机，不提供公网部署入口。
 
-只检查本地交付、不联网：
+默认测试库位于仓库下 `.local/xuye-prototype/`，已加入 Git 忽略。只用虚构测试资料。`--init` 拒绝接管非空的未标记目录；没有读取或迁移你现有的知识库。
+
+试用流程：保存一句原话 → 点击“打开原文” → 修改并点“保存修改” → 关闭服务后重新启动 → 内容仍从 Markdown 读取。笔记修改需要显式保存，Ctrl/Cmd+S 也可保存。原话存入 `收集/<操作UUID>.md`，不是浏览器内存或数据库里的隐藏正文。
+
+Ctrl+C 停止。再次启动使用相同命令即可，已有测试文件不会被清空。端口占用时可指定 `--port 8766`；更换端口会改变浏览器草稿缓存的站点范围，但已保存 Markdown 不受影响。
+
+## 数据保护范围
+
+同一文件的保存经过版本 hash 核对、暂存写入和替换；操作日志用于恢复“已经写入但还没收到回执”的情况。新建不覆盖同名文件；读取失败不是删除。恢复遇到未知外部字节时保留文件并阻止继续覆盖。
+
+这是**单文件原型**，不是多文件事务或完整同步引擎。一个库限制一个宿主进程；不支持其他编辑器/同步器同时写入。混合或特殊换行文件在界面暂为只读。不支持正式任务语义、文件删除/移动、完整导出或生产数据迁移；不要用本原型管理真实资料。
+
+## 实际验证
 
 ```bash
-python3 scripts/publish_github.py --check
+python3 -m unittest discover -s prototype/tests -v
 ```
+
+本轮在 Linux 中完成 30 项测试，包括真实临时文件、真实 loopback HTTP、实际子进程退出和 CLI 重启恢复。Python 编译和 JavaScript 语法检查通过。
+
+浏览器第一次 localhost 导航被管理员策略拒绝 (`ERR_BLOCKED_BY_ADMINISTRATOR`)；没有绕过，没有完成页面点击或视觉验收，不能把 HTTP 测试当成浏览器通过。Windows/macOS、Tauri、手机、模型与通知均未测试。证据见 [verification.json](prototype/verification.json) 和 [原始日志](prototype/verification.log)。
+
+可在允许本机浏览器访问的开发环境安装 Playwright 并运行 `python3 -m prototype.browser_smoke`；这个入口使用独立临时库，不接真实资料。
+
+## Git 状态与发布边界
+
+基于已确认的远端初始提交 `adb838438ecdf34e6698566d0dc87c17f9ae84ff`，在本地 `feat/local-prototype` 分支准备实现。当前 GitHub 连接读取成功，但实际创建分支被集成授权拒绝（403）；**没有远端分支、提交或 PR 创建成功**。本地提交不等于已推送。
+
+远端此前已被核对为 public；本轮没有修改其可见性。不要使用旧的首次私有仓库创建脚本重复初始化远端。待有可写通道时只推开发分支、经审查合入，不 force-push main，不部署站点。
 
 ## 开发依据
 
 [知识库索引](docs/README.md) · [产品](docs/PRODUCT.md) · [业务规格](docs/PRODUCT-SPEC.md) · [技术](docs/TECHNICAL_DESIGN.md) · [交互](docs/DESIGN.md)
 
-`docs/` 是现行产品与技术说明；`p0/` 是测试代码、固定源码材料、候选补丁和历史日志；`scripts/` 是执行入口。原始声明和 Files.md MIT 文本保留在 `p0/pinned/9e948ba/LICENSE` 与 `p0/sources/FILESMD-LICENSE`。续页整体开源许可尚未选择，不能将局部上游许可自动解释为全项目已发布许可。
+产品规则仍由 v0.11 文档定义。`p0/` 保留过去的固定源码、候选补丁与历史日志；不把它们当作本原型已集成代码。上游许可声明仍保留在原位置，续页整体发行许可尚未确定。
 
-## 下一项交付必须是可运行的本地原型
-
-取得固定上游完整源码，先保留页面和编辑器，禁用旧同步与 Bot，只用隔离测试库打通输入、编辑、本地保存和重开恢复。只处理这条链路的阻塞；不要继续横向修复全部上游功能。然后接入只读助手，再接入受控写回与行动安排。
-
-已有 P0 续跑入口：
-
-```bash
-python3 scripts/p0.py prepare
-python3 scripts/p0.py audit
-python3 scripts/p0.py go-test
-python3 scripts/p0.py web
-```
-
-这些命令依赖真实网络与所需环境，不表示它们已经在本轮执行成功。上游要求 Go 1.24+；`web` 只启动本机静态页面，不等于产品功能已完成。
-
-现有函数级回归（Node 22+、Python 3.10+、Git）：
-
-```bash
-python3 scripts/p0.py check-fixed
-python3 scripts/p0.py check-delete-guard
-```
-
-历史测试中 baseline 的失败是刻意保留的回归证据；检查器整体退出 0 仅表示预期红/绿结果均得到验证。
-
-## 发布脚本依据
-
-GitHub CLI 官方说明：
-- https://cli.github.com/manual/gh_repo_create
-- https://cli.github.com/manual/gh_auth_login
-
-首次推送会上传当前 Git 提交，不会创建 GitHub Issues、启用收费服务或发布网站。此目录没有模型凭据、同步登录信息或真实个人知识库。
+下一步先在真实浏览器完成这条本地体验，再把已经验证的存储/命令边界接回实际上游页面或容器；不能用这个临时宿主替代正式架构决定，也不要重新无限扩大上游排查。

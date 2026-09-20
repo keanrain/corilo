@@ -1,0 +1,35 @@
+test_api_without_session_is_rejected (test_local.HTTPTests.test_api_without_session_is_rejected) ... ok
+test_dns_rebinding_host_is_rejected (test_local.HTTPTests.test_dns_rebinding_host_is_rejected) ... ok
+test_expected_version_required (test_local.HTTPTests.test_expected_version_required) ... ok
+test_foreign_origin_cannot_write (test_local.HTTPTests.test_foreign_origin_cannot_write) ... ok
+test_http_capture_read_edit_and_file_bytes (test_local.HTTPTests.test_http_capture_read_edit_and_file_bytes) ... ok
+test_serves_actual_ui_without_remote_runtime_resources (test_local.HTTPTests.test_serves_actual_ui_without_remote_runtime_resources) ... ok
+test_state_directory_not_served (test_local.HTTPTests.test_state_directory_not_served) ... ok
+test_bom_crlf_and_unknown_fields_are_preserved (test_local.VaultTests.test_bom_crlf_and_unknown_fields_are_preserved) ... ok
+test_capture_keeps_exact_input_and_does_not_create_task (test_local.VaultTests.test_capture_keeps_exact_input_and_does_not_create_task) ... ok
+test_capture_retry_creates_only_one_markdown (test_local.VaultTests.test_capture_retry_creates_only_one_markdown) ... ok
+test_case_only_duplicate_rejected (test_local.VaultTests.test_case_only_duplicate_rejected) ... ok
+test_different_content_cannot_reuse_operation_id (test_local.VaultTests.test_different_content_cannot_reuse_operation_id) ... ok
+test_durable_decision_recovers_before_file_write (test_local.VaultTests.test_durable_decision_recovers_before_file_write) ... ok
+test_existing_name_is_not_overwritten (test_local.VaultTests.test_existing_name_is_not_overwritten) ... ok
+test_lost_receipt_returns_same_committed_operation (test_local.VaultTests.test_lost_receipt_returns_same_committed_operation) ... ok
+test_nonempty_existing_vault_is_refused (test_local.VaultTests.test_nonempty_existing_vault_is_refused) ... ok
+test_old_editor_does_not_overwrite_external_change (test_local.VaultTests.test_old_editor_does_not_overwrite_external_change) ... ok
+test_paths_cannot_escape_or_enter_private_state (test_local.VaultTests.test_paths_cannot_escape_or_enter_private_state) ... ok
+test_prepared_without_decision_is_not_success_and_can_retry (test_local.VaultTests.test_prepared_without_decision_is_not_success_and_can_retry) ... ok
+test_recovery_after_file_write_does_not_duplicate_capture (test_local.VaultTests.test_recovery_after_file_write_does_not_duplicate_capture) ... ok
+test_recovery_does_not_overwrite_unexpected_external_bytes (test_local.VaultTests.test_recovery_does_not_overwrite_unexpected_external_bytes) ... ok
+test_save_with_expected_version_and_restart (test_local.VaultTests.test_save_with_expected_version_and_restart) ... ok
+test_searches_filename_and_chinese_body_without_model (test_local.VaultTests.test_searches_filename_and_chinese_body_without_model) ... ok
+test_second_process_coordinator_is_refused (test_local.VaultTests.test_second_process_coordinator_is_refused) ... ok
+test_size_limit_is_not_truncation (test_local.VaultTests.test_size_limit_is_not_truncation) ... ok
+test_source_heading_does_not_rename_file (test_local.VaultTests.test_source_heading_does_not_rename_file) ... ok
+test_symlink_is_not_read_or_written (test_local.VaultTests.test_symlink_is_not_read_or_written) ... ok
+test_unreadable_utf8_is_reported_not_deleted (test_local.VaultTests.test_unreadable_utf8_is_reported_not_deleted) ... ok
+test_actual_process_exit_recovers_durable_decision (test_process.ProcessTests.test_actual_process_exit_recovers_durable_decision) ... ok
+test_cli_server_restarts_and_reads_existing_markdown (test_process.ProcessTests.test_cli_server_restarts_and_reads_existing_markdown) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 7.383s
+
+OK

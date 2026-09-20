@@ -21,3 +21,6 @@ playwright-report/
 test-results/
 target/
 /dist/
+
+# Isolated prototype runtime; never commit user notes or local session data.
+/.local/

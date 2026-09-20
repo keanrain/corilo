@@ -584,3 +584,32 @@ python3 scripts/p0.py check-fixed
 真实 checkout 仍使用 `prepare / audit / go-test / web`；已有目录拒绝覆盖，不自动 reset、killall、部署、启动 Bot 或登录同步账号。获得完整工作树后须先检查其固定 ref 和实际差异，再把两份候选集成到隔离分支，并运行应用/上游测试。
 
 下一处代码切入点仍是 `syncCurrentFile`：分离本地保存与云同步，处理保存/重命名失败，继续收口聊天勾选和反向链接写入。先做可恢复本地提交，不扩展 Agent、日历或多引擎功能。两份补丁是缩小风险的证据，不是 P1 或 P0 完成证明。项目“来源”和远端仓库没有被此工作目录自动覆盖。
+
+
+## 17. 独立本地原型执行记录（2026-09-20）
+
+### 17.1 本次实现而非仅审查
+
+新增 `prototype/store.py`、`server.py`、`web/` 与 `scripts/run_local.py`。原话捕获、新建 Markdown、按明确版本读取/保存、标题与正文查找，走同一本机 Vault 服务。SQLite 仅保存操作登记和必要恢复 payload，正式笔记仍是真实 `.md` 文件。已提交操作不永久保留完整 payload；未完成恢复材料不得当缓存清空。
+
+新建使用不覆盖目标的落盘路径，编辑核对原 hash；单文件保存有持久提交决定和重复请求核对。独立进程锁限制一个宿主写同一个库。恢复出现既非原 hash 也非新 hash 的字节时停止受影响操作，不覆盖外部内容。其他无关测试笔记仍可使用。
+
+命令：仓库根目录 `python3 scripts/run_local.py --init`。默认只初始化 `.local/xuye-prototype/`；只监听 127.0.0.1，校验 Host、Origin 与启动会话。不启动 Bot、旧同步、远程模型或外部资源请求。
+
+### 17.2 重要偏差与未实现项
+
+普通 Git 下载依然失败，GitHub 分支创建实际返回 403。因此本轮先交付**独立的本地宿主与最小页面**，没有取得完整上游，也没有集成此前两份候选补丁。界面用原生 textarea，尚未复用完整 Files.md / CodeMirror / HyperMD。不能将这一结果称为已经完成 Files.md fork 或原有编辑器复用。
+
+Python HTTP 是可立即运行的开发宿主，不取代已定的共用 Web UI 方向，也不等于 Tauri、手机或浏览器独立分发已经确定。正式产品领域层和平台桥仍按前文验证。原型只提供单文件操作，不实现跨文件组、公开身份清单、Agent、任务/Today、系统提醒、同步、移动/删除或完整导出；这些产品要求没有被删除。
+
+### 17.3 本轮证据
+
+`python3 -m unittest discover -s prototype/tests -v` 实际 30 通过、0 失败、0 跳过。包含真实临时磁盘、本机 HTTP 请求，以及真实子进程退出后的恢复和 CLI 重新启动。Python 编译和 Node 语法检查通过。原型页面资源已由实际 HTTP 服务返回，但浏览器 `Page.goto` 被管理员策略拒绝，页面点击、截图与视觉未验收；没有绕过限制。
+
+记录见 [机器结果](../prototype/verification.json) 与 [原始测试日志](../prototype/verification.log)。这不是旧 P0 片段测试的改名，也不是整个 M0/P0 验收通过。
+
+### 17.4 Git 与文档状态
+
+本地从远端已核对的 `adb838438ecdf34e6698566d0dc87c17f9ae84ff` 开始，分支 `feat/local-prototype`。实际调用 GitHub 创建分支返回 `403 Resource not accessible by integration`，没有成功推送、没有创建 PR、没有更改可见性。保留可合入补丁，不使用其他端点绕过该授权失败。
+
+PRODUCT、PRODUCT-SPEC 与 DESIGN 保持原字节；只更新实现入口、开发状态与本节证据。下一阶段先完成真实浏览器验证及上游/容器适配，不把临时原型膨胀为另一套正式产品。
