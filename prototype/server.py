@@ -123,7 +123,7 @@ def make_server(vault: Vault, port: int = 8765) -> ThreadingHTTPServer:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="续页：仅供测试资料使用的本地原型")
+    parser = argparse.ArgumentParser(description="Corilo 可里：仅供测试资料使用的本地原型")
     parser.add_argument("--vault", type=Path, default=Path(".local/xuye-prototype"))
     parser.add_argument("--init", action="store_true", help="只在新建或空目录初始化；绝不接入非空旧库")
     parser.add_argument("--port", type=int, default=8765)
@@ -135,7 +135,7 @@ def main() -> None:
         server = make_server(vault, args.port)
     except (Problem, OSError) as exc:
         parser.exit(1, f"未启动：{exc}\n")
-    print(f"续页本地原型：http://127.0.0.1:{server.server_address[1]}", flush=True)
+    print(f"Corilo 可里本地原型：http://127.0.0.1:{server.server_address[1]}", flush=True)
     print(f"真实 Markdown 测试目录：{vault.root}", flush=True)
     print("仅本机；AI / 同步 / 通知未接入。Ctrl+C 停止，文件不会删除。", flush=True)
     try:

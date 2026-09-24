@@ -1,4 +1,4 @@
-# Xuye 开发约束
+# Corilo 可里开发约束
 
 先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md。以 v0.11 本地优先、同步可选、单一 Web 页面为依据，不采用旧云端主存储或独立 RN 页面方案。
 
@@ -9,3 +9,9 @@
 不接真实知识库、不硬编码凭据、不公开项目；远端部署、可见性修改和破坏性操作需要明确授权。不要 force-push 或覆盖别人修改。统一写入口、版本条件、准确回执和失败保护仍须保留。
 
 仅在真实完成执行后写通过；测试替身、函数测试、浏览器、真机、模型效果分别记录。没有证据时保留待验证，不编造实现状态。产品规则仅由 docs/PRODUCT-SPEC.md 维护，不新增平行 review-final 或 PRD。
+
+## 已确认名称与兼容边界（2026-09-24）
+
+活动品牌统一为 **Corilo 可里**（英文 Corilo，中文可里）。旧称续页/Xuye 只用于历史或兼容，不再作为新页面或新文档名称。本地仓库目录可为 `corilo/`，但 origin 的既有 `keanrain/xuye` 地址不自动改名。
+
+保留 `.personalos/` 和 `personalos` 内容字段、原型 `.local/xuye-prototype/`、`.xuye-local/`、库识别标记、会话头和缓存键；不要为了品牌替换批量改用户内容、ID、Git 历史、固定上游、旧补丁或测试证据。真实数据迁移与远端改名需要单独明确。

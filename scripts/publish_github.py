@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Create keanrain/xuye privately and push the prepared main branch.
+"""Legacy bootstrap for keanrain/xuye; not a Corilo rebranding command.
+
+Create the original private repository and push the prepared main branch.
 
 Remote writes happen only when the user runs this script with a locally
  authenticated GitHub CLI. --check is fully local; --resume is explicit.
@@ -103,7 +105,7 @@ def main() -> int:
                 raise RuntimeError('origin already exists. Inspect it, then use --resume explicitly.')
             print(f'Creating PRIVATE repository {TARGET}; preparing to push main at {head}.', flush=True)
             command(['gh', 'repo', 'create', TARGET, '--private', '--disable-wiki',
-                     '--description', '续页 · Xuye — 本地优先的个人知识与行动助手'], capture=False)
+                     '--description', 'Corilo 可里 — 本地优先的个人知识与行动助手'], capture=False)
 
         info = verify_remote()
         if not git('remote'):
