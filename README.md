@@ -42,15 +42,39 @@ python3 -m unittest discover -s prototype/tests -v
 
 本轮在 Linux 中完成 30 项测试，包括真实临时文件、真实 loopback HTTP、实际子进程退出和 CLI 重启恢复。Python 编译和 JavaScript 语法检查通过。
 
-浏览器第一次 localhost 导航被管理员策略拒绝 (`ERR_BLOCKED_BY_ADMINISTRATOR`)；没有绕过，没有完成页面点击或视觉验收，不能把 HTTP 测试当成浏览器通过。Windows/macOS、Tauri、手机、模型与通知均未测试。证据见 [verification.json](prototype/verification.json) 和 [原始日志](prototype/verification.log)。
+历史交付中的浏览器导航曾被管理员策略拒绝，证据仍保留在 [verification.json](prototype/verification.json) 和 [原始日志](prototype/verification.log)。本次云环境已通过 Chromium 的输入、编辑和重载检查，并修复冒烟脚本的 CSP 兼容问题；这不代表视觉、Windows/macOS、Tauri、手机、模型或通知验收完成。
 
-可在允许本机浏览器访问的开发环境安装 Playwright 并运行 `python3 -m prototype.browser_smoke`；这个入口使用独立临时库，不接真实资料。
+浏览器验证安装及执行方式见下节；这个入口使用独立临时库，不接真实资料。
+
+## 开发与自动检查
+
+基础开发只需要 Python 3.10+，应用没有第三方运行依赖。在仓库根目录运行：
+
+```bash
+python3 -m unittest discover -s prototype/tests -v
+python3 scripts/run_local.py --init
+```
+
+浏览器验证是单独的开发依赖，建议放入隔离环境（Mac/Linux）：
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m playwright install chromium
+.venv/bin/python -m prototype.browser_smoke
+```
+
+Linux 若缺 Chromium 系统库，可使用 Playwright 官方 `install --with-deps chromium` 命令；需要安装系统包的权限。Windows 使用 `.venv\Scripts\python.exe` 替代 `.venv/bin/python`。已有 Chromium 时可加 `--executable /实际浏览器路径`。
+
+浏览器检查使用独立临时测试库，验证输入、真实 Markdown 保存、编辑及页面重载，不需要先启动默认服务。结果在被 Git 忽略的 `.local/browser-result.json`，失败以非零状态退出。定位器断言保持页面 CSP，不要求开启 `unsafe-eval`。
+
+GitHub Actions 在推送和 PR 时自动运行 Python 3.10/3.12/3.13 的现有测试、JavaScript 语法检查和 Chromium 冒烟验证，并保留浏览器结果。工作流文件已配置不代表远端运行已经通过，需查看对应提交的 Actions 结果。P0 历史红/绿对照不算当前原型的产品验收，不纳入基础 CI。
 
 ## Git 状态与发布边界
 
-基于已确认的远端初始提交 `adb838438ecdf34e6698566d0dc87c17f9ae84ff`，在本地 `feat/local-prototype` 分支准备实现。当前 GitHub 连接读取成功，但实际创建分支被集成授权拒绝（403）；**没有远端分支、提交或 PR 创建成功**。本地提交不等于已推送。
+当前工作区面向 `keanrain/corilo`。开发基线从用户提供的 Corilo 本地交接包导入，保留初始、原型和品牌改名三个提交；原包中的 `keanrain/xuye` 及旧授权结果是历史记录。
 
-远端此前已被核对为 public；本轮没有修改其可见性。不要使用旧的首次私有仓库创建脚本重复初始化远端。待有可写通道时只推开发分支、经审查合入，不 force-push main，不部署站点。
+后续在开发分支提交并经审阅合入。此开发基础不创建网站部署，不修改仓库可见性，不自动推送 `main`，不调用历史 `scripts/publish_github.py` 或用 `repository-bootstrap.json` 重复建库。推送成功与否以真实 Git 返回及远端 ref 核对为准。
 
 ## 开发依据
 
@@ -62,6 +86,6 @@ python3 -m unittest discover -s prototype/tests -v
 
 ## 本轮改名与已有本地开发
 
-开发目录为 `corilo/`，Git 分支仍为 `feat/local-prototype`，远端 origin 保留既有 `keanrain/xuye` 地址，没有将其改成未经创建的 `keanrain/corilo`。此前提交和上游许可、P0 固定源码、测试/日志及历史 `.fig` 不改写。
+2026-09-24 交接包的开发目录为 `corilo/`，当时分支为 `feat/local-prototype`、origin 为 `keanrain/xuye`。当前云环境的远端和提交边界见上节。此前提交和上游许可、P0 固定源码、历史测试/日志及 `.fig` 保留。
 
 已有本地改动时，不用整个新目录覆盖旧目录或 `.git/`；从导出包的 `integration/` 读取改名提交并在本地审阅合入。历史 `scripts/publish_github.py` 仍针对原仓库初始化，不是改名工具，不应因本次品牌调整再次运行。

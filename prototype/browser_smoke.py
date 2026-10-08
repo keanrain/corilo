@@ -22,7 +22,7 @@ def main():
     args=ap.parse_args()
     report={'executed_at_utc':datetime.now(timezone.utc).isoformat(),'status':'not_run','checks':[]}
     try:
-        from playwright.sync_api import sync_playwright
+        from playwright.sync_api import sync_playwright, expect
         with tempfile.TemporaryDirectory(prefix='xuye-browser-') as d:
             vault=Vault(Path(d)/'vault',initialize=True)
             server=make_server(vault,0)
@@ -36,15 +36,15 @@ def main():
                     page.goto(f'http://127.0.0.1:{server.server_address[1]}',wait_until='networkidle',timeout=10000)
                     page.locator('#chat-input').fill('原型浏览器测试：不是待办。')
                     page.locator('#send-chat').click()
-                    page.wait_for_function("document.querySelector('#capture-status').textContent.includes('原话已保存')")
+                    expect(page.locator('#capture-status')).to_contain_text('原话已保存')
                     assert len(vault.list_notes()['notes'])==1
                     report['checks'].append('capture UI writes actual Markdown')
                     page.get_by_text('打开原文 ↗').click()
                     page.locator('#editor-textarea').fill('改过的本地原文')
                     page.locator('#save-note').click()
-                    page.wait_for_function("document.querySelector('#save-status').textContent.includes('本地已保存')")
+                    expect(page.locator('#save-status')).to_contain_text('本地已保存')
                     page.reload(wait_until='networkidle')
-                    page.wait_for_function("document.querySelector('#editor-textarea').value==='改过的本地原文'")
+                    expect(page.locator('#editor-textarea')).to_have_value('改过的本地原文')
                     report['checks'].append('edit and reload UI read actual saved bytes')
                     report['status']='passed'
                     browser.close()
