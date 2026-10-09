@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-09",
+  "kind": "research-baseline-not-installed-dependency-lock",
+  "filesmd": {
+    "repository": "https://github.com/zakirullin/files.md",
+    "commit": "9e948ba6071e320c41c866f92817cf96f9bb7ba6"
+  },
+  "pi": {
+    "package": "@earendil-works/pi-coding-agent",
+    "version": "1.1.0",
+    "sourceCommit": "ce950d78f424dcaf9f5d6a03ce80ab141130eb1d",
+    "node": ">=22.19.0"
+  },
+  "termuxApp": {
+    "commit": "8629e632fcb95da272221be327db653fb24befe9",
+    "observedCompileSdk": 36,
+    "observedTargetSdk": 28
+  },
+  "termuxPackages": {
+    "commit": "9f94db4fcd0a9029079b27ffd253e5d80c4caaa8"
+  },
+  "androidSdkMetadata": {
+    "source": "https://dl.google.com/android/repository/repository2-3.xml",
+    "package": "platforms;android-37.0",
+    "revision": 2,
+    "channel": "channel-0"
+  },
+  "androidDeviceValidated": false,
+  "customPrefixBuilt": false
+}

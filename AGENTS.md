@@ -1,17 +1,11 @@
 # Corilo 可里开发约束
 
-先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md。以 v0.11 本地优先、同步可选、单一 Web 页面为依据，不采用旧云端主存储或独立 RN 页面方案。
+先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md。当前依据 v0.12（2026-10-09）：完整 Files.md 页面/编辑器、去掉 Bot/Worker、Pi 默认能力、初始 DeepSeek、GitHub 私有知识库同步。桌面 Windows/macOS Chrome 加自动启动器，Android 集成 APK；iOS 与 Supabase 后置。
 
-当前不是完整应用。prototype/ 已有独立 Python 本地宿主和最小 Web 页面，提供单文件 Markdown 保存与恢复；不是上游完整编辑器或目标原生容器。运行方式见根 README。p0/pinned 是固定源码及明确标记的函数片段，p0/candidates 是候选，不得当作已集成实现。历史日志不是本次测试通过记录。上游目标读取 p0/upstream-target.json，取得完整 checkout 后记录真实 commit。
+用户要求简单、一体化、直接开发正式应用。不新增替代 demo，不为 Pi 另做权限、逐文件审批、事务写入或模型管理框架；不恢复旧 Today/通知/云同步服务范围。系统提示词约束行为，不把 cwd 宣称为沙箱。产品规则仅在 docs/PRODUCT-SPEC.md 维护，其他文档不得创建平行 PRD。
 
-下一步先在获准的真实浏览器验证现有原型，再把已验证的读写边界接入完整上游页面或容器。管理员拒绝的访问不绕过；HTTP 测试不等于页面通过。保留可用页面与编辑器的目标不变，不把临时 textarea/Python 宿主包装为最终选型。不要以无限扩大上游审查代替产品开发。
+当前可运行的只是 prototype/ Python 本地原型。完整上游页面、Pi、Git 同步与 APK 尚未集成。p0/ 的片段、候选和历史日志不代表正式实现。docs/upstream-baseline.json 是调查基线，不是已安装依赖锁。只有真实运行后才写通过，区分函数、浏览器、模型、桌面及 Android 真机证据。
 
-不接真实知识库、不硬编码凭据、不公开项目；远端部署、可见性修改和破坏性操作需要明确授权。不要 force-push 或覆盖别人修改。统一写入口、版本条件、准确回执和失败保护仍须保留。
+使用现有 checkout；用户未要求时不创建 worktree。保留现有改动、历史、许可与兼容标识，包括 .personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/、库识别和会话键，不因品牌替换迁移用户数据。
 
-仅在真实完成执行后写通过；测试替身、函数测试、浏览器、真机、模型效果分别记录。没有证据时保留待验证，不编造实现状态。产品规则仅由 docs/PRODUCT-SPEC.md 维护，不新增平行 review-final 或 PRD。
-
-## 已确认名称与兼容边界（2026-09-24）
-
-活动品牌统一为 **Corilo 可里**（英文 Corilo，中文可里）。旧称续页/Xuye 只用于历史或兼容，不再作为新页面或新文档名称。本地仓库目录可为 `corilo/`，但 origin 的既有 `keanrain/xuye` 地址不自动改名。
-
-保留 `.personalos/` 和 `personalos` 内容字段、原型 `.local/xuye-prototype/`、`.xuye-local/`、库识别标记、会话头和缓存键；不要为了品牌替换批量改用户内容、ID、Git 历史、固定上游、旧补丁或测试证据。真实数据迁移与远端改名需要单独明确。
+开发验证使用虚构资料，不硬编码凭据。按已授权范围在开发分支提交推送，不 force-push、不覆盖他人修改。部署、仓库可见性修改及破坏性操作须有对应授权。知识库仓库与代码仓库分开。

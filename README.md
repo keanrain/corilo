@@ -4,13 +4,13 @@
 
 > 2026-09-24 名称确认：英文 **Corilo**，中文 **可里**。原名为「续页 · Xuye」，更早代号为 PersonalOS。本次同步品牌和本地导出目录，不改变业务范围或已有数据格式。
 
-本地优先的个人知识与行动助手。Markdown 是真实内容，同步可选，目标是桌面和手机共用 Web 页面。
+本地优先的个人 Markdown 知识库与 Agent 助手。正式方案为 Files.md 页面＋Pi 默认能力＋DeepSeek＋GitHub 私有仓库同步。Windows/macOS 使用启动器自动打开 Chrome，Android 使用集成 APK；详见 [当前设计](docs/README.md)。
 
 ## 现在可以启动的内容
 
 2026-09-20 增加了独立的本地开发原型：随手保存原话、新建 Markdown、打开并修改、标题与正文关键词查找、重开读取已保存文件。输入不会自动生成任务；没有调用模型或同步服务。
 
-这次不再只是函数补丁，但**仍不是完整可里应用**。`prototype/` 是 Python 标准库的临时本机宿主和普通 HTML/CSS/JS 入口，不是 Tauri 容器；编辑区暂用原生 textarea，尚未集成 Files.md 的完整页面、CodeMirror/HyperMD、Agent、Today 或通知。没有把这个替代入口冒充原定的上游复用已经完成。
+这次不再只是函数补丁，但**仍不是完整可里应用**。`prototype/` 是 Python 标准库的临时本机宿主和普通 HTML/CSS/JS 入口，不是 Tauri 容器；编辑区暂用原生 textarea，尚未集成 Files.md 的完整页面、CodeMirror/HyperMD、Agent 或 GitHub 同步。Today 和通知不在首期范围。没有把这个替代入口冒充原定的上游复用已经完成。
 
 ## 启动（不需要 npm、Go、模型密钥或同步账号）
 
@@ -40,9 +40,9 @@ Ctrl+C 停止。再次启动使用相同命令即可，已有测试文件不会�
 python3 -m unittest discover -s prototype/tests -v
 ```
 
-本轮在 Linux 中完成 30 项测试，包括真实临时文件、真实 loopback HTTP、实际子进程退出和 CLI 重启恢复。Python 编译和 JavaScript 语法检查通过。
+2026-10-08 开发基础检查在 Linux 中完成 30 项测试，包括真实临时文件、真实 loopback HTTP、实际子进程退出和 CLI 重启恢复。Python 编译和 JavaScript 语法检查通过。
 
-历史交付中的浏览器导航曾被管理员策略拒绝，证据仍保留在 [verification.json](prototype/verification.json) 和 [原始日志](prototype/verification.log)。本次云环境已通过 Chromium 的输入、编辑和重载检查，并修复冒烟脚本的 CSP 兼容问题；这不代表视觉、Windows/macOS、Tauri、手机、模型或通知验收完成。
+历史交付中的浏览器导航曾被管理员策略拒绝，证据仍保留在 [verification.json](prototype/verification.json) 和 [原始日志](prototype/verification.log)。2026-10-08 云环境已通过 Chromium 的输入、编辑和重载检查，并修复冒烟脚本的 CSP 兼容问题；这不代表视觉、Windows/macOS、Tauri、手机、模型或通知验收完成。
 
 浏览器验证安装及执行方式见下节；这个入口使用独立临时库，不接真实资料。
 
@@ -80,9 +80,9 @@ GitHub Actions 在推送和 PR 时自动运行 Python 3.10/3.12/3.13 的现有�
 
 [知识库索引](docs/README.md) · [产品](docs/PRODUCT.md) · [业务规格](docs/PRODUCT-SPEC.md) · [技术](docs/TECHNICAL_DESIGN.md) · [交互](docs/DESIGN.md)
 
-产品规则仍由 v0.11 文档定义。`p0/` 保留过去的固定源码、候选补丁与历史日志；不把它们当作本原型已集成代码。上游许可声明仍保留在原位置，可里整体发行许可尚未确定。
+产品规则由 v0.12 文档定义（2026-10-09），旧 v0.11 的范围已被替代。`p0/` 保留过去的固定源码、候选补丁与历史日志；不把它们当作本原型已集成代码。上游许可声明仍保留在原位置，可里整体发行许可尚未确定。
 
-下一步先在真实浏览器完成这条本地体验，再把已经验证的存储/命令边界接回实际上游页面或容器；不能用这个临时宿主替代正式架构决定，也不要重新无限扩大上游排查。
+下一步直接接入完整 Files.md 页面与 Pi，交付桌面自动启动链路，同时准备 Android 自定义运行环境；随后完成 GitHub 私有仓库同步。正式架构和验收见上面的文档，不再扩大临时 Python 原型。
 
 ## 本轮改名与已有本地开发
 
