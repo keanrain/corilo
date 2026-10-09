@@ -24,4 +24,10 @@
 - Termux 集成已完成源码调查，尚未重建 Corilo 专属 prefix、编译 APK 或真机测试。
 - Android 17 是首期目标之一。Google SDK 仓库已列出 Platform 37.0；SDK 元数据不能证明应用兼容。
 
-历史设计和当时的执行记录保留在 [v0.11 最后基线](https://github.com/keanrain/corilo/tree/6252b1597866900f71e1df188e9dda66fccda888/docs)。`p0/`、`prototype/verification.*` 是各自执行时的证据，不自动升级为新版本验收。新验收编号使用 C01–C18，旧 S01–S28 不再定义首期范围。
+历史设计和当时的执行记录保留在 [v0.11 最后基线](https://github.com/keanrain/corilo/tree/6252b1597866900f71e1df188e9dda66fccda888/docs)。`p0/`、`prototype/verification.*` 是各自执行时的证据，不自动升级为新版本验收。新验收编号使用 C01–C21，旧 S01–S28 不再定义首期范围。
+
+## 2026-10-09 开发方案复核
+
+已补齐：Files.md 浏览器文件系统到宿主磁盘的接入范围；Agent 修改前的 Git 恢复基线；Pi 默认认证与 Git 凭据存储的区分；同步分支、跨平台文件名及重连语义。Android 自定义 prefix 和可执行路径与桌面工程同时开始，尚未解决前不把 APK 列为已具备交付条件。
+
+本轮只审查方案及相关上游源码、修改文档，没有新增应用实现或平台测试。
