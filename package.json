@@ -1,0 +1,12 @@
+{
+  "name": "corilo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22.19.0"},
+  "scripts": {
+    "start": "node app/host/cli.mjs",
+    "test": "node --test app/tests/*.test.mjs"
+  },
+  "dependencies": {"@earendil-works/pi-coding-agent": "1.1.0"}
+}

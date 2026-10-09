@@ -1,0 +1,3 @@
+# Keep upstream snapshots byte-for-byte (including CRLF and upstream whitespace).
+# Their integrity is recorded separately in SOURCE.json.
+app/vendor/filesmd/** -text -whitespace linguist-vendored

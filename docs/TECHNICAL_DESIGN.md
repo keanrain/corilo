@@ -1,6 +1,6 @@
 # Corilo 可里技术设计
 
-v0.12 · 2026-10-09。当前文档定义目标实现，现有 Python 原型继续独立可运行。
+v0.12 · 2026-10-09。当前文档定义目标实现，app/ 已开始正式实现；Python 原型独立保留。实现状态见第 10 节。
 
 ## 1. 总体架构
 
@@ -119,3 +119,13 @@ read/edit/write 的工具结果可以关联路径；bash 的任意输出不能�
 - [Google SDK 仓库元数据](https://dl.google.com/android/repository/repository2-3.xml)
 
 旧设计、P0 历史和原型当时的完整说明通过 [设计索引](README.md) 中的历史提交访问；不再作为当前业务要求。
+
+## 10. 首条实际链路（2026-10-09）
+
+代码入口 `app/host/cli.mjs`，文件宿主 `server.mjs`，Pi 接入 `agent.mjs`，Git 与文件接口 `vault.mjs`。`app/web/adapter.js` 提供宿主文件句柄，`app.js` 接管初始化、保存和对话。Files.md Web 文件保持原字节，宿主返回 index 时注入适配层、移除临时存储脚本和旧 Service Worker 注册；返回 app.js 时移除绕过导航协调的旧 focus/blur 回调；运行时禁用旧同步和知识库诊断日志。CSP 阻止页面连接旧远端。
+
+目前使用已安装的 Node/Git/Chrome，CLI 可尝试自动打开 Chrome，不代表原生安装器已完成。页面通过短间隔轮询显示 Pi 消息和运行状态，会话落盘仍由 Pi 管理。新配置选择 Pi 内置 DeepSeek 模型；配置使用原生 `ModelRuntime.login` 和 `setModel`，不维护自己的模型目录。
+
+应用已检查真实磁盘、默认 Pi 工具、脚本化模型传输的完整 Pi 循环、会话重启恢复和 Chromium 编辑。测试替身仅替代模型响应或注入调度失败，不替代正式工具实现。真实模型凭据未配置，Windows/macOS/Android 未测试。
+
+GitHub 同步、远端冲突流程和跨端检查仍待实现。当前单库锁只处理正常退出；强制终止后明确报占用，不自动覆盖锁或重复运行。草稿保存在当前页面，关闭页面可能丢失未保存文本，界面会触发离开提醒；跨进程草稿恢复尚未实现。

@@ -1,91 +1,74 @@
 # Corilo 可里
 
-**接住想法，接着往前。**
+本地 Markdown 知识库与 Agent 助手。目标为 Windows/macOS Chrome＋自动启动器、Android 集成 APK，使用 Pi 默认能力、在线模型和 GitHub 私有仓库同步。
 
-> 2026-09-24 名称确认：英文 **Corilo**，中文 **可里**。原名为「续页 · Xuye」，更早代号为 PersonalOS。本次同步品牌和本地导出目录，不改变业务范围或已有数据格式。
+## 当前正式应用代码
 
-本地优先的个人 Markdown 知识库与 Agent 助手。正式方案为 Files.md 页面＋Pi 默认能力＋DeepSeek＋GitHub 私有仓库同步。Windows/macOS 使用启动器自动打开 Chrome，Android 使用集成 APK；详见 [当前设计](docs/README.md)。
+`app/` 已接入固定版本的完整 Files.md Web 页面和 CodeMirror/HyperMD 编辑器、本机 Node 文件宿主、Pi 1.1.0 默认工具及本地 Git 历史。页面、Pi 和 Git 使用同一个磁盘知识库，浏览器临时存储与原 Files.md 远程同步入口已停用。
 
-## 现在可以启动的内容
+目前可用：真实文件编辑、文件树、原话保存、外部修改冲突提示及草稿另存、DeepSeek 配置、Agent 对话/停止、观察到的文件变更入口、最近本机会话恢复。对话流通过本机状态轮询增量显示。模型配置沿用 Pi 的 `auth.json`、`models.json` 和 `settings.json`。
 
-2026-09-20 增加了独立的本地开发原型：随手保存原话、新建 Markdown、打开并修改、标题与正文关键词查找、重开读取已保存文件。输入不会自动生成任务；没有调用模型或同步服务。
+**这是正式应用的首条开发链路，尚不是可分发安装包。** GitHub 远程同步、独立桌面启动器安装包、Android APK、完整会话切换和历史恢复界面仍待实现。Windows/macOS 启动代码尚未在目标系统验收。不要把当前阶段当作已经通过全部首期验收。
 
-这次不再只是函数补丁，但**仍不是完整可里应用**。`prototype/` 是 Python 标准库的临时本机宿主和普通 HTML/CSS/JS 入口，不是 Tauri 容器；编辑区暂用原生 textarea，尚未集成 Files.md 的完整页面、CodeMirror/HyperMD、Agent 或 GitHub 同步。Today 和通知不在首期范围。没有把这个替代入口冒充原定的上游复用已经完成。
+## 开发启动
 
-## 启动（不需要 npm、Go、模型密钥或同步账号）
+需要 Node.js >=22.19.0、Git；Pi 的默认 shell 工具需要 Bash（Windows 开发机需要 Git Bash）。首次安装依赖：
 
-需要 Python 3.10+。在仓库根目录执行：
+```bash
+npm ci --ignore-scripts
+npm start
+```
+
+启动时自动尝试打开 Chrome。当前开发入口仍依赖本机已安装的 Node/Git/Chrome；后续安装包会管理运行组件。Linux 云环境或无 GUI 时使用：
+
+```bash
+npm start -- --no-open --vault .local/app-notes --config .local/app-config
+```
+
+终端会打印带**本机访问凭证**的启动链接，仅供本机使用，不要分享。服务只监听 `127.0.0.1`，随机端口，页面去除 URL 中凭证后保存在当前标签页的 sessionStorage。Ctrl+C 正常退出。
+
+默认目录位于 Windows `%LOCALAPPDATA%/Corilo`、macOS `~/Library/Application Support/Corilo`、Linux `$XDG_DATA_HOME/corilo`（未设置时 `~/.local/share/corilo`）。`knowledge/` 存笔记，`config/pi/` 存 Pi 认证、模型配置和会话，彼此分离。开发检查使用虚构资料。
+
+页面“配置 DeepSeek”使用 Pi 默认认证接口保存密钥。也可通过 Pi 支持的 `DEEPSEEK_API_KEY` 环境变量提供。新配置默认选择 Pi 内置目录中的 DeepSeek 模型；已有 Pi 配置保留。未配置模型密钥时仍能编辑和仅保存原话。在线模型会接收对话及工具读取的相关内容；Pi cwd 不是沙箱。
+
+## 文件与恢复边界
+
+编辑器保存会核对读取版本，冲突时保留草稿并提供另存入口。Agent 使用 Pi 默认文件工具，不附加逐文件审批或事务保存框架。本地 Git 在初始状态、编辑保存及 Agent 前后建立历史；尚无界面化历史恢复，可由开发者检查 Git 提交。
+
+当前文件 HTTP 接口单次最多 16 MiB，拒绝隐藏路径和符号链接；这仅约束文件页面接口，不限制 Pi 默认 shell 的访问能力。跨平台文件名检查目前覆盖页面创建及重命名；完整远端同步检查待接入。
+
+一个知识库只允许一个宿主。正常退出会清理 `.corilo-host.lock`；强制终止后，需确认旧进程已经停止再移除该锁。安装器自动恢复、重复启动复用、系统签名及升级仍待实现。GitHub 状态明确显示“待接入”，本机提交不冒充远端备份。
+
+## 验证
+
+```bash
+npm test
+python3 -m pip install -r requirements-dev.txt
+python3 -m playwright install chromium
+python3 app/tests/browser_smoke.py
+```
+
+2026-10-09：9 项 Node 集成测试通过；真实 Chromium 检查覆盖完整编辑器、保存/重载、原话保存、外部文件刷新、冲突保留与草稿另存。浏览器脚本优先使用系统 `chromium`，否则使用 Playwright 安装的版本；Linux 缺少系统库时使用官方 `install --with-deps chromium`。
+
+Pi 默认 read/edit/write 工具已实际操作文件；完整 Pi 推理循环通过本机脚本化模型响应完成读取、修改及会话恢复测试。该模型响应是**协议测试替身**，不证明真实 DeepSeek 效果。未进行真实模型调用、Windows/macOS 实机或 Android 验证。浏览器结果和截图位于忽略的 `.local/`。
+
+[应用 CI](.github/workflows/app.yml) 配置了 Node 测试和 Chromium 检查；已配置不等于远端运行通过。
+
+## 历史原型
+
+`prototype/` 是保留的 Python 单文件存储原型，不作为正式应用继续扩展：
 
 ```bash
 python3 scripts/run_local.py --init
-```
-
-在浏览器打开终端打印的本机地址，默认是 `http://127.0.0.1:8765`。只监听本机，不提供公网部署入口。
-
-默认测试库仍位于仓库下 `.local/xuye-prototype/`，已加入 Git 忽略。此路径及 `.xuye-local/`、库识别标记和会话键是保留的兼容标识，品牌改名不会自动搬迁已有测试数据。只用虚构测试资料。`--init` 拒绝接管非空的未标记目录；没有读取或迁移你现有的知识库。
-
-试用流程：保存一句原话 → 点击“打开原文” → 修改并点“保存修改” → 关闭服务后重新启动 → 内容仍从 Markdown 读取。笔记修改需要显式保存，Ctrl/Cmd+S 也可保存。原话存入 `收集/<操作UUID>.md`，不是浏览器内存或数据库里的隐藏正文。
-
-Ctrl+C 停止。再次启动使用相同命令即可，已有测试文件不会被清空。端口占用时可指定 `--port 8766`；更换端口会改变浏览器草稿缓存的站点范围，但已保存 Markdown 不受影响。
-
-## 数据保护范围
-
-同一文件的保存经过版本 hash 核对、暂存写入和替换；操作日志用于恢复“已经写入但还没收到回执”的情况。新建不覆盖同名文件；读取失败不是删除。恢复遇到未知外部字节时保留文件并阻止继续覆盖。
-
-这是**单文件原型**，不是多文件事务或完整同步引擎。一个库限制一个宿主进程；不支持其他编辑器/同步器同时写入。混合或特殊换行文件在界面暂为只读。不支持正式任务语义、文件删除/移动、完整导出或生产数据迁移；不要用本原型管理真实资料。
-
-## 实际验证
-
-```bash
 python3 -m unittest discover -s prototype/tests -v
 ```
 
-2026-10-08 开发基础检查在 Linux 中完成 30 项测试，包括真实临时文件、真实 loopback HTTP、实际子进程退出和 CLI 重启恢复。Python 编译和 JavaScript 语法检查通过。
+原型默认库 `.local/xuye-prototype/`、`.personalos` 等兼容标识保持不变。旧测试和 `p0/` 证据仅代表其各自阶段，不作为当前应用验收。
 
-历史交付中的浏览器导航曾被管理员策略拒绝，证据仍保留在 [verification.json](prototype/verification.json) 和 [原始日志](prototype/verification.log)。2026-10-08 云环境已通过 Chromium 的输入、编辑和重载检查，并修复冒烟脚本的 CSP 兼容问题；这不代表视觉、Windows/macOS、Tauri、手机、模型或通知验收完成。
+## 设计与来源
 
-浏览器验证安装及执行方式见下节；这个入口使用独立临时库，不接真实资料。
+[设计索引](docs/README.md) · [产品](docs/PRODUCT.md) · [业务规格](docs/PRODUCT-SPEC.md) · [技术](docs/TECHNICAL_DESIGN.md) · [交互](docs/DESIGN.md)
 
-## 开发与自动检查
+Files.md Web 源码与许可在 [app/vendor/filesmd](app/vendor/filesmd)，固定提交及文件 SHA-256 见 [SOURCE.json](app/vendor/filesmd/SOURCE.json)。上游文件保持原样，由宿主修改返回的 HTML 和生命周期回调，并加载 Corilo 适配层；Go 服务、Telegram Bot、Worker 未引入。Pi 的安装版本固定在 package-lock.json。Termux 尚未引入应用代码，组合发行许可与相应源码交付随 Android 工程落实。
 
-基础开发只需要 Python 3.10+，应用没有第三方运行依赖。在仓库根目录运行：
-
-```bash
-python3 -m unittest discover -s prototype/tests -v
-python3 scripts/run_local.py --init
-```
-
-浏览器验证是单独的开发依赖，建议放入隔离环境（Mac/Linux）：
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python -m playwright install chromium
-.venv/bin/python -m prototype.browser_smoke
-```
-
-Linux 若缺 Chromium 系统库，可使用 Playwright 官方 `install --with-deps chromium` 命令；需要安装系统包的权限。Windows 使用 `.venv\Scripts\python.exe` 替代 `.venv/bin/python`。已有 Chromium 时可加 `--executable /实际浏览器路径`。
-
-浏览器检查使用独立临时测试库，验证输入、真实 Markdown 保存、编辑及页面重载，不需要先启动默认服务。结果在被 Git 忽略的 `.local/browser-result.json`，失败以非零状态退出。定位器断言保持页面 CSP，不要求开启 `unsafe-eval`。
-
-GitHub Actions 在推送和 PR 时自动运行 Python 3.10/3.12/3.13 的现有测试、JavaScript 语法检查和 Chromium 冒烟验证，并保留浏览器结果。工作流文件已配置不代表远端运行已经通过，需查看对应提交的 Actions 结果。P0 历史红/绿对照不算当前原型的产品验收，不纳入基础 CI。
-
-## Git 状态与发布边界
-
-当前工作区面向 `keanrain/corilo`。开发基线从用户提供的 Corilo 本地交接包导入，保留初始、原型和品牌改名三个提交；原包中的 `keanrain/xuye` 及旧授权结果是历史记录。
-
-后续在开发分支提交并经审阅合入。此开发基础不创建网站部署，不修改仓库可见性，不自动推送 `main`，不调用历史 `scripts/publish_github.py` 或用 `repository-bootstrap.json` 重复建库。推送成功与否以真实 Git 返回及远端 ref 核对为准。
-
-## 开发依据
-
-[知识库索引](docs/README.md) · [产品](docs/PRODUCT.md) · [业务规格](docs/PRODUCT-SPEC.md) · [技术](docs/TECHNICAL_DESIGN.md) · [交互](docs/DESIGN.md)
-
-产品规则由 v0.12 文档定义（2026-10-09），旧 v0.11 的范围已被替代。`p0/` 保留过去的固定源码、候选补丁与历史日志；不把它们当作本原型已集成代码。上游许可声明仍保留在原位置，可里整体发行许可尚未确定。
-
-下一步直接接入完整 Files.md 页面与 Pi，交付桌面自动启动链路，同时准备 Android 自定义运行环境；随后完成 GitHub 私有仓库同步。正式架构和验收见上面的文档，不再扩大临时 Python 原型。
-
-## 本轮改名与已有本地开发
-
-2026-09-24 交接包的开发目录为 `corilo/`，当时分支为 `feat/local-prototype`、origin 为 `keanrain/xuye`。当前云环境的远端和提交边界见上节。此前提交和上游许可、P0 固定源码、历史测试/日志及 `.fig` 保留。
-
-已有本地改动时，不用整个新目录覆盖旧目录或 `.git/`；从导出包的 `integration/` 读取改名提交并在本地审阅合入。历史 `scripts/publish_github.py` 仍针对原仓库初始化，不是改名工具，不应因本次品牌调整再次运行。
+代码仓库为 `keanrain/corilo`，知识库远端另行配置。只在开发分支提交推送，不自动合入 main、部署或修改仓库可见性。
