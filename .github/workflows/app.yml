@@ -21,6 +21,7 @@ jobs:
         run: |
           node --check app/web/adapter.js
           node --check app/web/app.js
+          node --check app/web/sync.js
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -30,6 +31,7 @@ jobs:
           python -m playwright install --with-deps chromium
       - run: python app/tests/browser_smoke.py
       - run: python app/tests/browser_review.py
+      - run: python app/tests/browser_sync.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:

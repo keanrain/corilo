@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Vault, fault } from './vault.mjs';
+import { GitSync } from './sync.mjs';
 import { PiAgent } from './agent.mjs';
 import { getAgentDir } from '@earendil-works/pi-coding-agent';
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -17,7 +18,7 @@ async function body(req, limit = 16 * 1024 * 1024) {
 }
 const jsonBody = async req => { try { return JSON.parse((await body(req, 1024 * 1024)).toString()); } catch (e) { if (e.status) throw e; throw fault(400, '无效 JSON'); } };
 const send = (res, status, data) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(data)); };
-export async function startHost({ vault: root, configDir, port = 0, piAgentDir = getAgentDir(), agentFactory = (v, dir, piDir) => new PiAgent(v, dir, piDir) }) {
+export async function startHost({ vault: root, configDir, port = 0, piAgentDir = getAgentDir(), agentFactory = (v, dir, piDir) => new PiAgent(v, dir, piDir), syncFactory = (v, dir) => new GitSync(v, dir) }) {
   const vault = new Vault(root);
   // Do this before initialization so an invalid config never lands in the knowledge library.
   await fs.mkdir(root, { recursive: true });
@@ -34,7 +35,7 @@ export async function startHost({ vault: root, configDir, port = 0, piAgentDir =
   catch (e) { if (e.code === 'EEXIST') throw fault(409, '知识库已被宿主占用；异常退出后请确认旧进程已停止，再移除 .corilo-host.lock'); throw e; }
   await lock.writeFile(String(process.pid));
   // Lock lives in the library for single-writer enforcement, but never enters history.
-  let agent;
+  let agent, sync;
   try {
     const gitDir = path.join(realRoot, '.git');
     const existing = await fs.lstat(gitDir).catch(e => { if (e.code !== 'ENOENT') throw e; });
@@ -47,12 +48,22 @@ export async function startHost({ vault: root, configDir, port = 0, piAgentDir =
     await vault.init();
     agent = agentFactory(vault, realConfig, realPiDir);
     await agent.init();
+    sync = syncFactory(vault, realConfig); await sync.init();
   } catch (e) { await lock.close(); await fs.rm(lockPath, { force: true }); throw e; }
   const token = randomBytes(32).toString('hex');
+  let syncing = false;
   let queue = Promise.resolve(), busy = false, runTask = Promise.resolve(), runId = 0;
   let outcome = 'idle', runError = '', stopped = false, changed = [], revision = 0, shuttingDown = false;
   const exclusive = task => { const next = queue.then(task); queue = next.catch(() => {}); return next; };
-  const mutate = task => exclusive(async () => { if (busy) throw fault(409, 'Agent 正在运行，请停止后再编辑'); return task(); });
+  const mutate = task => {
+    if (syncing) return Promise.reject(fault(409, '正在同步，请稍后重试；草稿保留'));
+    return exclusive(async () => {
+      if (busy || syncing || shuttingDown) throw fault(409, 'Agent 或同步正在运行，请稍后重试');
+      const result = await task();
+      if (sync.phase === 'synced') sync.phase = 'pending';
+      return result;
+    });
+  };
   async function staticFile(urlPath, res) {
     const custom = urlPath.startsWith('/corilo/');
     const base = custom ? path.join(appRoot, 'web') : vendor;
@@ -87,7 +98,7 @@ export async function startHost({ vault: root, configDir, port = 0, piAgentDir =
         .replace(/    <script src="welcome.js[^\n]+\n/, '')
         .replace(/    \/\/ Allow offline mode\.[\s\S]*?\.catch\([^\n]+\n/, '')
         .replace('    init();', '    init().catch(coriloError);');
-      html = html.replace('<script>\n    window.COMMIT_HASH', '<link rel="stylesheet" href="/corilo/app.css">\n<script src="/corilo/adapter.js"></script>\n<script src="/corilo/app.js"></script>\n<script>\n    window.COMMIT_HASH');
+      html = html.replace('<script>\n    window.COMMIT_HASH', '<link rel="stylesheet" href="/corilo/app.css">\n<script src="/corilo/adapter.js"></script>\n<script src="/corilo/app.js"></script><script src="/corilo/sync.js"></script>\n<script>\n    window.COMMIT_HASH');
       data = Buffer.from(html);
     }
     res.writeHead(200, { 'Content-Type': `${mime[path.extname(resolved)]}${['.html','.js','.css','.json'].includes(path.extname(resolved)) ? '; charset=utf-8' : ''}` });
@@ -114,8 +125,24 @@ export async function startHost({ vault: root, configDir, port = 0, piAgentDir =
       if (req.method === 'GET' && route === '/api/state') return send(res, 200, {
         busy, outcome, error: runError, changed, revision, runId, activity: agent.activity,
         messages: agent.messages(), liveText: agent.liveText ?? '', model: agent.session?.model ? `${agent.session.model.provider}/${agent.session.model.id}` : null,
-        vault: vault.root, sync: 'local-only',
+        vault: vault.root, sync: sync.state(), syncing,
       });
+      if (req.method === 'POST' && ['/api/sync/bind','/api/sync/run','/api/sync/unbind'].includes(route)) {
+        const data = await jsonBody(req);
+        if (syncing || busy) throw fault(409, 'Agent 或同步正在运行，请稍后重试');
+        // Set before queueing: queued file writes must not slip into a network merge.
+        syncing = true;
+        try {
+          const result = await exclusive(async () => {
+            if (busy || shuttingDown) throw fault(409, '宿主正忙，请稍后重试');
+            if (route.endsWith('/bind')) return sync.bind(data.url, data.branch);
+            if (route.endsWith('/unbind')) return sync.unbind();
+            return sync.run(data.resolution);
+          });
+          return send(res, 200, result);
+        } finally { syncing = false; revision++; }
+      }
+      if (syncing && route.startsWith('/api/fs/')) throw fault(409, '正在同步，请稍后重试；草稿保留');
       if (req.method === 'GET' && route === '/api/fs/list') return send(res, 200, await vault.list(input));
       if (req.method === 'GET' && route === '/api/fs/stat') return send(res, 200, await vault.stat(input));
       if (req.method === 'GET' && route === '/api/fs/read') {

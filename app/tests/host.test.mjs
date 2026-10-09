@@ -101,3 +101,20 @@ test('Pi config inside the vault is rejected before any Git history is created',
   await assert.rejects(startHost({vault:root+'/notes',configDir:root+'/config',piAgentDir:root+'/notes/pi'}),/Pi 配置目录/);
   await assert.rejects(readFile(root+'/notes/.git/HEAD'),{code:'ENOENT'});
 });
+
+test('sync serializes writes and agent starts while state remains readable', async t => {
+  let release, entered;
+  const hold=new Promise(r=>{release=r;}), started=new Promise(r=>{entered=r;});
+  const syncFactory=()=>({phase:'pending',init:async()=>{},state:()=>({phase:'syncing',conflicts:[]}),run:async()=>{entered(); await hold; return {};}});
+  const {request}=await fixture(t,{syncFactory});
+  const running=request('/api/sync/run',{data:{}}); await started;
+  try {
+    assert.equal((await request('/api/state')).status,200);
+    assert.equal((await (await request('/api/state')).json()).syncing,true);
+    assert.equal((await request('/api/fs/create',{data:{path:'blocked.md',kind:'file'}})).status,409);
+    assert.equal((await request('/api/agent/prompt',{data:{text:'blocked'}})).status,409);
+    assert.equal((await request('/api/sync/run',{data:{}})).status,409);
+  } finally { release(); }
+  assert.equal((await running).status,200);
+  assert.equal((await request('/api/fs/create',{data:{path:'allowed.md',kind:'file'}})).status,200);
+});

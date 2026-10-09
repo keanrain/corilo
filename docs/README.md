@@ -18,7 +18,7 @@
 
 ## 实现状态
 
-- `app/` 已接入完整 Files.md Web 源码、Node 磁盘宿主、Pi SDK 默认工具和本地 Git 历史；启动见[根 README](../README.md)。GitHub 远端同步、桌面安装包和 Android APK 尚未实现。Python 原型独立保留。
+- `app/` 已接入完整 Files.md Web 源码、Node 磁盘宿主、Pi SDK 默认工具和本地 Git 历史；启动见[根 README](../README.md)。Git 同步与冲突 UI 已接入，真实 GitHub 连接、桌面安装包和 Android APK 尚未验收。Python 原型独立保留。
 - 2026-10-08 的开发检查覆盖原型 30 项测试和 Chromium 保存、编辑、重载；不等于正式应用通过验收。
 - Pi 1.1.0 在 Linux 上的默认 read/write/edit/bash 工具已作真实文件检查，模型调用为零。Android ARM64 依赖包检查不等于 Android 执行通过。
 - Termux 集成已完成源码调查，尚未重建 Corilo 专属 prefix、编译 APK 或真机测试。
@@ -43,3 +43,7 @@
 ## 2026-10-09 配置简化与代码复核
 
 按最新要求移除专用模型配置入口，改为读取 Pi 的标准配置目录（含 `PI_CODING_AGENT_DIR`），不复制认证/模型配置、不强制选模型。已修复移动覆盖、分屏版本共享、文件名 HTML 渲染和发送前保存时序问题。详细结论、回归证据和仍未达到的交付目标见 [技术设计第 11 节](TECHNICAL_DESIGN.md#11-代码复核与目标差距2026-10-09)。
+
+## 2026-10-09 Git 同步接入
+
+正式宿主与页面已接入仓库绑定、手动/前台空闲同步、冲突预览及版本选择、解绑。使用临时 bare 远端进行真实 Git 和浏览器集成检查，未接触真实知识库。当前凭据复用本机 Git helper，第二台设备仍需先克隆再打开。实现边界和证据见 [技术设计第 12 节](TECHNICAL_DESIGN.md#12-git-同步实现2026-10-09)，此前记录按当时状态保留。
