@@ -1,5 +1,6 @@
 """Real Chromium + disk checks. Uses synthetic notes and never calls a model."""
 import json
+import os
 import pathlib
 import subprocess
 import tempfile
@@ -20,7 +21,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='corilo-browser-') as temp:
         base = pathlib.Path(temp); vault = base/'notes'; vault.mkdir()
         note = vault/'笔记.md'; note.write_text('初始正文\n')
-        process = subprocess.Popen(['node','app/host/cli.mjs','--no-open','--vault',str(vault),'--config',str(base/'config')], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(['node','app/host/cli.mjs','--no-open','--vault',str(vault),'--config',str(base/'config')], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=dict(os.environ, PI_CODING_AGENT_DIR=str(base/'pi')))
         try:
             process.stdout.readline()
             url = process.stdout.readline().strip()
@@ -36,6 +37,7 @@ def main():
                 page.goto(url)
                 page.wait_for_function("() => typeof coriloReady !== 'undefined' && coriloReady")
                 assert page.title() == 'Corilo 可里'
+                assert page.locator('#corilo-config, #corilo-key').count() == 0
                 page.locator('#corilo-toggle').click()
                 page.locator('.CodeMirror').first.click()
                 page.keyboard.press('Control+End')

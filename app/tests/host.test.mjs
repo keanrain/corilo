@@ -7,7 +7,7 @@ import { createReadTool, createWriteTool, createEditTool } from '@earendil-works
 async function fixture(t, options = {}) {
   const root = await mkdtemp(os.tmpdir() + '/corilo-test-');
   await mkdir(root+'/notes'); await writeFile(root+'/notes/笔记.md', '原始内容\n');
-  const host = await startHost({ vault: root+'/notes', configDir: root+'/config', ...options });
+  const host = await startHost({ vault: root+'/notes', configDir: root+'/config', piAgentDir: root+'/pi', ...options });
   t.after(async () => { await host.close(); await rm(root, { recursive: true, force: true }); });
   const request = (route, { data, ...options } = {}) => fetch(host.origin + route, {
     ...options, headers: { 'X-Corilo-Token': host.token, ...(data ? { 'Content-Type': 'application/json' } : {}), ...options.headers },
@@ -17,7 +17,6 @@ async function fixture(t, options = {}) {
 }
 test('real Pi SDK and UI HTTP share the same disk; local history captures edits', async t => {
   const { host, request, root } = await fixture(t);
-  assert.equal((await (await request('/api/state')).json()).model.startsWith('deepseek/'), true);
   const response = await request('/api/fs/read?path=笔记.md');
   assert.equal(await response.text(), '原始内容\n');
   const write = await request('/api/fs/write?path=笔记.md', {method:'PUT',headers:{'If-Match':response.headers.get('X-Corilo-Etag')},body:'页面保存\n'});
@@ -52,19 +51,17 @@ test('host rejects untrusted origins, missing credentials, traversal and symlink
   assert.equal((await request('/api/fs/create',{data:{path:'Note.md',kind:'file'}})).status,200);
   assert.equal((await request('/api/fs/create',{data:{path:'note.md',kind:'file'}})).status,409);
 });
-test('capture makes a real file and commit without a model call; unavailable model preserves request', async t => {
+test('capture makes a real file and commit without a model call', async t => {
   const { request, root } = await fixture(t);
   const response = await request('/api/capture',{data:{text:'只保存原话'}}); assert.equal(response.status,200);
   const result = await response.json(); assert.equal(await readFile(root+'/notes/'+result.path,'utf8'),'只保存原话');
   const state = await (await request('/api/state')).json(); assert.deepEqual(state.messages,[]);
-  if (!process.env.DEEPSEEK_API_KEY) assert.equal((await request('/api/agent/prompt',{data:{text:'hello'}})).status,400);
 });
-test('Pi configuration uses its own default auth storage and persists credentials (no network model call)', async t => {
-  const { request, root, host } = await fixture(t);
-  assert.equal((await request('/api/model',{data:{apiKey:'synthetic-test-not-a-real-key'}})).status,200);
-  const auth = JSON.parse(await readFile(root+'/config/pi/auth.json','utf8'));
-  assert.equal(auth.deepseek.type,'api_key'); assert.equal(auth.deepseek.key,'synthetic-test-not-a-real-key');
-  assert.doesNotMatch(await host.vault.git(['ls-files']),/auth/);
+test('Corilo has no model credential endpoint or duplicate auth files', async t => {
+  const { request, root } = await fixture(t);
+  assert.equal((await request('/api/model',{data:{apiKey:'synthetic-fixture'}})).status,404);
+  await assert.rejects(readFile(root+'/config/pi/auth.json'), {code:'ENOENT'});
+  assert.deepEqual(JSON.parse(await readFile(root+'/pi/auth.json','utf8')), {});
 });
 test('rename collision preserves both source and destination', async t => {
   const { root, request } = await fixture(t);
@@ -93,5 +90,14 @@ test('host scheduler keeps UI writes out of an active agent run and checkpoints 
 });
 test('second host cannot open the same vault', async t => {
   const { root } = await fixture(t);
-  await assert.rejects(startHost({vault:root+'/notes',configDir:root+'/config2'}),/占用/);
+  await assert.rejects(startHost({vault:root+'/notes',configDir:root+'/config2',piAgentDir:root+'/pi'}),/占用/);
+});
+
+test('Pi config inside the vault is rejected before any Git history is created', async t => {
+  const root=await mkdtemp(os.tmpdir()+'/corilo-placement-');
+  t.after(()=>rm(root,{recursive:true,force:true}));
+  await mkdir(root+'/notes/pi',{recursive:true});
+  await writeFile(root+'/notes/pi/auth.json','{"fixture":{"type":"api_key","key":"synthetic"}}');
+  await assert.rejects(startHost({vault:root+'/notes',configDir:root+'/config',piAgentDir:root+'/notes/pi'}),/Pi 配置目录/);
+  await assert.rejects(readFile(root+'/notes/.git/HEAD'),{code:'ENOENT'});
 });

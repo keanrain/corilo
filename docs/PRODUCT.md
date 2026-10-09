@@ -14,7 +14,7 @@ v0.12 · 2026-10-09
 |---|---|
 | 笔记 | 复用完整 Files.md 文件浏览、Markdown 编辑、查找和现有 checklist/Later 体验 |
 | 对话 | 流式回复、停止、继续本机会话、真实文件结果卡片 |
-| Agent | Pi 默认文件和 shell 工具、会话与模型配置；初始引导 DeepSeek |
+| Agent | Pi 默认文件和 shell 工具、会话与模型配置；直接复用已有 Pi 配置，不另建配置入口；初期优先使用 DeepSeek |
 | 同步 | 一个 GitHub 私有知识库仓库，每台设备一份本地 Git 工作树 |
 | 桌面 | Windows 11 x64、macOS 14+ Apple Silicon 优先，Chrome 页面与自动启动器 |
 | 手机 | Android 15/16/17 ARM64，集成 APK；Android 17 为主要验收目标 |

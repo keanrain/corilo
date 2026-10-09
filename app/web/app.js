@@ -2,6 +2,7 @@
 clearInterval(window.saver);
 let coriloBusy = false, coriloSaving = null, coriloReady = false, coriloLastRevision = -1;
 let coriloMessagesSignature = '', coriloHistoryDirty = false;
+let coriloSubmitting = false, coriloPollRequest = 0, coriloCompletedRun = 0;
 let coriloNavigation = Promise.resolve(), coriloReloading = null, coriloNavigating = false;
 function coriloError(error) {
     const message = error?.message || String(error);
@@ -15,7 +16,6 @@ bar.innerHTML = '<strong>Corilo 可里</strong><button id="corilo-toggle">Agent 
 document.body.appendChild(bar);
 const panel = document.createElement('section'); panel.id = 'corilo-agent';
 panel.innerHTML = `<strong>知识库对话</strong><small id="corilo-model">Pi 默认工具 · 在线模型</small>
-<details id="corilo-config"><summary>配置 DeepSeek</summary><p>对话和工具读取的相关资料会发送给模型服务商。密钥保存在知识库之外的 Pi 配置中。</p><input id="corilo-key" type="password" autocomplete="off" placeholder="DeepSeek API Key"><button id="corilo-save-key">保存配置</button></details>
 <div id="corilo-messages"></div><div id="corilo-results"></div><div id="corilo-error" role="alert"></div><button id="corilo-save-draft" hidden>另存当前草稿</button><small id="corilo-activity"></small>
 <textarea id="corilo-input" placeholder="向知识库提问，或说明要整理、保存的内容"></textarea>
 <div><button id="corilo-send">发送</button> <button id="corilo-capture">仅保存原话</button> <button id="corilo-stop" disabled>停止</button></div>`;
@@ -35,7 +35,7 @@ syncCurrentFile = async () => {
         for (const cm of [editor, editor2]) {
             if (!cm?.path || cm.isClean()) continue;
             const snapshot = cm.getValue(), generation = cm.changeGeneration();
-            const oldPath = cm.path, handle = getMemFile(oldPath)?.handle;
+            const oldPath = cm.path, handle = cm.coriloFileHandle;
             if (!handle) throw new Error('文件句柄不存在，草稿保留在编辑器中');
             const header = snapshot.split('\n')[0];
             const newName = fromHeaderToFilename(header);
@@ -46,7 +46,7 @@ syncCurrentFile = async () => {
                 await coriloJSON('/api/fs/rename', { from: oldPath, to: newPath });
                 const old = getMemFile(oldPath); removeMemFile(oldPath);
                 addMemFile(newPath, { ...old, path: newPath, handle: await getFileHandle(newPath) });
-                cm.path = newPath; await renderSidebar();
+                cm.path = newPath; handle.path = newPath; handle.name = toFilename(newPath); await renderSidebar();
             }
             if (cm.isClean(generation)) cm.markClean();
             coriloHistoryDirty = true;
@@ -64,10 +64,19 @@ openFile = (...args) => {
         if (!coriloBusy) await syncCurrentFile();
         coriloNavigating = true;
         for (const cm of [editor, editor2]) cm?.setOption('readOnly', true);
-        try { await upstreamOpenFile(...args); }
+        try {
+            await upstreamOpenFile(...args);
+            const cm = args[2] === 'editor2-textarea' ? editor2 : editor;
+            const loaded = getMemFile(cm.path)?.handle;
+            if (loaded) {
+                // Each editor retains the exact version it displayed, independent of other panes.
+                cm.coriloFileHandle = new CoriloFile(cm.path);
+                cm.coriloFileHandle.etag = loaded.etag;
+            }
+        }
         finally {
             coriloNavigating = false;
-            for (const cm of [editor, editor2]) cm?.setOption('readOnly', coriloBusy || !!coriloReloading);
+            for (const cm of [editor, editor2]) cm?.setOption('readOnly', coriloBusy || coriloSubmitting || !!coriloReloading);
         }
     });
     coriloNavigation = task.catch(() => {});
@@ -90,15 +99,17 @@ async function coriloReload() {
         }
     })();
     try { await coriloReloading; }
-    finally { coriloReloading = null; for (const cm of [editor, editor2]) cm?.setOption('readOnly', coriloBusy || coriloNavigating); }
+    finally { coriloReloading = null; for (const cm of [editor, editor2]) cm?.setOption('readOnly', coriloBusy || coriloSubmitting || coriloNavigating); }
 }
 $c('corilo-refresh').onclick = () => coriloReload().catch(coriloError);
 async function coriloPoll() {
+    const request = ++coriloPollRequest;
     const state = await coriloJSON('/api/state');
+    if (request !== coriloPollRequest) return;
     const wasBusy = coriloBusy; coriloBusy = state.busy;
-    document.body.classList.toggle('corilo-busy', coriloBusy);
-    for (const cm of [editor, editor2]) cm?.setOption('readOnly', coriloBusy || coriloNavigating || !!coriloReloading);
-    $c('corilo-send').disabled = coriloBusy; $c('corilo-capture').disabled = coriloBusy;
+    document.body.classList.toggle('corilo-busy', coriloBusy || coriloSubmitting);
+    for (const cm of [editor, editor2]) cm?.setOption('readOnly', coriloBusy || coriloSubmitting || coriloNavigating || !!coriloReloading);
+    $c('corilo-send').disabled = coriloBusy || coriloSubmitting; $c('corilo-capture').disabled = coriloBusy || coriloSubmitting;
     $c('corilo-stop').disabled = !coriloBusy;
     $c('corilo-model').textContent = state.model || '尚未选择模型 · 可先保存原话';
     $c('corilo-activity').textContent = state.busy ? state.activity || 'Agent 正在运行…' : ({completed:'本轮已结束',failed:'本轮失败',stopped:'已停止'}[state.outcome] || '');
@@ -121,19 +132,33 @@ async function coriloPoll() {
             $c('corilo-results').append(button);
         }
     }
-    if (wasBusy && !coriloBusy) await coriloReload();
+    if (!coriloBusy && (wasBusy || state.runId > coriloCompletedRun)) {
+        coriloCompletedRun = state.runId; await coriloReload();
+    }
+}
+function coriloUpdateInputLock() {
+    document.body.classList.toggle('corilo-busy', coriloBusy || coriloSubmitting);
+    for (const cm of [editor, editor2]) cm?.setOption('readOnly', coriloBusy || coriloSubmitting || coriloNavigating || !!coriloReloading);
+    $c('corilo-send').disabled = coriloBusy || coriloSubmitting;
+    $c('corilo-capture').disabled = coriloBusy || coriloSubmitting;
 }
 $c('corilo-send').onclick = async () => {
+    if (coriloBusy || coriloSubmitting) return;
+    const text = $c('corilo-input').value;
+    if (!text.trim()) return;
+    coriloSubmitting = true; coriloUpdateInputLock();
     try {
         $c('corilo-error').textContent = '';
+        await coriloReloading; await coriloNavigation; await coriloSaving;
+        // A previous save may have captured an older snapshot. Flush the final, now-frozen draft.
         await syncCurrentFile();
-        const text = $c('corilo-input').value;
-        if (!text.trim()) return;
-        // Freeze all editors before the server starts the run, including the first await.
-        coriloBusy = true; for (const cm of [editor,editor2]) cm?.setOption('readOnly',true);
+        if ([editor,editor2].some(cm => cm?.path && !cm.isClean())) throw new Error('编辑器仍有未保存修改，请保存或另存后再发送');
         await coriloJSON('/api/agent/prompt', { text });
-        $c('corilo-input').value = ''; await coriloPoll();
+        coriloBusy = true;
+        if ($c('corilo-input').value === text) $c('corilo-input').value = '';
+        await coriloPoll();
     } catch (e) { coriloError(e); await coriloPoll().catch(coriloError); }
+    finally { coriloSubmitting = false; coriloUpdateInputLock(); }
 };
 $c('corilo-capture').onclick = async () => {
     try {
@@ -143,13 +168,6 @@ $c('corilo-capture').onclick = async () => {
     } catch (e) { coriloError(e); }
 };
 $c('corilo-stop').onclick = () => coriloJSON('/api/agent/stop', {}).then(coriloPoll).catch(coriloError);
-$c('corilo-save-key').onclick = async () => {
-    try {
-        await coriloJSON('/api/model', { apiKey: $c('corilo-key').value });
-        $c('corilo-config').open = false; await coriloPoll();
-    } catch (e) { coriloError(e); }
-    finally { $c('corilo-key').value = ''; }
-};
 $c('corilo-save-draft').onclick = async () => {
     try {
         const cm = [currentEditor, editor, editor2].find(candidate => candidate?.path && !candidate.isClean());

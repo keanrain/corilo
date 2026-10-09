@@ -10,8 +10,6 @@ body { padding-top:52px; }
 #corilo-input { width:100%; box-sizing:border-box; min-height:90px; resize:vertical; padding:10px; }
 #corilo-error { color:#a22929; white-space:pre-wrap; }
 #corilo-results { display:flex; flex-wrap:wrap; gap:6px; }
-#corilo-config { padding:12px 0; }
-#corilo-config input { max-width:95%; padding:8px; }
 body.corilo-busy #toolbar, body.corilo-busy #tree { pointer-events:none; opacity:.65; }
 @media(prefers-color-scheme:dark) { #corilo-bar,#corilo-agent { background:#262624; color:#eee; } #corilo-input { background:#333; color:#eee; } }
 body { margin:0; box-sizing:border-box; overflow:hidden; }

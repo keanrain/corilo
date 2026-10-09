@@ -100,17 +100,52 @@ post = async () => { throw new Error('旧 Files.md 远程接口已停用'); };
 openDir = async () => showToast('当前使用 Corilo 本机知识库；目录由启动器管理');
 rename = async (from, to) => coriloJSON('/api/fs/rename', { from, to });
 moveFile = async (from, to) => {
-    await rename(from, to);
+    await syncCurrentFile();
+    await rename(from, to); // Host rename refuses to overwrite an existing target.
     const old = getMemFile(from); removeMemFile(from);
     addMemFile(to, { ...old, path: to, handle: await getFileHandle(to) });
+    for (const cm of [editor, editor2]) {
+        if (cm?.path !== from) continue;
+        cm.path = to;
+        if (cm.coriloFileHandle) { cm.coriloFileHandle.path = to; cm.coriloFileHandle.name = toFilename(to); }
+        if (toFilename(from) !== toFilename(to)) {
+            const content = cm.getValue();
+            cm.setValue(toHeader(toFilename(to)) + content.slice(content.indexOf('\n')));
+            cm.markClean();
+        }
+    }
+};
+moveCurrentFile = async toDir => {
+    const from = currentEditor.path, to = joinPath('/', toDir, toFilename(from));
+    if (from === to) return;
+    await moveFile(from, to); await renderSidebar();
+};
+removeCurrentFile = async () => {
+    await syncCurrentFile();
+    const from = currentEditor.path;
+    if (!from) return;
+    if (toDirPath(from) === '/archive') await remove(from);
+    else {
+        await createDir('/archive');
+        await moveFile(from, joinPath('/archive', toFilename(from)));
+    }
+    await coriloReload();
 };
 // Keep read/write failure visible and never delete a source after a failed move.
 removeDir = async path => {
+    await syncCurrentFile();
     await coriloJSON('/api/fs/remove', { path, recursive: true });
-    removeMemDir(path);
+    removeMemDir(path); await coriloReload();
 };
 moveDir = async (from, to) => {
-    await rename(from, to); files = await loadLocalFiles(coriloRoot); await renderSidebar();
+    await syncCurrentFile(); await rename(from, to);
+    for (const cm of [editor, editor2]) {
+        if (cm?.path?.startsWith(from + '/')) {
+            cm.path = to + cm.path.slice(from.length);
+            if (cm.coriloFileHandle) cm.coriloFileHandle.path = cm.path;
+        }
+    }
+    await coriloReload();
 };
 // Upstream writes diagnostic logs into archive/Log.txt; keep diagnostics out of the knowledge library.
 log = () => {};

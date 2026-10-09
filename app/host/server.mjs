@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Vault, fault } from './vault.mjs';
 import { PiAgent } from './agent.mjs';
+import { getAgentDir } from '@earendil-works/pi-coding-agent';
 const appRoot = fileURLToPath(new URL('../', import.meta.url));
 const vendor = path.join(appRoot, 'vendor/filesmd/web');
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.json': 'application/json', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.png': 'image/png', '.jpg': 'image/jpeg' };
@@ -16,13 +17,17 @@ async function body(req, limit = 16 * 1024 * 1024) {
 }
 const jsonBody = async req => { try { return JSON.parse((await body(req, 1024 * 1024)).toString()); } catch (e) { if (e.status) throw e; throw fault(400, '无效 JSON'); } };
 const send = (res, status, data) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(data)); };
-export async function startHost({ vault: root, configDir, port = 0, agentFactory = (v, dir) => new PiAgent(v, dir) }) {
+export async function startHost({ vault: root, configDir, port = 0, piAgentDir = getAgentDir(), agentFactory = (v, dir, piDir) => new PiAgent(v, dir, piDir) }) {
   const vault = new Vault(root);
   // Do this before initialization so an invalid config never lands in the knowledge library.
   await fs.mkdir(root, { recursive: true });
   await fs.mkdir(configDir, { recursive: true, mode: 0o700 });
   const realRoot = await fs.realpath(root), realConfig = await fs.realpath(configDir);
   if (inside(realRoot, realConfig) || inside(realConfig, realRoot)) throw fault(400, '配置目录与知识库必须相互独立');
+  // Validate before Git initialization/checkpointing: credentials must never enter history.
+  await fs.mkdir(piAgentDir, { recursive: true, mode: 0o700 });
+  const realPiDir = await fs.realpath(piAgentDir);
+  if (inside(realRoot, realPiDir) || inside(realPiDir, realRoot)) throw fault(400, 'Pi 配置目录与知识库必须相互独立');
   const lockPath = path.join(realRoot, '.corilo-host.lock');
   let lock;
   try { lock = await fs.open(lockPath, 'wx', 0o600); }
@@ -40,7 +45,7 @@ export async function startHost({ vault: root, configDir, port = 0, agentFactory
     const prior = await fs.readFile(exclude, 'utf8').catch(e => { if (e.code !== 'ENOENT') throw e; return ''; });
     if (!prior.includes('/.corilo-host.lock')) await fs.appendFile(exclude, '\n/.corilo-host.lock\n.corilo-*.tmp\n');
     await vault.init();
-    agent = agentFactory(vault, path.join(realConfig, 'pi'));
+    agent = agentFactory(vault, realConfig, realPiDir);
     await agent.init();
   } catch (e) { await lock.close(); await fs.rm(lockPath, { force: true }); throw e; }
   const token = randomBytes(32).toString('hex');
@@ -55,6 +60,18 @@ export async function startHost({ vault: root, configDir, port = 0, agentFactory
     const resolved = path.resolve(base, relative);
     if (!inside(base, resolved) || relative.split('/').some(p => p.startsWith('.')) || !mime[path.extname(resolved)]) throw fault(404, '资源不存在');
     let data = await fs.readFile(resolved);
+    if (!custom && relative === 'lib/sidebar.js') {
+      // Disk-origin names (including names created by Pi) must never become markup.
+      let source = data.toString();
+      for (const [before, after] of [
+        ['span_desc.innerHTML = ret + name + "</span>";', 'span_desc.innerHTML = ret; span_desc.appendChild(document.createTextNode(name));'],
+        ["span_desc.innerHTML = ret + node.toString() + '</span>';", 'span_desc.innerHTML = ret; span_desc.appendChild(document.createTextNode(node.toString()));'],
+      ]) {
+        if (!source.includes(before)) throw new Error('Files.md filename patch no longer matches its pinned source');
+        source = source.replace(before, after);
+      }
+      data = Buffer.from(source);
+    }
     if (!custom && relative === 'app.js') {
       // The original focus/blur callbacks bypass the host navigation coordinator.
       const source = data.toString();
@@ -117,10 +134,10 @@ export async function startHost({ vault: root, configDir, port = 0, agentFactory
         return send(res, 200, await mutate(() => vault.create(data.path, data.kind)));
       }
       if (req.method === 'POST' && route === '/api/fs/rename') {
-        const data = await jsonBody(req); await mutate(() => vault.rename(data.from, data.to)); revision++; return send(res, 200, {});
+        const data = await jsonBody(req); await mutate(async () => { await vault.checkpoint('Corilo: before rename'); await vault.rename(data.from, data.to); await vault.checkpoint('Corilo: rename'); }); revision++; return send(res, 200, {});
       }
       if (req.method === 'POST' && route === '/api/fs/remove') {
-        const data = await jsonBody(req); await mutate(() => vault.remove(data.path, data.recursive === true)); revision++; return send(res, 200, {});
+        const data = await jsonBody(req); await mutate(async () => { await vault.checkpoint('Corilo: before remove'); await vault.remove(data.path, data.recursive === true); await vault.checkpoint('Corilo: remove'); }); revision++; return send(res, 200, {});
       }
       if (req.method === 'POST' && route === '/api/checkpoint') {
         const commit = await mutate(() => vault.checkpoint('Corilo: local edits')); return send(res, 200, { commit });
@@ -135,11 +152,6 @@ export async function startHost({ vault: root, configDir, port = 0, agentFactory
           const initial = await vault.read(filename); await vault.write(filename, Buffer.from(text), initial.etag);
           await vault.checkpoint('Corilo: capture');
         }); revision++; return send(res, 200, { path: filename });
-      }
-      if (req.method === 'POST' && route === '/api/model') {
-        const { apiKey } = await jsonBody(req);
-        if (typeof apiKey !== 'string' || !apiKey.trim()) throw fault(400, '请输入 DeepSeek API Key');
-        await mutate(() => agent.configure(apiKey.trim())); return send(res, 200, {});
       }
       if (req.method === 'POST' && route === '/api/agent/stop') { stopped = busy; await agent.stop(); return send(res, 200, {}); }
       if (req.method === 'POST' && route === '/api/agent/prompt') {

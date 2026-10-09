@@ -2,7 +2,7 @@
   "repository": "https://github.com/zakirullin/files.md",
   "commit": "9e948ba6071e320c41c866f92817cf96f9bb7ba6",
   "scope": "Unmodified web tree and root LICENSE; no Go server, Bot or Worker included.",
-  "integration": "Host transforms served index.html and app.js lifecycle callbacks to load app/web overlays; disables temporary storage, legacy sync and knowledge-library logging at runtime.",
+  "integration": "Host transforms served index.html, app.js lifecycle callbacks and sidebar.js filename rendering to load app/web overlays; disables temporary storage, legacy sync and knowledge-library logging at runtime. Snapshot files remain unmodified.",
   "sha256": {
     "LICENSE": "a6a0db3c9d85182e136ab625e4cd38b65976d34e13b289596a4f72dfc94d02e9",
     "web/AGENTS.md": "01eed294acc8266d1dd8024750e13bc96b45ea35875215f10aa2edc4fe7443cb",
