@@ -161,3 +161,19 @@ GitHub 同步、远端冲突流程和跨端检查仍待实现。当前单库锁�
 本轮 19 项 Node 测试、8 项常规浏览器场景、4 组浏览器回归及新增浏览器同步链路通过。验证使用 Linux 上的真实 Git、两个临时知识库和 bare 远端；覆盖双向独立修改、离线后重试、文本/删除修改/二进制冲突、过期选择、分支切换、无共同历史、Windows 文件名拒绝、并发 push 重试、绑定恢复和解绑。GitHub API 校验使用合成 credential helper 与响应替身；浏览器同步测试只替换远端身份校验，文件和 Git 全链路为真实执行。真实 GitHub 凭据、Windows/macOS/Android、真实 DeepSeek 均未验证。
 
 本轮提供开发版同步能力，不代表阶段 B 全部完成：第二设备仍需 `git clone` 后以 `--vault` 打开；平台凭据初始化、图形化历史恢复、大附件具体失败诊断、安装器与 APK 待实现。C10–C14/C21 只有部分 Linux 证据，C01–C21 不据此整体标记通过。
+
+## 13. Android 集成工程（2026-10-09）
+
+按用户最新指示先推进 Android，桌面启动器实现暂缓。`android/` 新建原生 Java Activity、WebView、前台服务和运行环境安装器；复用 `app/host/android.mjs` 入口及已有 Node/Pi/Git/Web 页面。应用包名固定 `io.corilo.app`，Termux 构建 prefix 固定 `/data/data/io.corilo.app/files/usr`。不复制官方 `com.termux` ELF，也不进行二进制字符串替换。Android Java 源码是本项目新实现，未复制 Termux app 的 Activity/Service；运行组件仍通过固定 Termux packages 配方重建。
+
+安装器验证 APK 内归档的 SHA-256，检查路径/符号链接边界，在 staging 目录解包、恢复可执行位，再提升为活动目录；中断后保留前一个运行目录供恢复。runtime 与应用分别更新，不清理 `knowledge/`、`home/` 或 `config/`。服务串行初始化及启动，运行 Node 后通过私有 stdout 管道接收本机 URL，不把 token 写入日志。页面无通用 JavaScript-to-native bridge；WebView 只接受当前 loopback origin，禁用 file/content 访问，外部链接确认后交给外部浏览器。
+
+前台通知可回到应用；Native 入口提供启动/重试和停止服务。停止前检查编辑草稿并提示 Agent 中断，通过 SIGTERM 让宿主结束本轮和保存历史。Node 监听 Service 私有 stdin 管道关闭，父进程消失时尝试正常退出，避免留下无法重新连接的孤儿宿主。系统回收不自动重发 prompt，不承诺持续后台运行。Android 入口只在记录 PID 明确不存在时清理旧宿主锁；PID 已复用或权限未知时仍保守拒绝启动。更新/回收/停止行为还没有设备执行证据。
+
+本机目录内继续使用 Pi 默认 `HOME/.pi/agent`；未新增模型配置表单。**Android 上操作 Pi 原生配置的入口、Git 凭据接入尚未实现**，不能据宿主代码存在就称手机 AI/同步已经可用。APK 使用 target SDK 28 的 Termux 式侧载路线，入口限定 Android 15+ ARM64；15/16/17 是否能安装、启动、执行私有目录程序均须真机验证，不能用 compile SDK 36 代替兼容性结论。
+
+构建锁见 `android/runtime-source.json`。Termux builder 镜像成功拉取；当前 32 GB 云盘在镜像与容器准备阶段两次耗尽空间，未编出 Corilo runtime。首次进入构建还遇到 builder 不含环境代理 CA 的 TLS 失败，未关闭校验；本次容器/大镜像已清理。构建脚本加入至少 80 GiB 可用空间的保守预算检查，此值不是已测得的最低需求。完整构建还需要可信 CA、可访问源码站和充足的 Node 主机/目标编译时间。
+
+已完成实际 Gradle `:app:compileDebugJavaWithJavac` 编译（17 个任务链）、宿主 JVM 的解包/权限/链接恢复及越界拒绝检查、4 项 Python 打包边界检查。Gradle 的缺失 runtime 校验已真实拒绝打包。原 19 项 Node 测试和三套 Chromium 检查通过，另补 390px 窄屏同步面板场景。首次手工 `javac` 使用 JDK 类库会漏掉 Android 的 API 差异；实际 Gradle 编译发现并修复 `Files.readString/writeString` 不可用问题，CI 因此直接走 Android Gradle 编译。上述均不是 Android 设备运行证据。
+
+当前没有可交付 APK。后续顺序：在大磁盘构建机编出自定义 runtime → 完整 APK 构建 → Pi 原生配置/Git 凭据操作接入 → Android 15/16/17 ARM64 上启动、默认工具、真实模型、Git 同步、后台回收和升级保留数据 → 发布签名及 GPL 等运行组件的许可/对应源码交付。构建命令见 [Android README](../android/README.md)。

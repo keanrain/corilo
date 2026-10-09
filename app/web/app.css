@@ -30,3 +30,10 @@ body { margin:0; box-sizing:border-box; overflow:hidden; }
 #corilo-conflicts pre { white-space:pre-wrap; overflow-wrap:anywhere; max-height:250px; overflow:auto; }
 #corilo-conflicts article { border-top:1px solid #8886; padding:10px 0; }
 #corilo-sync-error { color:#bd4444; }
+@media(max-width:700px) {
+    #corilo-bar { gap:6px; padding:6px; overflow-x:auto; white-space:nowrap; }
+    #corilo-bar button { flex-shrink:0; padding:6px; }
+    #corilo-status { display:none; }
+    #corilo-agent { width:100%; }
+    #corilo-sync { width:100%; }
+}

@@ -70,9 +70,15 @@ def main():
                 assert not (vault/'archive/Log.txt').exists(), 'Diagnostics must not enter the knowledge library'
                 out = ROOT/'.local'; out.mkdir(exist_ok=True)
                 page.screenshot(path=str(out/'corilo-browser.png'), full_page=True)
+                page.set_viewport_size({'width':390,'height':844})
+                page.locator('#corilo-sync-toggle').click()
+                bounds=page.locator('#corilo-sync').bounding_box()
+                assert bounds['x']>=0 and bounds['x']+bounds['width']<=391
+                page.locator('#corilo-sync-url').fill('https://github.com/example/notes.git')
+                page.locator('#corilo-sync-close').click()
                 assert not errors, errors
                 assert not external, external
-                result = {'checks':['full Files.md editor loads','browser edit persists on disk','reload reads saved Markdown','capture without AI','external disk edit reloads','conflicting save preserves draft and external file','save conflicted draft as a separate file','no knowledge-library diagnostic logs'], 'pageErrors':errors,'externalRequests':external,'modelCalls':0}
+                result = {'checks':['full Files.md editor loads','browser edit persists on disk','reload reads saved Markdown','capture without AI','external disk edit reloads','conflicting save preserves draft and external file','save conflicted draft as a separate file','no knowledge-library diagnostic logs','390px mobile sync panel remains usable'], 'pageErrors':errors,'externalRequests':external,'modelCalls':0}
                 (out/'corilo-browser-result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
                 print(json.dumps(result,ensure_ascii=False))
                 browser.close()

@@ -25,3 +25,13 @@ target/
 
 # Isolated prototype runtime; never commit user notes or local session data.
 /.local/
+
+# Android generated runtimes, build outputs and local signing material.
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/local.properties
+/android/app/src/main/assets/*.zip
+/android/app/src/main/assets/payload.json
+*.jks
+*.keystore

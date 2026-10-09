@@ -1,0 +1,15 @@
+{
+  "applicationId": "io.corilo.app",
+  "prefix": "/data/data/io.corilo.app/files/usr",
+  "arch": "aarch64",
+  "termuxPackagesCommit": "9f94db4fcd0a9029079b27ffd253e5d80c4caaa8",
+  "builderImage": "ghcr.io/termux/package-builder@sha256:44999857244619e25bc8e3427904a16d36cc0c0e087704af039e5bdf94814ac9",
+  "additionalPackages": "nodejs-lts,npm,git,ripgrep,fd,ca-certificates",
+  "nodeRecipeVersion": "24.18.0",
+  "nodeRecipeRevision": 1,
+  "gradleWrapper": {
+    "source": "termux/termux-app@8629e632fcb95da272221be327db653fb24befe9",
+    "jarSha256": "423cb469ccc0ecc31f0e4e1c309976198ccb734cdcbb7029d4bda0f18f57e8d9",
+    "license": "Apache-2.0"
+  }
+}

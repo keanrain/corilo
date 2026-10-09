@@ -1,0 +1,32 @@
+name: Android source checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify packaging boundaries
+        run: python -m unittest discover -s android/tests -p 'test_*.py' -v
+      - name: Compile Android sources and exercise installer on host JVM
+        run: |
+          ./android/gradlew -p android :app:compileDebugJavaWithJavac
+          mkdir -p .local/android-java-tests
+          android_classes=android/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes
+          javac -source 17 -target 17 -cp "$android_classes:$ANDROID_HOME/platforms/android-36/android.jar" -d .local/android-java-tests android/tests/InstallerChecks.java
+          java -cp ".local/android-java-tests:$android_classes:$ANDROID_HOME/platforms/android-36/android.jar" io.corilo.app.InstallerChecks
+      # Runtime rebuild needs a larger dedicated builder. No empty-shell APK is published.

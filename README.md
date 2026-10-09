@@ -10,6 +10,12 @@
 
 **这是正式应用的首条开发链路，尚不是可分发安装包。** 独立桌面启动器安装包、Android APK、完整会话切换和历史恢复界面仍待实现。Windows/macOS 启动代码尚未在目标系统验收。不要把当前阶段当作已经通过全部首期验收。
 
+## Android 优先开发
+
+按最新顺序先推进安卓版，桌面安装器暂缓。`android/` 已加入 WebView、前台服务、运行环境校验解包及专用 Node 入口，复用现有页面、Pi 与 Git 宿主。**当前没有可用 APK**：Corilo 包名前缀的 Node/Git/Bash 交叉编译被 32 GB 构建磁盘容量阻塞，未进行真机验证。
+
+构建脚本、检查及完整缺口见 [Android 开发构建](android/README.md)。新构建禁止在缺少实际运行组件时输出空壳 APK。下一步需在更大磁盘的专用构建机完成 runtime，并接 Android 上 Pi 原生配置和 Git 凭据操作，再进行设备验收。
+
 ## 开发启动
 
 需要 Node.js >=22.19.0、Git；Pi 的默认 shell 工具需要 Bash（Windows 开发机需要 Git Bash）。首次安装依赖：
