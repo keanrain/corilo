@@ -4,7 +4,7 @@
 
 用户要求简单、一体化、直接开发正式应用。模型认证与选择直接复用 Pi 标准配置（含 PI_CODING_AGENT_DIR），不另做配置表单、不复制模型配置或强制选模型。不新增替代 demo，不为 Pi 另做权限、逐文件审批、事务写入或模型管理框架；不恢复旧 Today/Bot 原型；记忆、待办、一次性提醒按最新规格分阶段实现，通知不得以模型承诺代替可靠调度。新增云端账户、跨设备访问与用户隔离按 v0.14 实现；隔离、额度和平台凭据保护属于服务端边界，不是另造 Pi 工具权限框架。系统提示词约束行为，不把 cwd 宣称为沙箱。产品规则仅在 docs/PRODUCT-SPEC.md 维护，其他文档不得创建平行 PRD。
 
-当前正式代码位于 app/：完整 Files.md 页面以原样 vendor＋适配层接入磁盘宿主，Pi 默认 SDK 和本地 Git 历史、GitHub 同步与冲突 UI 已接入（临时远端/Linux 检查）；真实 GitHub 凭据联调、分发安装包与 APK 尚未完成。当前优先云端改造，但现有 app/ 仍是本机宿主，不能只改监听地址就宣称可公网多用户部署。账号鉴权、文件归属检查、执行隔离、持久任务和额度均待实现。android/ 暂停并保留，仅手动 CI；禁止用缺失 runtime 的空壳 APK 冒充可用版本。prototype/ Python 原型继续保留，不作为正式入口扩展。p0/ 的片段、候选和历史日志不代表正式实现。docs/upstream-baseline.json 是调查基线；实际依赖锁为 package-lock.json，完整 Files.md 来源记录在 app/vendor/filesmd/SOURCE.json。只有真实运行后才写通过，区分函数、浏览器、模型、桌面及 Android 真机证据。
+当前正式代码位于 app/：完整 Files.md 页面以原样 vendor＋适配层接入磁盘宿主，Pi 默认 SDK 和本地 Git 历史、GitHub 同步与冲突 UI 已接入（临时远端/Linux 检查）；真实 GitHub 凭据联调、分发安装包与 APK 尚未完成。当前优先云端改造，但现有 app/ 仍是本机宿主，不能只改监听地址就宣称可公网多用户部署。app/cloud/ 已实现首条邀请/会话/独立文件服务链路，真实 PostgreSQL/Chromium 与合成身份检查通过；真实 Supabase、执行隔离、持久任务和额度未完成。android/ 暂停并保留，仅手动 CI；禁止用缺失 runtime 的空壳 APK 冒充可用版本。prototype/ Python 原型继续保留，不作为正式入口扩展。p0/ 的片段、候选和历史日志不代表正式实现。docs/upstream-baseline.json 是调查基线；实际依赖锁为 package-lock.json，完整 Files.md 来源记录在 app/vendor/filesmd/SOURCE.json。只有真实运行后才写通过，区分函数、浏览器、模型、桌面及 Android 真机证据。
 
 使用现有 checkout；用户未要求时不创建 worktree。保留现有改动、历史、许可与兼容标识，包括 .personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/、库识别和会话键，不因品牌替换迁移用户数据。
 
@@ -15,3 +15,5 @@
 仅在实际修改 Android Java/打包实现时，另运行 android/tests/test_payload.py 和 InstallerChecks.java（见 android/README.md）。自定义 Termux runtime 构建应使用至少预留 80 GiB 的专用构建机；当前 32 GB 云盘两次在容器准备阶段耗尽空间，已清理本次容器。Java 编译/宿主归档检查不等于 Android 执行验收。
 
 云端业务验收使用 N01–N19，旧 C 系列与本地测试不替代云端验收。正式产品规则只在 PRODUCT-SPEC.md 更新，其他文件引用或解释实现。先完成邀请登录与云端文件纵向链路，再接隔离执行的 Pi；不把尚未实现的云端模式写成可运行命令。
+
+云端改动运行 `npm run test:cloud`，必须使用可丢弃 PostgreSQL 数据库（CORILO_TEST_DATABASE_URL），不可指向生产库。正式 CLI 不允许测试身份绕过。云端文件模式在执行隔离完成前禁止开放 Agent；账户文件路由隔离不等于 shell 隔离。

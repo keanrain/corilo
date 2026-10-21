@@ -1,5 +1,6 @@
 /* Corilo lifecycle and Pi conversation, layered on the full Files.md editor. */
 clearInterval(window.saver);
+let coriloCloud = false, coriloAgentEnabled = true, coriloCloudFilesRevision = -1;
 let coriloBusy = false, coriloSaving = null, coriloReady = false, coriloLastRevision = -1;
 let coriloMessagesSignature = '', coriloHistoryDirty = false;
 let coriloSubmitting = false, coriloPollRequest = 0, coriloCompletedRun = 0;
@@ -54,7 +55,7 @@ syncCurrentFile = async () => {
         if (coriloHistoryDirty) {
             await coriloJSON('/api/checkpoint', {}); coriloHistoryDirty = false;
         }
-        $c('corilo-status').textContent = '已保存到本机 · 同步状态见右侧入口';
+        $c('corilo-status').textContent = coriloCloud ? '已保存到云端' : '已保存到本机 · 同步状态见右侧入口';
     })();
     try { await coriloSaving; } finally { coriloSaving = null; }
 };
@@ -106,13 +107,28 @@ async function coriloPoll() {
     const request = ++coriloPollRequest;
     const state = await coriloJSON('/api/state');
     if (request !== coriloPollRequest) return;
+    coriloCloud = state.mode === 'cloud-files';
+    coriloAgentEnabled = state.capabilities?.agent !== false;
+    const cloudFileChange = coriloCloud && coriloReady && state.revision !== coriloCloudFilesRevision;
+    if (coriloCloud && !$c('corilo-logout')) {
+        const logout = document.createElement('button'); logout.id = 'corilo-logout'; logout.textContent = '退出登录';
+        logout.onclick = async () => {
+            if ([editor,editor2].some(cm => cm?.path && !cm.isClean()) && !confirm('有未保存草稿，仍要退出登录吗？')) return;
+            try {
+                const response = await fetch('/auth/logout', { method: 'POST' });
+                if (!response.ok) throw new Error('退出失败，请重试');
+                sessionStorage.removeItem('corilo-token'); location.replace('/login');
+            } catch (e) { coriloError(e); }
+        };
+        bar.appendChild(logout);
+    }
     const wasBusy = coriloBusy; coriloBusy = state.busy || state.syncing;
     if (window.coriloRenderSync) window.coriloRenderSync(state.sync);
     document.body.classList.toggle('corilo-busy', coriloBusy || coriloSubmitting);
     for (const cm of [editor, editor2]) cm?.setOption('readOnly', coriloBusy || coriloSubmitting || coriloNavigating || !!coriloReloading);
-    $c('corilo-send').disabled = coriloBusy || coriloSubmitting; $c('corilo-capture').disabled = coriloBusy || coriloSubmitting;
+    $c('corilo-send').disabled = !coriloAgentEnabled || coriloBusy || coriloSubmitting; $c('corilo-capture').disabled = coriloBusy || coriloSubmitting;
     $c('corilo-stop').disabled = !state.busy;
-    $c('corilo-model').textContent = state.model || '尚未选择模型 · 可先保存原话';
+    $c('corilo-model').textContent = !coriloAgentEnabled ? '云端 AI 尚未开放 · 可保存原话' : state.model || '尚未选择模型 · 可先保存原话';
     $c('corilo-activity').textContent = state.syncing ? '正在同步文件…' : state.busy ? state.activity || 'Agent 正在运行…' : ({completed:'本轮已结束',failed:'本轮失败',stopped:'已停止'}[state.outcome] || '');
     if (state.error) $c('corilo-error').textContent = state.error;
     const signature = JSON.stringify([state.messages, state.liveText]);
@@ -133,6 +149,10 @@ async function coriloPoll() {
             $c('corilo-results').append(button);
         }
     }
+    // A save/navigation may defer refresh. Only acknowledge the revision after files actually reload.
+    if (cloudFileChange && !coriloBusy && !coriloSubmitting && !coriloSaving && !coriloReloading && !coriloNavigating && ![editor,editor2].some(cm => cm?.path && !cm.isClean())) {
+        await coriloReload(); coriloCloudFilesRevision = state.revision;
+    }
     if (!coriloBusy && (wasBusy || state.runId > coriloCompletedRun)) {
         coriloCompletedRun = state.runId; await coriloReload();
     }
@@ -140,7 +160,7 @@ async function coriloPoll() {
 function coriloUpdateInputLock() {
     document.body.classList.toggle('corilo-busy', coriloBusy || coriloSubmitting);
     for (const cm of [editor, editor2]) cm?.setOption('readOnly', coriloBusy || coriloSubmitting || coriloNavigating || !!coriloReloading);
-    $c('corilo-send').disabled = coriloBusy || coriloSubmitting;
+    $c('corilo-send').disabled = !coriloAgentEnabled || coriloBusy || coriloSubmitting;
     $c('corilo-capture').disabled = coriloBusy || coriloSubmitting;
 }
 $c('corilo-send').onclick = async () => {
@@ -189,7 +209,7 @@ init = async () => {
     const first = Object.keys(files).find(name => name.endsWith('.md') && name !== 'Chat.md');
     if (first) await openFile('/'+first);
     panel.classList.add('open');
-    $c('corilo-status').textContent = '本机知识库 · 同步状态见右侧入口';
+    $c('corilo-status').textContent = coriloCloud ? '云端知识库' : '本机知识库 · 同步状态见右侧入口';
     window.saver = setInterval(() => syncCurrentFile().catch(coriloError), 1000);
     let polling = false;
     setInterval(async () => { if (polling) return; polling = true; try { await coriloPoll(); } catch(e) { coriloError(e); } finally { polling = false; } }, 700);

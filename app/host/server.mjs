@@ -19,7 +19,9 @@ async function body(req, limit = 16 * 1024 * 1024) {
 }
 const jsonBody = async req => { try { return JSON.parse((await body(req, 1024 * 1024)).toString()); } catch (e) { if (e.status) throw e; throw fault(400, '无效 JSON'); } };
 const send = (res, status, data) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(data)); };
-export async function startHost({ vault: root, configDir, port = 0, piAgentDir = getAgentDir(), agentFactory = (v, dir, piDir) => new PiAgent(v, dir, piDir), syncFactory = (v, dir) => new GitSync(v, dir) }) {
+export async function startHost({ mode = 'local', vault: root, configDir, port = 0, piAgentDir = getAgentDir(), agentFactory = (v, dir, piDir) => new PiAgent(v, dir, piDir), syncFactory = (v, dir) => new GitSync(v, dir) }) {
+  if (!['local', 'cloud-files'].includes(mode)) throw new Error('Unknown host mode');
+  const cloud = mode === 'cloud-files';
   const vault = new Vault(root);
   // Do this before initialization so an invalid config never lands in the knowledge library.
   await fs.mkdir(root, { recursive: true });
@@ -47,9 +49,9 @@ export async function startHost({ vault: root, configDir, port = 0, piAgentDir =
     const prior = await fs.readFile(exclude, 'utf8').catch(e => { if (e.code !== 'ENOENT') throw e; return ''; });
     if (!prior.includes('/.corilo-host.lock')) await fs.appendFile(exclude, '\n/.corilo-host.lock\n.corilo-*.tmp\n');
     await vault.init();
-    agent = agentFactory(vault, realConfig, realPiDir);
+    agent = cloud ? { init: async () => {}, stop: async () => {}, close: async () => {}, messages: () => [], activity: '' } : agentFactory(vault, realConfig, realPiDir);
     await agent.init();
-    sync = syncFactory(vault, realConfig); await sync.init();
+    sync = cloud ? { init: async () => {}, state: () => ({ phase: 'disabled' }) } : syncFactory(vault, realConfig); await sync.init();
   } catch (e) { await lock.close(); await fs.rm(lockPath, { force: true }); throw e; }
   const token = randomBytes(32).toString('hex');
   let syncing = false;
@@ -100,6 +102,7 @@ export async function startHost({ vault: root, configDir, port = 0, piAgentDir =
         .replace(/    \/\/ Allow offline mode\.[\s\S]*?\.catch\([^\n]+\n/, '')
         .replace('    init();', '    init().catch(coriloError);');
       html = html.replace('<script>\n    window.COMMIT_HASH', '<link rel="stylesheet" href="/corilo/app.css">\n<script src="/corilo/adapter.js"></script>\n<script src="/corilo/app.js"></script><script src="/corilo/sync.js"></script>\n<script>\n    window.COMMIT_HASH');
+      if (cloud) html = html.replace('<script src="/corilo/sync.js"></script>', '');
       data = Buffer.from(html);
     }
     res.writeHead(200, { 'Content-Type': `${mime[path.extname(resolved)]}${['.html','.js','.css','.json'].includes(path.extname(resolved)) ? '; charset=utf-8' : ''}` });
@@ -122,11 +125,12 @@ export async function startHost({ vault: root, configDir, port = 0, piAgentDir =
       }
       if (req.headers['x-corilo-token'] !== token) throw fault(401, '请从 Corilo 启动入口重新打开页面');
       if (shuttingDown) throw fault(503, '宿主正在退出');
+      if (cloud && (route.startsWith('/api/agent/') || route.startsWith('/api/sync/'))) throw fault(503, '云端 AI 尚未开放；笔记可正常使用');
       const input = url.searchParams.get('path') ?? '';
       if (req.method === 'GET' && route === '/api/state') return send(res, 200, {
         busy, outcome, error: runError, changed, revision, runId, activity: agent.activity,
         messages: agent.messages(), liveText: agent.liveText ?? '', model: agent.session?.model ? `${agent.session.model.provider}/${agent.session.model.id}` : null,
-        vault: vault.root, sync: sync.state(), syncing,
+        mode, capabilities: { agent: !cloud, sync: !cloud }, vault: cloud ? '我的知识库' : vault.root, sync: sync.state(), syncing,
       });
       if (req.method === 'GET' && route === '/api/export/knowledge') {
         const archive = await exclusive(async () => {
@@ -168,7 +172,7 @@ export async function startHost({ vault: root, configDir, port = 0, piAgentDir =
       if (req.method === 'POST' && route === '/api/fs/create') {
         const data = await jsonBody(req);
         if (!['file', 'directory'].includes(data.kind)) throw fault(400, '路径类型无效');
-        return send(res, 200, await mutate(() => vault.create(data.path, data.kind)));
+        const result = await mutate(() => vault.create(data.path, data.kind)); revision++; return send(res, 200, result);
       }
       if (req.method === 'POST' && route === '/api/fs/rename') {
         const data = await jsonBody(req); await mutate(async () => { await vault.checkpoint('Corilo: before rename'); await vault.rename(data.from, data.to); await vault.checkpoint('Corilo: rename'); }); revision++; return send(res, 200, {});
@@ -212,7 +216,7 @@ export async function startHost({ vault: root, configDir, port = 0, piAgentDir =
       throw fault(404, '接口不存在');
     } catch (error) {
       const status = error.status ?? ({ ENOENT: 404, ENOTEMPTY: 409, EEXIST: 409, EACCES: 403 }[error.code]) ?? 500;
-      if (!res.headersSent) send(res, status, { error: error.message, name: error.code === 'ENOENT' ? 'NotFoundError' : 'Error' });
+      if (!res.headersSent) send(res, status, { error: cloud && !error.status ? '知识库操作失败，请稍后重试' : error.message, name: error.code === 'ENOENT' ? 'NotFoundError' : 'Error' });
       else res.end();
     }
   });
