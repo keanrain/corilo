@@ -1,7 +1,6 @@
 import http from 'node:http';
-import path from 'node:path';
 import { readFile, mkdir, realpath } from 'node:fs/promises';
-import { startHost } from '../host/server.mjs';
+import { CloudHosts } from './hosts.mjs';
 import { CloudConversations } from './conversations.mjs';
 import { RunObservation } from './runs.mjs';
 import { fault } from '../host/vault.mjs';
@@ -21,23 +20,11 @@ export async function startCloud({ accounts, identity, dataRoot, publicOrigin, p
   if ((origin.protocol !== 'https:' && !(origin.protocol === 'http:' && origin.hostname === '127.0.0.1')) || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) throw new Error('Public origin must be HTTPS (loopback HTTP is development only)');
   await mkdir(dataRoot, { recursive: true, mode: 0o700 });
   dataRoot = await realpath(dataRoot);
-  const hosts = new Map(), limits = new Map();
+  const hosts = new CloudHosts({ pool: accounts.pool, dataRoot, maxHosts }), limits = new Map();
   const conversations = new CloudConversations(accounts.pool, { dataRoot });
   const runs = new RunObservation(accounts.pool);
   let closing = false;
   const cookie = (token, age) => `${cookieName}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${age}`;
-  async function hostFor(account) {
-    const id = account.vault_id;
-    if (!/^[0-9a-f-]{36}$/.test(id)) throw new Error('Invalid vault identity');
-    if (!hosts.has(id)) {
-      if (hosts.size >= maxHosts) throw fault(503, '服务容量暂满，请稍后重试');
-      const base = path.join(dataRoot, id);
-      const pending = startHost({ mode: 'cloud-files', vault: path.join(base, 'knowledge'), configDir: path.join(base, 'state'), piAgentDir: path.join(base, 'pi') });
-      hosts.set(id, pending);
-      pending.catch(() => { if (hosts.get(id) === pending) hosts.delete(id); });
-    }
-    return hosts.get(id);
-  }
   function rateLimit(req) {
     const now = Date.now();
     for (const [key, value] of limits) if (value.until < now) limits.delete(key);
@@ -102,7 +89,7 @@ export async function startCloud({ accounts, identity, dataRoot, publicOrigin, p
       // No conversation creation or run submission is exposed until isolation is complete.
       if (/^\/api\/(conversations|runs)(\/|$)/.test(url.pathname)) throw fault(404, '接口不存在');
       // Forward only fixed safe headers. Never trust a browser-selected tenant or host token.
-      const host = await hostFor(account);
+      const host = await hosts.forAccount(account.id);
       const headers = { host: new URL(host.origin).host, 'x-corilo-token': host.token };
       for (const name of ['content-type','if-match']) if (req.headers[name]) headers[name] = req.headers[name];
       const upstream = http.request(host.origin + url.pathname + url.search, { method: req.method, headers }, response => {
@@ -121,6 +108,6 @@ export async function startCloud({ accounts, identity, dataRoot, publicOrigin, p
   if (origin.protocol === 'http:' && origin.port === '0') origin.port = String(server.address().port);
   return { address: `http://127.0.0.1:${server.address().port}`, async close() {
     closing = true; server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
-    await Promise.allSettled([...hosts.values()].map(async pending => (await pending).close()));
+    await hosts.close();
   } };
 }

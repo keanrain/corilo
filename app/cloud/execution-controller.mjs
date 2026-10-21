@@ -93,10 +93,18 @@ export class ExecutionController {
     }
     return results;
   }
-  async close() {
+  close() {
+    if(this.closeTask)return this.closeTask;
     this.closed=true;
-    await Promise.allSettled([...this.running]);
-    try { await this.modelOutlet?.close(); }
-    finally { if(this.lock) { await this.lock.close(); this.lock=null; } }
+    this.closeTask=(async()=> {
+      const results=await Promise.allSettled([...this.running]);
+      let failed=results.some(result=>result.status==='rejected');
+      try { await this.modelOutlet?.close(); } catch { failed=true; }
+      // All local start/stop operations have settled before ownership is released.
+      // Persistent run slots, journals and file gates remain for recovery on failure.
+      try { if(this.lock) { await this.lock.close(); this.lock=null; } } catch { failed=true; }
+      if(failed)throw new Error('Controller shutdown unconfirmed; recovery required');
+    })();
+    return this.closeTask;
   }
 }
