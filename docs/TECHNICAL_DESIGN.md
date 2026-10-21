@@ -1,181 +1,120 @@
 # Corilo 可里技术设计
 
-v0.12 · 2026-10-09。当前文档定义目标实现，app/ 已开始正式实现；Python 原型独立保留。实现状态见第 10 节。
+v0.13 · 2026-10-21。用户已决定转为云端笔记、邀请制小范围使用。以下为目标架构；现有代码仍是本机宿主，未部署云端服务。
 
-## 1. 总体架构
+## 1. 架构
 
 ```mermaid
 flowchart TD
-    A[桌面 Chrome / Android WebView] --> B[本机 Node 宿主]
-    B --> C[Pi coding agent 默认 SDK]
-    C --> D[DeepSeek 在线 API]
-    C --> E[本地 Markdown Git 工作树]
-    B --> E
-    B --> F[本机 Git 同步任务]
-    F --> G[GitHub 私有知识库仓库]
-    H[桌面启动器 / Android Service] --> B
+    A[桌面 / Android / iPhone 浏览器] -->|HTTPS 同源| B[Web 与 API 网关]
+    B --> C[认证 / 邀请 / PostgreSQL 元数据]
+    B --> D[知识库文件服务与版本历史]
+    B --> E[持久任务队列与调度]
+    E --> F[按用户隔离的 Pi 执行环境]
+    F --> G[该用户持久知识库卷]
+    D --> G
+    F --> H[带任务额度的模型出口]
+    H --> I[DeepSeek]
+    D --> J[独立备份存储]
 ```
 
-Files.md 提供完整 Web 页面和 Markdown 编辑器，替换原服务器与文件连接适配层，移除 Bot、Worker 和原同步调用。不要把现有 textarea 原型当作完成上游复用。保留上游许可和可追踪补丁，避免先重写编辑器。
+正文保持普通 Markdown 与附件，工作树落在 Linux 持久磁盘；PostgreSQL 保存控制元数据，不把正文同时存进数据库制造双写。Pi 与文件服务操作同一用户目录。浏览器没有本地 Node、Git 或 Termux 依赖。
 
-Node 宿主提供本地文件 API、Pi 会话事件桥接和 Git 调度；桌面和 Android 共用核心逻辑。首期不引入云端业务服务器、Supabase、同步数据库或专有文件协议。
+首期一台 Linux 主机承载网关、文件服务和执行调度，数据库可托管，备份离开该主机。此为小规模部署拓扑，不是高可用承诺；主机丢失时按备份恢复。无需首期引入 Kubernetes、Redis 或微服务集群。
 
-## 2. 模块与边界
+## 2. 建议技术选择
 
-| 模块 | 责任 |
+| 部分 | 选择与边界 |
 |---|---|
-| Web UI | Files.md 复用、对话显示、编辑反馈和同步详情 |
-| 本机宿主 | 文件页面适配、运行生命周期、会话事件流、loopback 安全 |
-| Pi | 默认 read/bash/edit/write 工具、provider/model 配置、会话和推理循环 |
-| Git 任务 | 批次提交、fetch/merge/push、冲突保留和状态反馈 |
-| 平台启动层 | 安装运行组件、启动/关闭进程、凭据存储、应用升级 |
+| 页面 | 保留完整 Files.md 与现有适配层，响应式网页，同源 API；PWA 后补 |
+| 服务 | Node.js 24 与现有 Pi SDK 锁版本，Linux 长运行服务 |
+| 账号 | 建议 Supabase Auth 提供身份验证；应用自己核验邀请与成员状态，不信任客户端 userId |
+| 元数据 | PostgreSQL；可与 Supabase 同用，用于身份映射、库归属、任务、事件和额度 |
+| 正文 | 每用户持久 POSIX 目录；不将 Supabase Storage/R2 直接当 Pi 工作目录 |
+| 版本与备份 | 每库 Git 历史，加独立对象存储备份；R2/S3 兼容存储可选 |
+| 执行 | 按用户隔离的 Linux worker，默认 Pi 工具；限制资源和网络出口 |
+| 模型 | 首期 DeepSeek；沿用 Pi provider/settings，平台凭据保留在模型出口服务 |
+| 域名 | 已有域名，可继续 Cloudflare DNS；HTTPS 网关提供同源页面与 API |
 
-Pi 采用 coding-agent SDK，具体接口按固定版本文档实现；不另造 Agent runtime。若使用 Pi RPC，stdin/stdout JSONL 仍需宿主转为浏览器事件，不能把 RPC 当作 HTTP 服务。前端只接本机宿主，不接收模型密钥。Pi 模型认证及模型选择直接复用 Pi 配置；后续 Git 凭据入口也不得在浏览器或日志中长期保留密钥。
+Supabase 是实施建议，尚未开通项目或产生费用。身份提供商可替换，已验证主体到内部账号的映射保持稳定。Pages 可后续分发静态页面；Workers、普通 Vercel 函数不承载默认 Pi shell 和持久工作树。首期同源服务避免不必要的跨域认证配置。
 
-文件页面使用普通文件读写接口；Agent 直接使用默认工具。可以协调编辑与同步时机，但不把 Pi 的每次写入改造成自定义审批/事务。默认 cwd 指向知识库，仅是工作目录，不是沙箱。对工具中断后的部分修改照实展示。
+## 3. 控制面与数据布局
 
-### Files.md 接入的必做改动
+网关验证登录会话、账号有效性、资源归属和 CSRF/Origin；使用 HttpOnly、Secure、SameSite 会话 cookie，不沿用本机 URL fragment token 做云端账户。认证回调核验 state/PKCE；密钥不进入网页或知识库。浏览器不使用数据库 service-role key。
 
-固定源码 `web/welcome.js` 使用 `navigator.storage.getDirectory()`，不可用时可回退内存文件系统；`web/lib/fs.js` 使用浏览器目录/文件句柄。这些入口不能原样沿用为正式存储。文件树、编辑保存、重命名、附件和搜索必须统一接到宿主的磁盘知识库，Pi 与 Git 使用同一绝对路径；禁用独立 OPFS/内存知识库回退。适配失败显示错误，不能悄悄切换到第二份数据。
+邀请兑换和建库需要数据库事务及唯一约束。最小元数据包含 users/memberships、invitations、vaults、conversations、runs、run_events、usage。邀请只存不可直接复用的摘要、接收身份、期限及兑换记录。userId 从已验证会话解析；vaultId/conversationId/runId 查询均带所有者条件。
 
-复用完整编辑器并不等于不修改其调用链。先列出实际文件读写入口再逐一接入，使用“UI 保存→Pi 读取→Pi 修改→UI 刷新→重启读取”作为第一条集成验收。页面脚本、字体和编辑器依赖需要随应用提供，离线启动不能依赖 CDN。浏览器缓存仅作可丢弃缓存，不成为正文来源。
+服务端布局示意：
 
-## 3. 数据布局与运行
+```text
+持久卷 /tenant/<内部库ID>/
+  knowledge/       Markdown、附件、内部 .git
+  state/sessions/  Pi 原生会话
+  state/pi/        该用户 Pi 原生设置；不含平台长期密钥
+控制数据库          账号、邀请、任务状态、事件及额度
+独立备份存储        带版本清单的正文/历史/必要状态快照
+```
 
-知识库目录包含 Markdown、附件和 `.git`。Corilo 应用目录另存本机会话、运行日志及可重建缓存，Git 凭据未来单独使用平台凭据存储。模型配置与认证直接使用 Pi 的 `getAgentDir()`，默认 `~/.pi/agent/` 并遵循 `PI_CODING_AGENT_DIR`。Corilo 不提供配置表单、不复制 `auth.json`/`models.json`/`settings.json`，不强制覆盖已有模型或默认提供商；使用 Pi 现有认证和选择流程。配置目录与知识库分离，并在初始化 Git 或提交内容前检查，防止误把凭据纳入历史。
+API 不向用户暴露宿主绝对路径。文件、搜索、下载和导出共用归属检查与路径边界检查。客户端目录名不能直接用作宿主租户路径。用户可影响的链接不跟随到卷外；下载内容不能变为同源可执行 HTML。
 
-Pi 会话使用 Corilo 的 `config/sessions/`，恢复仍由 `SessionManager.continueRecent(cwd, sessionDir)` 处理；Pi 会按 cwd 过滤，不把不同知识库的会话混在一起。模型、工具及项目设置遵循 Pi 默认合并规则。
+## 4. Pi 执行与隔离
 
-每个知识库仅一个本机宿主。启动器复用已运行实例，动态选择可用 loopback 端口并打开 Chrome。动态端口会改变网页 origin，因此设置和会话必须存于宿主，不依赖浏览器 localStorage 在重启后维持身份。浏览器重连时从 Pi 持久会话恢复已记录消息，再订阅实时事件；断线不重新提交 prompt。会话凭证限制在本机交接，校验 Host/Origin 和请求会话；不在日志或同步内容记录密钥。WebSocket/流式接口同样校验。原始异常保留在本地诊断，界面显示可操作摘要。
+Pi 默认工具、设置和会话继续使用，不重写 Agent 框架。每库最多一个执行租约，worker 只挂载该用户需要的知识库和状态目录；空闲回收 worker，不永久给所有注册用户开进程。文件服务可在没有活跃 worker 时读写知识库。
 
-## 4. 桌面集成
+worker 使用非 root、受限 CPU/内存/PID/磁盘、最小能力和受控挂载，不开放 Docker socket，不提供控制数据库或对象存储管理凭据。禁止访问其他租户、宿主内部网络、实例元数据和管理端口。仅 cwd、不同 UID 或系统提示词不能代替完整隔离。容器共享内核仍有风险：邀请制测试先验证限制；公开运行不可信代码前评估 gVisor/微虚拟机等更强边界，不宣称普通容器绝对安全。
 
-Windows 11 x64 与 macOS 14+ Apple Silicon 优先，Chrome 为首期浏览器。需要安装 Corilo 启动器，但日常只操作网页。纯远程网页无法直接提供默认 Pi 所需 Node、shell 和 Git，因此本机组件随应用管理。
+不能给可执行 bash 的 worker 注入平台 DeepSeek 长期密钥。使用 Pi 原生支持的 provider endpoint 设置连接内部模型出口，提供短期、限任务、限模型、限额度的调用身份；出口持有真实密钥、计量并撤销任务身份。worker 即使读取自己的调用身份，也不能越过该任务预算或读取其他用户资源。出口兼容性须对固定 Pi 版本做真实模型验证。这是平台凭据与用量边界，不新增用户模型配置表单。
 
-打包 Node、Git 以及 Pi 默认 shell 工具需要的 shell；Windows 需要兼容 Bash 的运行环境，不能假定 cmd 等价。macOS 也不以用户手动安装 Homebrew 作为使用前提。安装包分别锁定工具版本和校验值，发布前处理签名、macOS 公证及第三方声明。当前未选择和交付正式安装包，不把 Electron/Tauri 写成已经确定的依赖。
+首期不开放任意终端、扩展安装或插件市场；保留默认工具行为。网络请求走受限出口，必要模型调用和执行控制与一般互联网访问分开管理，防止内部网络探测。
 
-## 5. Android 集成
+## 5. 任务与保存协调
 
-目标 Android 15/16/17、ARM64。APK 内置 WebView、管理 Node 的 Service 和 Termux 衍生运行环境，不依赖另一个 Termux APK。首次启动解压校验后的运行组件，初始化成功后启动宿主并打开页面。中途失败可重新初始化运行组件，不能删除知识库。
+PostgreSQL 兼任首期队列，不先引入 Redis。提交 prompt 以用户/会话作用域的 idempotency key 建唯一记录；持久化成功后返回任务 ID。调度器以事务取任务、获得每库租约并记录 worker 身份、心跳和过期时间。UI 可轮询持久事件，后续切 SSE；连接只是观察者，不掌控执行生命周期。
 
-Termux 上游通过 bootstrap ZIP、JNI 和安装器恢复文件、权限及符号链接，随后执行原生程序。Node 和 Git 可使用 Termux 构建体系；但官方二进制绑定 `/data/data/com.termux/files/usr`。Corilo 独立包名意味着需要重建 bootstrap、Node、Git 及依赖，不能只改 APK 名称或复制官方包。更新也必须来自 Corilo 对应 prefix 的构建产物。
+资源上限先配置后放行：每用户一个修改任务，全局并发与排队上限、最大执行时长、模型用量和存储额度。额度检查必须在服务端，实际消耗在模型出口记录；API 重试不能绕过计量。超时或停止需要终止任务的整个执行环境及其子进程，等待确认后才释放文件写入占用。
 
-包中需有 Node、Git、Bash、证书；使用 Pi 的可选搜索工具时一并提供 ripgrep/fd，不能在 Android 下载普通 Linux 二进制。剪贴板优先使用 WebView/Android 接口，不要求额外 Termux:API 安装。
+租约过期不等于进程已经死亡。失联后先隔离/终止旧 worker，避免新旧执行同时改同一库；确认结果前保持受限状态。持久任务标记 interrupted，不自动重放 shell。任务开始/结束、停止原因及必要进度写入控制状态，Pi 原生会话保存在独立目录。文件修改与任务状态不具备跨系统原子性，崩溃恢复需核对文件和历史，不能仅相信“完成”字段。
 
-本次调查的 Termux app 使用 compileSdk 36、targetSdk 28。这不是 Corilo 对现代 Android 的兼容结论。计划使用 Android 17 对应 SDK 工具链；最终 targetSdk 必须在解决可执行文件限制、后台服务和上游构建适配后确定，不能通过简单提高数字宣称完成。首期个人侧载，暂不承诺 Play 上架。侧载并不会消除 Android 对应用可写目录执行文件的限制。保留上游 targetSdk 28 路线与提高 targetSdk 后的运行方式是两个不同方案，需在正式 Android 模块中尽早确定；在独立包名下执行 Node、Bash、Git 和 Pi 之前，不承诺该路线已可交付，也不静默退回另装 Termux。
+沿用现有文件 SHA/ETag 保护，在服务端扩大到全部设备和变更接口。新建、写入、移动、删除、恢复与 Agent 开始受每库协调控制；上传和请求体有大小限制。文件创建、移动、删除均增加库 revision，重连按 revision 刷新。其他设备的未保存草稿仍可能陈旧，保存时拒绝旧版本，不把通知机制当并发锁。
 
-Google 官方仓库在 2026-10-09 列出 `platforms;android-37.0` revision 2、channel-0，API-level 为 37.0。该事实证明 SDK 包可获取，不证明 Termux 派生 APK 在 Android 17 上可执行。必须真实完成自定义 prefix 构建与 Android 15/16/17 启动测试。
+## 6. 历史、备份与迁移
 
-Android 私有目录作为真实 POSIX 工作树，SAF 用于导入/导出。系统可杀死后台进程；必要时按要求使用前台服务，但不保证永不停止。下次进入恢复宿主并标记未完成会话，不自动重放工具调用。
+Git 继续提供每库历史和 Agent 前后保存点，配置与秘密不入库。Git 默认工具可能修改挂载卷内容，历史不是防恶意篡改边界；独立备份由 worker 无权访问的服务完成。备份在协调的一致性窗口或存储快照上取得，记录文件/状态清单和摘要；恢复要实际重建并比对，分别定义正文、会话及任务记录的恢复目标。
 
-## 6. Git 同步实现
+迁移采用用户主动导入文件或安全归档，不删除原本地库，不自动带入 `.git`、Pi 配置或旧认证。先在暂存区校验路径、总量和名称，再发布并建立新的云端历史。用户导出普通 Markdown 与附件，云端无锁定格式。
 
-本地库即使未绑定 GitHub，也初始化独立 Git 仓库并完成初始提交；已有非空 Git 仓库不重建，先检查状态和历史。Agent 启动前保存编辑器内容并提交当前用户变更作为恢复基线，提交失败则不启动本轮修改。提交身份由应用本地配置，不依赖用户事先设置全局 Git identity。之后本机保存后批次提交。编辑器有未保存内容或 Agent 正在运行时不应用远端变更；收到 Pi `agent_settled` 且工具已停止后，提交已经发生的修改；不能以流式文本结束、网页关闭或断线判断整轮结束。系统提示词要求 Agent 不执行 Git 同步或后台脱离运行，宿主调度只协调其管理的写入，不声称控制任意 shell 子进程。同步调度每库串行，使用标准 Git，禁用 force-push。
+现有 GitHub 双向同步实现保留回归测试，但云端首期不加载对应 UI、不自动调用旧 sync API。后续集成需独立设计服务端凭据与备份语义，不能直接复用开发机 credential helper 作为多用户认证。
 
-顺序为检查状态、提交本地、fetch、合并、更新本机、push。远端在 push 前又发生变化时重新 fetch/合并，有限重试后保留待同步状态。不得将认证失败、读取失败或缺失扫描结果解释为用户删除。
+## 7. 对现有代码的处理
 
-先在隔离的 Git 合并目录或索引中完成合并。存在冲突则保持活动工作树干净可读，将双方版本提供给 UI；活动库发生新修改时重新计算合并，不能覆盖新内容。合并应用阶段与本机文件写入互斥。崩溃后以 Git 状态和实际文件重新检查，不能只相信内存“成功”。实现优先标准 Git 恢复路径，不再设计完整文件事务引擎。
-
-文本、删除/修改、重命名和附件冲突都需测试。冲突处理生成普通提交。历史恢复复制旧版为新修改，不 reset 已同步历史。GitHub 绑定首期采用 HTTPS 和限制到目标仓库的 fine-grained PAT（Contents 读写）；通过 API 核对仓库身份、私有属性和目标分支。固定同步该分支，不跟随 Agent 任意切换；分支变化、未完成 merge 或 Git 锁异常先暂停并显示诊断。新建本地仓库可以推送到空远端；非空且无共同历史的两端不自动合并。GitHub 凭据由本机安全存储提供，通过受控凭据接口交给 Git，不写进 remote URL 或命令日志。
-
-### 跨平台文件约定
-
-Git 不保证任意文件名都能在 Windows、macOS、Android 互通。UI 创建时检查 Windows 保留名、非法字符、尾随空格/点及大小写冲突；同步应用前同样检查整个目标树。发现无法表示的路径时暂停应用并指出文件，保留本机内容和远端提交，不自动改名破坏链接。Pi 默认工具保持原样，因此 Agent 创建的文件也需经过同步前检查。文本使用 UTF-8；知识库 Git 配置不依赖机器全局 `autocrlf`，保留已有字节，不批量重写换行。首期不自动配置 LFS，超限附件失败可见。
-
-### 修改结果和恢复边界
-
-read/edit/write 的工具结果可以关联路径；bash 的任意输出不能作为完整文件变更清单。每轮前后结合 Git tracked/untracked 状态取得“本轮观察到的变更”，重新读取文件后生成卡片；存在外部编辑时不把所有差异归因于 Agent。忽略项不受 Git 历史保护，配置与缓存不显示为笔记结果。恢复通过选定历史版本生成新修改，不向用户承诺 Pi 默认工具自带撤销或多文件原子性。
-
-## 7. 上游版本与已知证据
-
-调查基线见 [upstream-baseline.json](upstream-baseline.json)。这份清单不意味着依赖已集成，正式引入后还需应用 lockfile 和平台构建校验。
-
-| 项目 | 调查基线 |
+| 现有实现 | 云端改造 |
 |---|---|
-| Files.md | `9e948ba6071e320c41c866f92817cf96f9bb7ba6`，MIT |
-| Pi | `@earendil-works/pi-coding-agent@1.1.0`，Node >=22.19.0，MIT |
-| Termux app | `8629e632fcb95da272221be327db653fb24befe9`，GPLv3-only |
-| Termux packages | `9f94db4fcd0a9029079b27ffd253e5d80c4caaa8`；调查时 Node LTS recipe 24.18.0、Git 2.56.0 |
+| `app/vendor/filesmd/` | 保留原样、许可和固定来源；不重写编辑器 |
+| `app/web/adapter.js` | 保留文件句柄适配，改为账户会话认证与云端错误处理 |
+| `app/web/app.js` | 保留保存与对话，新增跨设备 revision、任务 ID、重连和草稿冲突语义 |
+| `app/host/vault.mjs` | 复用普通文件/ETag/Git；补云端所有变更接口的版本与租约协调 |
+| `app/host/agent.mjs` | 在隔离 worker 内复用 Pi SDK；配置与会话明确按用户分离 |
+| `app/host/server.mjs` | 拆开认证/授权、文件服务与执行调度；不能简单改监听地址部署公网 |
+| `app/host/sync.mjs`、`app/web/sync.js` | 暂保留旧模式和测试，退出云端首期入口 |
+| `android/`、`app/host/android.mjs` | 暂停，保留历史；不再自动构建 APK 或要求 ARM64 bootstrap |
+| `prototype/`、`p0/` | 历史资料，不扩展为云端入口 |
 
-2026-10-08：Linux Node 24.19.0 上 Pi 默认工具 read/write/edit/bash 完成真实文件与 Git 调用，未调用模型。Android ARM64 npm 依赖解析和二进制载荷检查完成；没有运行 Android 设备测试。Termux bootstrap 已做下载与校验调查，但没有重建 Corilo prefix。证据摘录见 [本机检查记录](evidence/pi-host-smoke.json)。
+## 8. 实施顺序
 
-分发 Termux 衍生 APK 须满足 GPLv3 相应义务，保留许可并提供相应源代码；不能因 Files.md 和 Pi 是 MIT 就把整个 APK 宣称为纯 MIT。正式分发前决定组合发行许可并纳入安装包。使用自己的发布签名，不复用上游测试签名。
-
-## 8. 实施顺序与完成条件
-
-| 阶段 | 直接交付正式应用的一部分 | 完成条件 |
-|---|---|---|
-| A 桌面纵向链路 | 引入完整 Files.md，Node 宿主、Pi/DeepSeek、启动器 | 点击启动、真实文件问答/修改、停止/失败回执；Windows/macOS 检查 |
-| B GitHub 同步 | 设置、凭据、安全批次同步与冲突 UI | 两设备正常同步、离线重试、冲突保留、恢复旧版本 |
-| C Android 运行环境与集成 | 与 A 同时开始自定义 prefix 和可执行路径开发；集成同一宿主和页面 | APK 冷启动、默认 Pi 工具、Git、升级恢复；15/16/17 真机矩阵 |
-| D 个人可用发行 | 安装包、诊断、许可与升级 | C01–C21 按平台记录结果，未通过项明确列出 |
-
-不再制作新的替代 demo。Android 运行组件重建是实际产品工程任务，应尽早开始，避免桌面完成后才发现集成阻塞。当前云环境的 Linux 检查不替代 Windows、macOS 或 Android 验收。真实模型检查需要安全配置 DeepSeek 凭据，不在文档写入秘密。
-
-## 9. 来源
-
-- [Files.md 固定源码](https://github.com/zakirullin/files.md/tree/9e948ba6071e320c41c866f92817cf96f9bb7ba6)
-- [Pi 固定源码](https://github.com/earendil-works/pi/tree/ce950d78f424dcaf9f5d6a03ce80ab141130eb1d)
-- [Termux app 固定源码](https://github.com/termux/termux-app/tree/8629e632fcb95da272221be327db653fb24befe9)
-- [Termux packages 固定源码](https://github.com/termux/termux-packages/tree/9f94db4fcd0a9029079b27ffd253e5d80c4caaa8)
-- [Google SDK 仓库元数据](https://dl.google.com/android/repository/repository2-3.xml)
-
-旧设计、P0 历史和原型当时的完整说明通过 [设计索引](README.md) 中的历史提交访问；不再作为当前业务要求。
-
-## 10. 首条实际链路（2026-10-09）
-
-代码入口 `app/host/cli.mjs`，文件宿主 `server.mjs`，Pi 接入 `agent.mjs`，Git 与文件接口 `vault.mjs`。`app/web/adapter.js` 提供宿主文件句柄，`app.js` 接管初始化、保存和对话。Files.md Web 文件保持原字节，宿主返回 index 时注入适配层、移除临时存储脚本和旧 Service Worker 注册；返回 app.js 时移除绕过导航协调的旧 focus/blur 回调；运行时禁用旧同步和知识库诊断日志。CSP 阻止页面连接旧远端。
-
-目前使用已安装的 Node/Git/Chrome，CLI 可尝试自动打开 Chrome，不代表原生安装器已完成。页面通过短间隔轮询显示 Pi 消息和运行状态，会话落盘仍由 Pi 管理。模型与认证直接读取现有 Pi 配置；Corilo 不调用配置写入接口、不维护自己的模型目录。
-
-应用已检查真实磁盘、默认 Pi 工具、脚本化模型传输的完整 Pi 循环、会话重启恢复和 Chromium 编辑。测试替身仅替代模型响应或注入调度失败，不替代正式工具实现。真实模型凭据未配置，Windows/macOS/Android 未测试。
-
-GitHub 同步、远端冲突流程和跨端检查仍待实现。当前单库锁只处理正常退出；强制终止后明确报占用，不自动覆盖锁或重复运行。草稿保存在当前页面，关闭页面可能丢失未保存文本，界面会触发离开提醒；跨进程草稿恢复尚未实现。
-
-## 11. 代码复核与目标差距（2026-10-09）
-
-本轮审查覆盖 Corilo 宿主、文件适配、页面生命周期、Pi 配置接入、测试和相关上游调用链；不是全部 vendored 依赖的安全审计。
-
-| 发现 | 修复与证据 |
+| 阶段 | 可审查的完成条件 |
 |---|---|
-| 专用表单、独立模型配置目录和强制默认模型偏离需求 | 删除 UI 与 `/api/model`，读取 Pi 标准目录；真实 Pi 循环测试确认已有认证、模型和设置被使用且原文件不变 |
-| 移动当前文件仍走上游覆盖写入路径 | 所有移动走宿主不覆盖目标的 rename，成功后更新编辑器路径；同名目标与源文件均保留；重命名/删除前后建立 Git 历史 |
-| 分屏共享文件句柄上的版本导致旧草稿可能覆盖新内容 | 每个编辑器保留自己的读取版本；回归中打开另一分屏不能刷新旧草稿的写入权限 |
-| 文件树将磁盘文件名拼接为 HTML | 返回 sidebar 脚本时改为文本节点；包含 HTML 的文件名只显示为文本，不能执行事件处理器 |
-| 发送时可能只等待旧保存，漏掉随后输入；空闲轮询可能提前解锁 | 提交阶段独立锁定编辑器，等旧保存结束后再次保存最终草稿；回归模拟延迟写入、连续点击和期间轮询 |
+| 0 方向切换（本轮） | 五份正式设计、开发约束、入口 README 一致；Android CI 仅手动保留 |
+| 1 邀请与文件纵向链路 | 登录、兑换邀请、独立建库、两账号访问隔离；两台浏览器编辑同一云端库且旧版本不能覆盖 |
+| 2 服务端 Agent | 受限 worker、持久任务和幂等、停止/中断、模型出口额度；真实 DeepSeek 文件链路 |
+| 3 云端使用闭环 | 会话切换与跨端恢复、导入/导出、历史恢复、独立备份恢复、移动端中文输入 |
+| 4 小范围邀请上线 | N01–N16 按实际证据验收；部署、数据保留与用量配置清楚，故障可诊断 |
 
-前三个浏览器缺陷（移动、分屏、文件名）在旧代码上真实复现失败，修复后回归通过。当前共 10 项 Node 集成检查、8 项常规 Chromium 场景及 4 组专门回归；线上模型调用仍为零。
+阶段 1 可先联调文件服务；隔离/额度未完成前不向受邀用户开放 Agent。真实部署、开通云资源及付费另按用户授权执行。先做单机可用架构，数据卷与 worker 的位置关系明确后再讨论多机扩容；不能让任意机器读取仅存在另一台机器的本地目录。
 
-**达到的是 Linux 开发环境中编辑器、磁盘、Pi 默认工具和本地历史的初步集成目标，尚未达到个人应用完整交付目标。** GitHub 远程同步/冲突处理、桌面安装器及重复启动复用、Android 独立运行环境和 APK 均未完成；真实 DeepSeek、Windows/macOS 与 Android 平台验收尚未进行。完整会话切换、历史恢复界面、异常退出后的自动恢复也仍待实现。
+## 9. 当前证据与限制
 
-## 12. Git 同步实现（2026-10-09）
+2026-10-21 本轮只完成方向、实施边界和 CI 触发调整，没有实现云端登录、租户隔离、数据库、远端任务或部署。现有本机宿主保持 loopback 约束，不开放公网端口。
 
-`app/host/sync.mjs` 实现 Git 命令、GitHub 绑定校验和同步。生产只接受 GitHub HTTPS 仓库；通过 `git credential fill` 读取已有 helper 凭据，内存中用于 GitHub API 身份/私有属性/写权限校验，不写入 Corilo 配置、URL 或日志。命令错误不直接转发 stderr，避免 helper 泄露凭据。当前凭据管理器由开发机提供，尚未完成平台安全存储的打包与首启接入。
+此前 19 项 Node 检查与三套 Chromium 检查覆盖本地编辑、Pi 协议替身、Git 同步；它们不证明云端多用户能力。无真实 DeepSeek 和 iPhone/Android 浏览器验收。Android Actions 流程曾推送，但远端运行结果未确认；当前分支取消自动触发不会取消其他分支已排队或正在运行的任务。
 
-绑定元数据按库路径摘要隔离保存在知识库外。同步固定分支，检查未完成的 Git 操作；本地提交后 fetch，在库外临时 clone 中 merge，核对文件名、链接类型及本机 HEAD/工作目录未变化，再快进应用到知识库。push 不带 force，失败最多重新 fetch/合并一次；只有成功响应后保存最近成功提交及时间。临时合并目录随成功/重算清理，重启丢弃临时目录并重新合并。
-
-冲突预览来自真实 Git index 的双方 blob。文本可手动编辑或选择版本，二进制/大于 256 KiB 的单侧内容只提供版本选择；两份模式产生不覆盖既有文件的随机后缀名。旧 HEAD 或工作目录变化会使处理请求失败，用户重新同步后再选。未解决的冲突不会进入活动知识库，解决完成后仍重新拉取远端，不能以过期结果强推。
-
-宿主把同步、编辑和 Agent 启动互斥；同步时仍能读取状态，但暂停文件接口和编辑器。前台页面空闲 3 秒以上尝试同步，正常尝试间隔一分钟，前台恢复可提前触发，Agent 执行或冲突待处理时延后。此版网络等待期间也占用同步锁，慢网络下暂时只读最长可能跨越多个命令超时；本地草稿在同步前保存，失败恢复编辑。缩短网络阶段写入锁、原生后台调度仍未实现。
-
-本轮 19 项 Node 测试、8 项常规浏览器场景、4 组浏览器回归及新增浏览器同步链路通过。验证使用 Linux 上的真实 Git、两个临时知识库和 bare 远端；覆盖双向独立修改、离线后重试、文本/删除修改/二进制冲突、过期选择、分支切换、无共同历史、Windows 文件名拒绝、并发 push 重试、绑定恢复和解绑。GitHub API 校验使用合成 credential helper 与响应替身；浏览器同步测试只替换远端身份校验，文件和 Git 全链路为真实执行。真实 GitHub 凭据、Windows/macOS/Android、真实 DeepSeek 均未验证。
-
-本轮提供开发版同步能力，不代表阶段 B 全部完成：第二设备仍需 `git clone` 后以 `--vault` 打开；平台凭据初始化、图形化历史恢复、大附件具体失败诊断、安装器与 APK 待实现。C10–C14/C21 只有部分 Linux 证据，C01–C21 不据此整体标记通过。
-
-## 13. Android 集成工程（2026-10-09）
-
-按用户最新指示先推进 Android，桌面启动器实现暂缓。`android/` 新建原生 Java Activity、WebView、前台服务和运行环境安装器；复用 `app/host/android.mjs` 入口及已有 Node/Pi/Git/Web 页面。应用包名固定 `io.corilo.app`，Termux 构建 prefix 固定 `/data/data/io.corilo.app/files/usr`。不复制官方 `com.termux` ELF，也不进行二进制字符串替换。Android Java 源码是本项目新实现，未复制 Termux app 的 Activity/Service；运行组件仍通过固定 Termux packages 配方重建。
-
-安装器验证 APK 内归档的 SHA-256，检查路径/符号链接边界，在 staging 目录解包、恢复可执行位，再提升为活动目录；中断后保留前一个运行目录供恢复。runtime 与应用分别更新，不清理 `knowledge/`、`home/` 或 `config/`。服务串行初始化及启动，运行 Node 后通过私有 stdout 管道接收本机 URL，不把 token 写入日志。页面无通用 JavaScript-to-native bridge；WebView 只接受当前 loopback origin，禁用 file/content 访问，外部链接确认后交给外部浏览器。
-
-前台通知可回到应用；Native 入口提供启动/重试和停止服务。停止前检查编辑草稿并提示 Agent 中断，通过 SIGTERM 让宿主结束本轮和保存历史。Node 监听 Service 私有 stdin 管道关闭，父进程消失时尝试正常退出，避免留下无法重新连接的孤儿宿主。系统回收不自动重发 prompt，不承诺持续后台运行。Android 入口只在记录 PID 明确不存在时清理旧宿主锁；PID 已复用或权限未知时仍保守拒绝启动。更新/回收/停止行为还没有设备执行证据。
-
-本机目录内继续使用 Pi 默认 `HOME/.pi/agent`；未新增模型配置表单。**Android 上操作 Pi 原生配置的入口、Git 凭据接入尚未实现**，不能据宿主代码存在就称手机 AI/同步已经可用。APK 使用 target SDK 28 的 Termux 式侧载路线，入口限定 Android 15+ ARM64；15/16/17 是否能安装、启动、执行私有目录程序均须真机验证，不能用 compile SDK 36 代替兼容性结论。
-
-构建锁见 `android/runtime-source.json`。Termux builder 镜像成功拉取；当前 32 GB 云盘在镜像与容器准备阶段两次耗尽空间，未编出 Corilo runtime。首次进入构建还遇到 builder 不含环境代理 CA 的 TLS 失败，未关闭校验；本次容器/大镜像已清理。构建脚本加入至少 80 GiB 可用空间的保守预算检查，此值不是已测得的最低需求。完整构建还需要可信 CA、可访问源码站和充足的 Node 主机/目标编译时间。
-
-已完成实际 Gradle `:app:compileDebugJavaWithJavac` 编译（17 个任务链）、宿主 JVM 的解包/权限/链接恢复及越界拒绝检查、4 项 Python 打包边界检查。Gradle 的缺失 runtime 校验已真实拒绝打包。原 19 项 Node 测试和三套 Chromium 检查通过，另补 390px 窄屏同步面板场景。首次手工 `javac` 使用 JDK 类库会漏掉 Android 的 API 差异；实际 Gradle 编译发现并修复 `Files.readString/writeString` 不可用问题，CI 因此直接走 Android Gradle 编译。上述均不是 Android 设备运行证据。
-
-当前没有可交付 APK。后续顺序：在大磁盘构建机编出自定义 runtime → 完整 APK 构建 → Pi 原生配置/Git 凭据操作接入 → Android 15/16/17 ARM64 上启动、默认工具、真实模型、Git 同步、后台回收和升级保留数据 → 发布签名及 GPL 等运行组件的许可/对应源码交付。构建命令见 [Android README](../android/README.md)。
-
-2026-10-21：用户确认可使用 GitHub Actions，新增独立 Android APK 工作流，拆分自定义 ARM64 runtime 与 APK runner，保存精确版本 runtime 缓存、失败日志和调试 APK 来源清单。保留 80 GiB 空间检查与真实载荷校验；首轮远端构建和手机运行结果尚待确认，不能将工作流接入视为 APK 已交付。详见 Android README。
+旧版本完整设计、来源调查与检查记录保存在 [v0.12 提交](https://github.com/keanrain/corilo/tree/e25edb9/docs)。Files.md 来源以 `app/vendor/filesmd/SOURCE.json` 为准，Pi 以 `package-lock.json` 为准；商业发布前按实际依赖核对许可，不能用旧调查结论替代审查。

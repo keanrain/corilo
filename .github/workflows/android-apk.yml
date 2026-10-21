@@ -1,8 +1,7 @@
 name: Android APK
+# Local Android delivery is paused for the cloud-notes direction.
 on:
   workflow_dispatch:
-  push:
-    branches: [feat/android-build-reliability]
 permissions:
   contents: read
 concurrency:

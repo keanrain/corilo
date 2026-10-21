@@ -1,7 +1,6 @@
 name: Android source checks
+# Local Android delivery is paused for the cloud-notes direction.
 on:
-  push:
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read

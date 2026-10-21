@@ -1,6 +1,8 @@
 # Android 开发构建
 
-当前为 **Android 集成工程，尚无可用 APK**。Activity、WebView、前台服务、校验解包和 Node 宿主入口已实现；Corilo 前缀的 ARM64 Node/Git/Bash 尚未构建成功，未做手机运行验收。业务范围和实现边界以 [技术设计第 13 节](../docs/TECHNICAL_DESIGN.md#13-android-集成工程2026-10-09) 为准。
+> 2026-10-21：主路线已切到云端笔记，本工程暂停。以下为保留的历史构建说明；当前分支仅支持手动 CI，不再自动构建 APK。此修改不会取消旧分支正在运行的任务。
+
+当前为 **Android 集成工程，尚无可用 APK**。Activity、WebView、前台服务、校验解包和 Node 宿主入口已实现；Corilo 前缀的 ARM64 Node/Git/Bash 尚未构建成功，未做手机运行验收。业务范围和实现边界以 [v0.12 技术设计第 13 节](https://github.com/keanrain/corilo/blob/e25edb9/docs/TECHNICAL_DESIGN.md#13-android-集成工程2026-10-09) 为准。
 
 ## 工具与空间
 
@@ -12,7 +14,7 @@
 
 ## GitHub Actions 完整构建
 
-新增 `.github/workflows/android-apk.yml`：推送 `feat/android-build-reliability` 分支自动运行；工作流合入默认分支后也可通过 Actions → Android APK → Run workflow 手动运行。现有 Android source checks 仍独立运行。
+新增 `.github/workflows/android-apk.yml`：当前云端分支已移除 push 触发；工作流合入默认分支后可通过 Actions → Android APK → Run workflow 手动运行。现有 Android source checks 仍独立运行。
 
 运行时和 APK 分成两个 Ubuntu 24.04 runner。运行时任务只清理该临时 runner 不需要的预装工具，继续执行 80 GiB 空间检查；空间不足会明确失败，不降低检查或上传空壳。首次构建最多 350 分钟，能否在普通 GitHub runner 的空间/时间配额内完成仍待实测；私有仓库消耗账户的 Actions 分钟与存储额度。
 

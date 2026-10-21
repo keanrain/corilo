@@ -1,6 +1,8 @@
 # Corilo 可里
 
-本地 Markdown 知识库与 Agent 助手。目标为 Windows/macOS Chrome＋自动启动器、Android 集成 APK，使用 Pi 默认能力、在线模型和 GitHub 私有仓库同步。
+云端 Markdown 笔记与 Agent 助手。新方向为邀请制小范围使用：桌面、Android 和 iPhone 通过网页访问同一份云端知识库，Pi 在服务端隔离环境运行；无需本地 Agent 或 APK。
+
+**当前正在从本机版迁移，云端登录、用户隔离、持久任务与部署尚未实现。** 本轮已更新 [v0.13 正式设计](docs/README.md)，下一阶段是邀请登录与云端文件链路。以下启动命令和功能说明对应保留的本机开发版，不能直接作为公网部署方案。
 
 ## 当前正式应用代码
 
@@ -10,11 +12,11 @@
 
 **这是正式应用的首条开发链路，尚不是可分发安装包。** 独立桌面启动器安装包、Android APK、完整会话切换和历史恢复界面仍待实现。Windows/macOS 启动代码尚未在目标系统验收。不要把当前阶段当作已经通过全部首期验收。
 
-## Android 优先开发
+## 暂停的本地发行路线
 
-按最新顺序先推进安卓版，桌面安装器暂缓。`android/` 已加入 WebView、前台服务、运行环境校验解包及专用 Node 入口，复用现有页面、Pi 与 Git 宿主。**当前没有可用 APK**：Corilo 包名前缀的 Node/Git/Bash 交叉编译被 32 GB 构建磁盘容量阻塞，未进行真机验证。
+桌面启动器和 `android/` 集成 APK 暂停开发，已有代码、来源与构建脚本保留。当前分支的 Android Actions 改为仅手动运行，不再为每次云端改动自动消耗构建资源；此修改不取消其他分支已提交或运行中的任务。
 
-构建脚本、检查及完整缺口见 [Android 开发构建](android/README.md)。新构建禁止在缺少实际运行组件时输出空壳 APK。下一步需在更大磁盘的专用构建机完成 runtime，并接 Android 上 Pi 原生配置和 Git 凭据操作，再进行设备验收。
+后续主路线为网页 + 云端文件服务 + 隔离 Pi worker，详见 [迁移顺序](docs/TECHNICAL_DESIGN.md#8-实施顺序)。下文 GitHub 同步也是旧本机功能，新版不要求绑定 GitHub。
 
 ## 开发启动
 
@@ -25,7 +27,7 @@ npm ci --ignore-scripts
 npm start
 ```
 
-启动时自动尝试打开 Chrome。当前开发入口仍依赖本机已安装的 Node/Git/Chrome；后续安装包会管理运行组件。Linux 云环境或无 GUI 时使用：
+启动时自动尝试打开 Chrome。当前开发入口仍依赖本机已安装的 Node/Git/Chrome；本地安装包路线已暂停。Linux 云环境或无 GUI 时使用：
 
 ```bash
 npm start -- --no-open --vault .local/app-notes --config .local/app-config
@@ -93,6 +95,6 @@ python3 -m unittest discover -s prototype/tests -v
 
 [设计索引](docs/README.md) · [产品](docs/PRODUCT.md) · [业务规格](docs/PRODUCT-SPEC.md) · [技术](docs/TECHNICAL_DESIGN.md) · [交互](docs/DESIGN.md)
 
-Files.md Web 源码与许可在 [app/vendor/filesmd](app/vendor/filesmd)，固定提交及文件 SHA-256 见 [SOURCE.json](app/vendor/filesmd/SOURCE.json)。上游文件保持原样，由宿主修改返回的 HTML、生命周期回调和文件名渲染，并加载 Corilo 适配层；Go 服务、Telegram Bot、Worker 未引入。Pi 的安装版本固定在 package-lock.json。Termux 尚未引入应用代码，组合发行许可与相应源码交付随 Android 工程落实。
+Files.md Web 源码与许可在 [app/vendor/filesmd](app/vendor/filesmd)，固定提交及文件 SHA-256 见 [SOURCE.json](app/vendor/filesmd/SOURCE.json)。上游文件保持原样，由宿主修改返回的 HTML、生命周期回调和文件名渲染，并加载 Corilo 适配层；Go 服务、Telegram Bot、Worker 未引入。Pi 的安装版本固定在 package-lock.json。Termux 尚未引入应用代码，Android 分发已暂停；如恢复，仍需核对组合发行许可与相应源码交付。
 
 代码仓库为 `keanrain/corilo`，知识库远端另行配置。只在开发分支提交推送，不自动合入 main、部署或修改仓库可见性。
