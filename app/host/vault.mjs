@@ -59,13 +59,37 @@ export class Vault {
   }
   async stat(input) {
     const p = await this.resolve(input), s = await fs.stat(p);
-    return { name: path.basename(p), kind: s.isDirectory() ? 'directory' : 'file', size: s.size, lastModified: s.mtimeMs };
+    return { name: path.basename(p), kind: s.isDirectory() ? 'directory' : 'file', size: s.size, lastModified: s.mtimeMs, version: await this.version(input) };
   }
   async list(input) {
     const p = await this.resolve(input);
-    return (await fs.readdir(p, { withFileTypes: true }))
-      .filter(e => !e.name.startsWith('.') && !e.isSymbolicLink())
-      .map(e => ({ name: e.name, kind: e.isDirectory() ? 'directory' : 'file' }));
+    const entries = (await fs.readdir(p, { withFileTypes: true }))
+      .filter(e => !e.name.startsWith('.') && !e.isSymbolicLink());
+    const result = [];
+    for (const e of entries) result.push({ name: e.name, kind: e.isDirectory() ? 'directory' : 'file', version: await this.version(path.posix.join(input || '', e.name)) });
+    return result;
+  }
+  async version(input) {
+    const p = await this.resolve(input), stat = await fs.lstat(p);
+    if (stat.isFile()) return digest(await fs.readFile(p));
+    if (!stat.isDirectory()) throw fault(400, '不支持此文件类型');
+    // Descendant metadata detects managed atomic writes, additions, removals and moves.
+    // Include hidden descendants but never follow links. No file bodies are loaded for a tree token.
+    const hash = createHash('sha256');
+    const walk = async (dir, relative = '') => {
+      for (const name of (await fs.readdir(dir)).sort()) {
+        const child = path.join(dir, name), key = path.posix.join(relative, name);
+        const s = await fs.lstat(child, { bigint: true });
+        hash.update(JSON.stringify([key, String(s.mode), String(s.ino), String(s.size), String(s.mtimeNs), String(s.ctimeNs)]));
+        if (s.isDirectory()) await walk(child, key);
+      }
+    };
+    await walk(p);
+    return 'dir-' + hash.digest('hex');
+  }
+  async assertVersion(input, expected) {
+    if (typeof expected !== 'string' || !expected || await this.version(input) !== expected)
+      throw fault(409, '文件或目录已变化；未执行删除或移动，请刷新核对后重试');
   }
   async read(input) {
     const p = await this.resolve(input), data = await fs.readFile(p), stat = await fs.stat(p);
@@ -91,16 +115,18 @@ export class Vault {
     } finally { await fs.rm(temp, { force: true }); }
     return { etag: digest(data) };
   }
-  async rename(from, to) {
+  async rename(from, to, expected) {
     const source = await this.resolve(from), target = await this.validateNew(to);
     if (source === this.root || target === this.root) throw fault(400, '不能移动知识库根目录');
+    await this.assertVersion(from, expected);
     if (source === target) return;
     try { await fs.lstat(target); throw fault(409, '目标已存在'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
     await fs.rename(source, target);
   }
-  async remove(input, recursive = false) {
+  async remove(input, recursive = false, expected) {
     const p = await this.resolve(input);
     if (p === this.root) throw fault(400, '不能删除知识库根目录');
+    await this.assertVersion(input, expected);
     const stat = await fs.lstat(p);
     if (stat.isDirectory() && !recursive) await fs.rmdir(p);
     else await fs.rm(p, { recursive });

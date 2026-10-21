@@ -30,6 +30,20 @@ def main():
                 page.evaluate("async () => { try { await moveCurrentFile('/target'); } catch(e) {} }")
                 if not (vault/'source.md').exists() or (vault/'target/source.md').read_text()!='keep target':
                     failures.append('moving current file overwrote the existing target')
+                # Destructive actions must use displayed versions, not fresh stat tokens.
+                (vault/'source.md').write_text('new remote content')
+                for action in ["remove('/source.md')", "rename('/source.md','/renamed.md')"]:
+                    status=page.evaluate("async action => { try { await eval(action); return 200; } catch(e) { return e.status; } }",action)
+                    assert status==409, 'A stale browser deleted/moved a newer file'
+                assert (vault/'source.md').read_text()=='new remote content'
+                (vault/'target/new.md').write_text('new child')
+                status=page.evaluate("async () => { try { await removeDir('/target'); return 200; } catch(e) { return e.status; } }")
+                assert status==409 and (vault/'target/new.md').exists(), 'A stale directory deletion lost a new child'
+                page.evaluate('() => coriloReload()')
+                page.evaluate("async () => { await moveDir('/target','/renamed-target'); await removeDir('/renamed-target'); }")
+                assert not (vault/'renamed-target').exists()
+                page.evaluate("async () => { await openFile('/source.md'); await moveFile('/source.md','/moved.md'); await remove('/moved.md'); }")
+                assert not (vault/'source.md').exists() and not (vault/'moved.md').exists()
                 page.evaluate("() => openFile('/split.md')")
                 (vault/'split.md').write_text('external version')
                 page.evaluate("() => openFile('/split.md', false, 'editor2-textarea')")
@@ -72,7 +86,7 @@ def main():
                 assert page.locator('#corilo-input').input_value()=='review fixture'
                 browser.close()
                 assert not failures, failures
-                print('Review regressions passed: move collision, independent split editor versions, literal filenames, final draft flush and duplicate-submit prevention')
+                print('Review regressions passed: move collision, stale file/tree deletion and moves, independent split editor versions, literal filenames, final draft flush and duplicate-submit prevention')
         finally:
             child.terminate()
             try:child.wait(timeout=15)

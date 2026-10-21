@@ -24,18 +24,31 @@ const coriloPath = (parent, name) => {
     if (!name || name.includes('/') || name.includes('\\') || name === '.' || name === '..') throw new Error('无效文件名');
     return parent ? `${parent}/${name}` : name;
 };
+// Retain versions from displayed listings/reads; never refresh a version just to delete/move.
+const coriloVersions = new Map();
+const coriloKey = path => path.replace(/^\/+/, '');
+function coriloExpected(path) {
+    const key = coriloKey(path);
+    // An open editor owns the version actually displayed, even if a background listing is newer.
+    for (const cm of [editor, editor2]) {
+        if (cm?.path && coriloKey(cm.path) === key && cm.coriloFileHandle?.etag) return cm.coriloFileHandle.etag;
+    }
+    return coriloVersions.get(key);
+}
+const coriloRemove = (path, recursive = false) => coriloJSON('/api/fs/remove', { path, recursive, expected: coriloExpected(path) });
 class CoriloHandle {
     constructor(path, kind) { this.path = path; this.kind = kind; this.name = path.split('/').pop() || '知识库'; }
     async queryPermission() { return 'granted'; }
     async requestPermission() { return 'granted'; }
     async isSameEntry(other) { return this.path === other.path && this.kind === other.kind; }
-    async remove(options = {}) { await coriloJSON('/api/fs/remove', { path: this.path, recursive: !!options.recursive }); }
+    async remove(options = {}) { await coriloRemove(this.path, !!options.recursive); }
 }
 class CoriloDirectory extends CoriloHandle {
     constructor(path = '') { super(path, 'directory'); }
     async child(name, kind, options = {}) {
         const path = coriloPath(this.path, name);
         const stat = options.create ? await coriloJSON('/api/fs/create', { path, kind }) : await coriloJSON(`/api/fs/stat?path=${encodeURIComponent(path)}`);
+        if (!coriloVersions.has(coriloKey(path))) coriloVersions.set(coriloKey(path), stat.version);
         if (stat.kind !== kind) throw new Error('文件类型不匹配');
         return kind === 'file' ? new CoriloFile(path) : new CoriloDirectory(path);
     }
@@ -44,18 +57,20 @@ class CoriloDirectory extends CoriloHandle {
     async *values() {
         for (const entry of await coriloJSON(`/api/fs/list?path=${encodeURIComponent(this.path)}`)) {
             const path = coriloPath(this.path, entry.name);
+            coriloVersions.set(coriloKey(path), entry.version);
             yield entry.kind === 'file' ? new CoriloFile(path) : new CoriloDirectory(path);
         }
     }
     async *entries() { for await (const entry of this.values()) yield [entry.name, entry]; }
     [Symbol.asyncIterator]() { return this.entries(); }
-    removeEntry(name, options = {}) { return coriloJSON('/api/fs/remove', { path: coriloPath(this.path, name), recursive: !!options.recursive }); }
+    removeEntry(name, options = {}) { return coriloRemove(coriloPath(this.path, name), !!options.recursive); }
 }
 class CoriloFile extends CoriloHandle {
     constructor(path) { super(path, 'file'); this.etag = null; }
     async getFile() {
         const response = await coriloRequest(`/api/fs/read?path=${encodeURIComponent(this.path)}`);
         this.etag = response.headers.get('X-Corilo-Etag');
+        coriloVersions.set(coriloKey(this.path), this.etag);
         return new File([await response.blob()], this.name, { lastModified: Number(response.headers.get('X-Corilo-Modified')) });
     }
     async createWritable({ keepExistingData = false } = {}) {
@@ -82,7 +97,7 @@ class CoriloFile extends CoriloHandle {
                 const result = await (await coriloRequest(`/api/fs/write?path=${encodeURIComponent(this.path)}`, {
                     method: 'PUT', headers: { 'If-Match': expected, 'Content-Type': 'application/octet-stream' }, body: bytes,
                 })).json();
-                this.etag = result.etag; closed = true;
+                this.etag = result.etag; coriloVersions.set(coriloKey(this.path), result.etag); closed = true;
             },
             abort: async () => { closed = true; },
         };
@@ -98,7 +113,12 @@ syncLocalFileWithServer = async () => {};
 syncMediaFiles = async () => {};
 post = async () => { throw new Error('旧 Files.md 远程接口已停用'); };
 openDir = async () => showToast('当前使用 Corilo 本机知识库；目录由启动器管理');
-rename = async (from, to) => coriloJSON('/api/fs/rename', { from, to });
+rename = async (from, to) => {
+    const expected = coriloExpected(from);
+    const result = await coriloJSON('/api/fs/rename', { from, to, expected });
+    coriloVersions.delete(coriloKey(from)); coriloVersions.set(coriloKey(to), expected);
+    return result;
+};
 moveFile = async (from, to) => {
     await syncCurrentFile();
     await rename(from, to); // Host rename refuses to overwrite an existing target.
@@ -134,7 +154,7 @@ removeCurrentFile = async () => {
 // Keep read/write failure visible and never delete a source after a failed move.
 removeDir = async path => {
     await syncCurrentFile();
-    await coriloJSON('/api/fs/remove', { path, recursive: true });
+    await coriloRemove(path, true);
     removeMemDir(path); await coriloReload();
 };
 moveDir = async (from, to) => {

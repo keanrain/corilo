@@ -66,7 +66,7 @@ test('Corilo has no model credential endpoint or duplicate auth files', async t 
 test('rename collision preserves both source and destination', async t => {
   const { root, request } = await fixture(t);
   await writeFile(root+'/notes/目标.md','目标内容');
-  assert.equal((await request('/api/fs/rename',{data:{from:'笔记.md',to:'目标.md'}})).status,409);
+  assert.equal((await request('/api/fs/rename',{data:{from:'笔记.md',to:'目标.md',expected:(await (await request('/api/fs/stat?path=笔记.md')).json()).version}})).status,409);
   assert.equal(await readFile(root+'/notes/笔记.md','utf8'),'原始内容\n');
   assert.equal(await readFile(root+'/notes/目标.md','utf8'),'目标内容');
 });
@@ -161,4 +161,63 @@ test('knowledge export rejects capacity limits and refuses an active agent', asy
   assert.equal((await request('/api/agent/prompt', { data: { text: 'export concurrency check' } })).status, 202);
   assert.equal((await request('/api/export/knowledge')).status, 409);
   await request('/api/agent/stop', { data: {} });
+});
+
+test('destructive operations require the observed file/tree version and serialize competing moves', async t => {
+  const { request, root } = await fixture(t);
+  const stat = async p => (await request('/api/fs/stat?path='+encodeURIComponent(p))).json();
+  const old = (await stat('笔记.md')).version;
+  for (const [route,data] of [['remove',{path:'笔记.md'}],['rename',{from:'笔记.md',to:'moved.md'}]])
+    assert.equal((await request('/api/fs/'+route,{data})).status,409);
+  await writeFile(root+'/notes/笔记.md','另一设备的新内容');
+  assert.equal((await request('/api/fs/remove',{data:{path:'笔记.md',expected:old}})).status,409);
+  assert.equal((await request('/api/fs/rename',{data:{from:'笔记.md',to:'moved.md',expected:old}})).status,409);
+  assert.equal(await readFile(root+'/notes/笔记.md','utf8'),'另一设备的新内容');
+  await mkdir(root+'/notes/目录'); await writeFile(root+'/notes/目录/child.md','原文');
+  const tree = (await stat('目录')).version;
+  await writeFile(root+'/notes/目录/child.md','已更新');
+  assert.equal((await request('/api/fs/remove',{data:{path:'目录',recursive:true,expected:tree}})).status,409);
+  assert.equal((await request('/api/fs/rename',{data:{from:'目录',to:'目录2',expected:tree}})).status,409);
+  const updated = (await stat('目录')).version;
+  await writeFile(root+'/notes/目录/added.md','新增');
+  assert.equal((await request('/api/fs/remove',{data:{path:'目录',recursive:true,expected:updated}})).status,409);
+  const expected = (await stat('目录')).version;
+  const results = await Promise.all(['目录2','目录3'].map(to => request('/api/fs/rename',{data:{from:'目录',to,expected}})));
+  assert.deepEqual(results.map(r=>r.status).sort(),[200,404]);
+  const target = results[0].status === 200 ? '目录2':'目录3';
+  assert.equal(await readFile(root+'/notes/'+target+'/child.md','utf8'),'已更新');
+  assert.equal((await request('/api/fs/remove',{data:{path:target,recursive:true,expected:(await stat(target)).version}})).status,200);
+  await assert.rejects(readFile(root+'/notes/'+target+'/child.md'),{code:'ENOENT'});
+});
+
+test('Linux host restarts after SIGKILL without stealing a live lock', {skip:process.platform!=='linux'}, async t => {
+  const { spawn } = await import('node:child_process');
+  const { once } = await import('node:events');
+  const root = await mkdtemp(os.tmpdir()+'/corilo-crash-');
+  const options={mode:'cloud-files',vault:root+'/notes',configDir:root+'/config',piAgentDir:root+'/pi'};
+  const child=spawn(process.execPath,['--input-type=module','-e',
+    `import { startHost } from './app/host/server.mjs'; await startHost(JSON.parse(process.argv[1])); console.log('READY');`,JSON.stringify(options)],{stdio:['ignore','pipe','pipe']});
+  let recovered;
+  t.after(async()=>{ if(child.exitCode===null && child.signalCode===null) { const done=once(child,'exit'); child.kill('SIGKILL'); await done; } await recovered?.close(); await rm(root,{recursive:true,force:true}); });
+  await new Promise((resolve,reject)=>{ child.stdout.once('data',resolve); child.once('error',reject); child.once('exit',()=>reject(new Error('child exited before startup'))); });
+  await assert.rejects(startHost(options),/占用/);
+  const done=once(child,'exit'); child.kill('SIGKILL'); await done;
+  const attempts=await Promise.allSettled([startHost(options),startHost(options)]);
+  assert.equal(attempts.filter(r=>r.status==='fulfilled').length,1);
+  recovered=attempts.find(r=>r.status==='fulfilled').value;
+  assert.equal((await fetch(recovered.origin+'/api/state',{headers:{'X-Corilo-Token':recovered.token}})).status,200);
+  assert.doesNotMatch(await recovered.vault.git(['ls-files']),/corilo-host/);
+});
+
+
+test('Linux file host refuses ambiguous or legacy crash markers', {skip:process.platform!=='linux'}, async t => {
+  const root=await mkdtemp(os.tmpdir()+'/corilo-unknown-lock-');
+  t.after(()=>rm(root,{recursive:true,force:true}));
+  await mkdir(root+'/notes');
+  const options={mode:'cloud-files',vault:root+'/notes',configDir:root+'/config',piAgentDir:root+'/pi'};
+  for (const marker of ['', 'unknown', '2147483647', 'cloud-files:'+process.pid]) {
+    await writeFile(root+'/notes/.corilo-host.lock',marker);
+    await assert.rejects(startHost(options),/占用/);
+    assert.equal(await readFile(root+'/notes/.corilo-host.lock','utf8'),marker);
+  }
 });

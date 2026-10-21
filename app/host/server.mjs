@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Vault, fault } from './vault.mjs';
+import { acquireHostLock } from './lock.mjs';
 import { exportKnowledge } from './export.mjs';
 import { GitSync } from './sync.mjs';
 import { PiAgent } from './agent.mjs';
@@ -32,11 +33,7 @@ export async function startHost({ mode = 'local', vault: root, configDir, port =
   await fs.mkdir(piAgentDir, { recursive: true, mode: 0o700 });
   const realPiDir = await fs.realpath(piAgentDir);
   if (inside(realRoot, realPiDir) || inside(realPiDir, realRoot)) throw fault(400, 'Pi 配置目录与知识库必须相互独立');
-  const lockPath = path.join(realRoot, '.corilo-host.lock');
-  let lock;
-  try { lock = await fs.open(lockPath, 'wx', 0o600); }
-  catch (e) { if (e.code === 'EEXIST') throw fault(409, '知识库已被宿主占用；异常退出后请确认旧进程已停止，再移除 .corilo-host.lock'); throw e; }
-  await lock.writeFile(String(process.pid));
+  const lock = await acquireHostLock(realRoot, { recoverFileHost: cloud });
   // Lock lives in the library for single-writer enforcement, but never enters history.
   let agent, sync;
   try {
@@ -47,12 +44,14 @@ export async function startHost({ mode = 'local', vault: root, configDir, port =
     await fs.mkdir(path.join(gitDir, 'info'), { recursive: true });
     const exclude = path.join(gitDir, 'info/exclude');
     const prior = await fs.readFile(exclude, 'utf8').catch(e => { if (e.code !== 'ENOENT') throw e; return ''; });
-    if (!prior.includes('/.corilo-host.lock')) await fs.appendFile(exclude, '\n/.corilo-host.lock\n.corilo-*.tmp\n');
+    for (const entry of ['/.corilo-host.lock', '/.corilo-host.flock', '.corilo-*.tmp']) {
+      if (!prior.split('\n').includes(entry)) await fs.appendFile(exclude, `\n${entry}\n`);
+    }
     await vault.init();
     agent = cloud ? { init: async () => {}, stop: async () => {}, close: async () => {}, messages: () => [], activity: '' } : agentFactory(vault, realConfig, realPiDir);
     await agent.init();
     sync = cloud ? { init: async () => {}, state: () => ({ phase: 'disabled' }) } : syncFactory(vault, realConfig); await sync.init();
-  } catch (e) { await lock.close(); await fs.rm(lockPath, { force: true }); throw e; }
+  } catch (e) { await lock.close(); throw e; }
   const token = randomBytes(32).toString('hex');
   let syncing = false;
   let queue = Promise.resolve(), busy = false, runTask = Promise.resolve(), runId = 0;
@@ -157,10 +156,10 @@ export async function startHost({ mode = 'local', vault: root, configDir, port =
         } finally { syncing = false; revision++; }
       }
       if (syncing && route.startsWith('/api/fs/')) throw fault(409, '正在同步，请稍后重试；草稿保留');
-      if (req.method === 'GET' && route === '/api/fs/list') return send(res, 200, await vault.list(input));
-      if (req.method === 'GET' && route === '/api/fs/stat') return send(res, 200, await vault.stat(input));
+      if (req.method === 'GET' && route === '/api/fs/list') return send(res, 200, await exclusive(() => vault.list(input)));
+      if (req.method === 'GET' && route === '/api/fs/stat') return send(res, 200, await exclusive(() => vault.stat(input)));
       if (req.method === 'GET' && route === '/api/fs/read') {
-        const file = await vault.read(input);
+        const file = await exclusive(() => vault.read(input));
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'X-Corilo-Etag': file.etag, 'X-Corilo-Modified': String(file.lastModified) });
         return res.end(file.data);
       }
@@ -175,10 +174,10 @@ export async function startHost({ mode = 'local', vault: root, configDir, port =
         const result = await mutate(() => vault.create(data.path, data.kind)); revision++; return send(res, 200, result);
       }
       if (req.method === 'POST' && route === '/api/fs/rename') {
-        const data = await jsonBody(req); await mutate(async () => { await vault.checkpoint('Corilo: before rename'); await vault.rename(data.from, data.to); await vault.checkpoint('Corilo: rename'); }); revision++; return send(res, 200, {});
+        const data = await jsonBody(req); await mutate(async () => { await vault.checkpoint('Corilo: before rename'); await vault.rename(data.from, data.to, data.expected); await vault.checkpoint('Corilo: rename'); }); revision++; return send(res, 200, {});
       }
       if (req.method === 'POST' && route === '/api/fs/remove') {
-        const data = await jsonBody(req); await mutate(async () => { await vault.checkpoint('Corilo: before remove'); await vault.remove(data.path, data.recursive === true); await vault.checkpoint('Corilo: remove'); }); revision++; return send(res, 200, {});
+        const data = await jsonBody(req); await mutate(async () => { await vault.checkpoint('Corilo: before remove'); await vault.remove(data.path, data.recursive === true, data.expected); await vault.checkpoint('Corilo: remove'); }); revision++; return send(res, 200, {});
       }
       if (req.method === 'POST' && route === '/api/checkpoint') {
         const commit = await mutate(() => vault.checkpoint('Corilo: local edits')); return send(res, 200, { commit });
@@ -221,11 +220,11 @@ export async function startHost({ mode = 'local', vault: root, configDir, port =
     }
   });
   try { await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); }); }
-  catch (e) { await agent.close(); await lock.close(); await fs.rm(lockPath, { force: true }); throw e; }
+  catch (e) { await agent.close(); await lock.close(); throw e; }
   const origin = `http://127.0.0.1:${server.address().port}`;
   return { origin, token, vault, agent, url: `${origin}/#token=${token}`, async close() {
     shuttingDown = true; await agent.stop(); await runTask; await queue;
     await agent.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
-    await lock.close(); await fs.rm(lockPath, { force: true });
+    await lock.close();
   } };
 }

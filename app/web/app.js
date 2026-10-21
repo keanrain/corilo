@@ -44,7 +44,7 @@ syncCurrentFile = async () => {
             const text = header.startsWith('# ') ? snapshot.slice(header.length + (snapshot.includes('\n') ? 1 : 0)) : snapshot;
             const writer = await handle.createWritable(); await writer.write(text); await writer.close();
             if (newPath !== oldPath && header.startsWith('# ')) {
-                await coriloJSON('/api/fs/rename', { from: oldPath, to: newPath });
+                await coriloJSON('/api/fs/rename', { from: oldPath, to: newPath, expected: handle.etag });
                 const old = getMemFile(oldPath); removeMemFile(oldPath);
                 addMemFile(newPath, { ...old, path: newPath, handle: await getFileHandle(newPath) });
                 cm.path = newPath; handle.path = newPath; handle.name = toFilename(newPath); await renderSidebar();

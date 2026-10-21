@@ -36,7 +36,7 @@ npm ci --ignore-scripts
 npm start
 ```
 
-启动时自动尝试打开 Chrome。当前开发入口仍依赖本机已安装的 Node/Git/Chrome；本地安装包路线已暂停。Linux 云环境或无 GUI 时使用：
+启动时自动尝试打开 Chrome。当前开发入口仍依赖本机已安装的 Node/Git/Chrome（Linux 另需 util-linux 的 `flock`）；本地安装包路线已暂停。Linux 云环境或无 GUI 时使用：
 
 ```bash
 npm start -- --no-open --vault .local/app-notes --config .local/app-config
@@ -56,7 +56,7 @@ npm start -- --no-open --vault .local/app-notes --config .local/app-config
 
 当前文件 HTTP 接口单次最多 16 MiB，拒绝隐藏路径和符号链接；这仅约束文件页面接口，不限制 Pi 默认 shell 的访问能力。跨平台文件名检查覆盖页面创建、重命名和同步树；远端符号链接、子模块、Windows 非法名称及大小写/Unicode 冲突会暂停同步。
 
-一个知识库只允许一个宿主。正常退出会清理 `.corilo-host.lock`；强制终止后，需确认旧进程已经停止再移除该锁。本机安装器路线已暂停；云端强杀锁恢复仍需处理。本机保存与 GitHub 上传分开显示；只有 push 成功才记录远端同步时间。
+一个知识库只允许一个宿主。正常退出清理 `.corilo-host.lock`；Linux 内核锁使用持久的 `.corilo-host.flock`，不要手动删除它。云端纯文件模式可回收已确认死亡进程的有效标记；本机 Pi、旧版或未知锁仍需确认旧进程及子进程停止后人工处理。本机安装器路线已暂停；此机制不等于 Agent 或 Git 写入中途的完整崩溃恢复。本机保存与 GitHub 上传分开显示；只有 push 成功才记录远端同步时间。
 
 ## GitHub 同步（仅保留的本机模式）
 

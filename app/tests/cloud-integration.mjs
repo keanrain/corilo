@@ -67,6 +67,11 @@ test('cloud invitation, persistence, authorization, files and real browser flow'
   assert.equal((await put(a,'new content')).status,200);
   assert.equal((await put(a2,'stale content')).status,409);
   assert.equal(await (await request('/api/fs/read?path='+encodeURIComponent(filename),a)).text(),'new content');
+  // Another logged-in device must not delete/move the version it read before the save.
+  assert.equal((await request('/api/fs/remove',a2,{path:filename,expected:etag})).status,409);
+  assert.equal((await request('/api/fs/rename',a2,{from:filename,to:'moved.md',expected:etag})).status,409);
+  assert.equal((await request('/api/fs/remove',a2,{path:filename})).status,409);
+  assert.equal(await (await request('/api/fs/read?path='+encodeURIComponent(filename),a)).text(),'new content');
   assert.equal((await request('/api/agent/prompt',a,{text:'must not execute'})).status,503);
   assert.equal((await request('/api/sync/run',a,{})).status,503);
   const state=await (await request('/api/state',a)).json();
