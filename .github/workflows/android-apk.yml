@@ -1,0 +1,113 @@
+name: Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/android-build-reliability]
+permissions:
+  contents: read
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore exact Corilo runtime
+        id: runtime-cache
+        uses: actions/cache@v4
+        with:
+          path: .local/android-runtime
+          key: corilo-arm64-v1-${{ hashFiles('android/runtime-source.json', 'android/scripts/build-runtime.sh') }}
+      - name: Reclaim unused tools on disposable runtime runner
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        run: |
+          # This job uses the pinned container's SDK, not the runner's SDK.
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force
+          df -h . /var/lib/docker
+      - name: Build Corilo ARM64 runtime from pinned sources
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .local/android-runtime
+          set -o pipefail
+          android/scripts/build-runtime.sh 2>&1 | tee .local/runtime-build.log
+          cp .local/termux-packages/bootstrap-aarch64.zip .local/android-runtime/
+          cd .local/android-runtime
+          sha256sum bootstrap-aarch64.zip > SHA256SUMS
+      - name: Verify runtime integrity and identity
+        run: |
+          (cd .local/android-runtime && sha256sum -c SHA256SUMS)
+          python3 - <<'PY'
+          import importlib.util, pathlib
+          spec = importlib.util.spec_from_file_location('payload', 'android/scripts/prepare-payload.py')
+          payload = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(payload)
+          directory = pathlib.Path('.local/android-runtime')
+          payload.validate_bootstrap(directory/'bootstrap-aarch64.zip', (directory/'SHA256SUMS').read_text().split()[0])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corilo-arm64-runtime
+          path: .local/android-runtime/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve compiler log even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-build-log
+          path: .local/runtime-build.log
+          retention-days: 14
+  apk:
+    needs: runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - uses: actions/download-artifact@v4
+        with:
+          name: corilo-arm64-runtime
+          path: .local/android-runtime
+      - name: Test and prepare real runtime assets
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm test
+          python3 -m unittest discover -s android/tests -p 'test_*.py' -v
+          cd .local/android-runtime
+          sha256sum -c SHA256SUMS
+          runtime_sha=$(cut -d ' ' -f 1 SHA256SUMS)
+          cd ../..
+          python3 android/scripts/prepare-payload.py --bootstrap .local/android-runtime/bootstrap-aarch64.zip --sha256 "$runtime_sha"
+      - name: Compile APK and run installer checks
+        run: |
+          ./android/gradlew -p android :app:assembleDebug
+          mkdir -p .local/android-java-tests
+          android_classes=android/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes
+          javac -source 17 -target 17 -cp "$android_classes:$ANDROID_HOME/platforms/android-36/android.jar" -d .local/android-java-tests android/tests/InstallerChecks.java
+          java -cp ".local/android-java-tests:$android_classes:$ANDROID_HOME/platforms/android-36/android.jar" io.corilo.app.InstallerChecks
+      - name: Record build provenance
+        run: |
+          mkdir -p .local/apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk .local/apk/corilo-arm64-debug.apk
+          cp android/app/src/main/assets/payload.json .local/apk/
+          git rev-parse HEAD > .local/apk/source-commit.txt
+          cd .local/apk
+          sha256sum corilo-arm64-debug.apk > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: corilo-arm64-debug
+          path: .local/apk/
+          if-no-files-found: error
+          retention-days: 14

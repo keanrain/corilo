@@ -177,3 +177,5 @@ GitHub 同步、远端冲突流程和跨端检查仍待实现。当前单库锁�
 已完成实际 Gradle `:app:compileDebugJavaWithJavac` 编译（17 个任务链）、宿主 JVM 的解包/权限/链接恢复及越界拒绝检查、4 项 Python 打包边界检查。Gradle 的缺失 runtime 校验已真实拒绝打包。原 19 项 Node 测试和三套 Chromium 检查通过，另补 390px 窄屏同步面板场景。首次手工 `javac` 使用 JDK 类库会漏掉 Android 的 API 差异；实际 Gradle 编译发现并修复 `Files.readString/writeString` 不可用问题，CI 因此直接走 Android Gradle 编译。上述均不是 Android 设备运行证据。
 
 当前没有可交付 APK。后续顺序：在大磁盘构建机编出自定义 runtime → 完整 APK 构建 → Pi 原生配置/Git 凭据操作接入 → Android 15/16/17 ARM64 上启动、默认工具、真实模型、Git 同步、后台回收和升级保留数据 → 发布签名及 GPL 等运行组件的许可/对应源码交付。构建命令见 [Android README](../android/README.md)。
+
+2026-10-21：用户确认可使用 GitHub Actions，新增独立 Android APK 工作流，拆分自定义 ARM64 runtime 与 APK runner，保存精确版本 runtime 缓存、失败日志和调试 APK 来源清单。保留 80 GiB 空间检查与真实载荷校验；首轮远端构建和手机运行结果尚待确认，不能将工作流接入视为 APK 已交付。详见 Android README。

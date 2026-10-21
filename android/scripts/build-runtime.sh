@@ -34,7 +34,7 @@ container="corilo-runtime-build-$$"
 trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
 mkdir -p "$runtime_checkout/output" "$runtime_checkout/build-tools"
 docker run --name "$container" --detach --volume "$runtime_checkout:/home/builder/termux-packages" "${settings[1]}" sleep infinity >/dev/null
-docker exec --user root "$container" usermod -u "$(id -u)" builder
+docker exec --user root "$container" sh -c '[ "$(id -u builder)" = "$1" ] || usermod -u "$1" builder' sh "$(id -u)"
 docker exec --user root "$container" sh -c 'chown builder /home/builder /data /data/data; mkdir -p /home/builder/.termux-build; chown builder /home/builder/.termux-build'
 # In environments with an organizational TLS root, import that trusted CA into the
 # builder's trust store before running. Never disable certificate verification.

@@ -10,6 +10,18 @@
 
 配置 SDK 的 `ANDROID_HOME` 或本机 `android/local.properties`。只读 HOME 环境可设置 `ANDROID_USER_HOME` 和 `GRADLE_USER_HOME` 指向可写的工具缓存目录。Gradle 不自动沿用 shell HTTP 代理；需要时使用它支持的 proxyHost/proxyPort 配置及组织提供的受信任证书，不关闭 TLS 校验。
 
+## GitHub Actions 完整构建
+
+新增 `.github/workflows/android-apk.yml`：推送 `feat/android-build-reliability` 分支自动运行；工作流合入默认分支后也可通过 Actions → Android APK → Run workflow 手动运行。现有 Android source checks 仍独立运行。
+
+运行时和 APK 分成两个 Ubuntu 24.04 runner。运行时任务只清理该临时 runner 不需要的预装工具，继续执行 80 GiB 空间检查；空间不足会明确失败，不降低检查或上传空壳。首次构建最多 350 分钟，能否在普通 GitHub runner 的空间/时间配额内完成仍待实测；私有仓库消耗账户的 Actions 分钟与存储额度。
+
+成功的 ARM64 runtime 按构建脚本和来源锁的哈希缓存；恢复时重新检查 SHA-256、Corilo 前缀和必需 ELF，不使用其他版本或 `com.termux` 缓存。APK 任务重新按 npm 锁文件准备应用资产，运行 Node/Python/安装器检查并由 Gradle 打包。失败时保留 runtime 编译日志。
+
+成功后在该次 Actions 页的 Artifacts 下载 `corilo-arm64-debug`，内含 APK、SHA-256、源码提交号和载荷来源清单；保留 14 天。这是调试构建，不是正式发布。每个新 runner 的调试签名可能不同，因此不能据此保证覆盖升级；不要为安装另一个调试包而卸载存有唯一笔记的版本。稳定签名和对应源码交付仍是正式分发前的工作。
+
+工作流存在不代表首次构建已成功；设备运行验收、Pi 原生配置入口和 Git 凭据接入仍未完成。
+
 ## 编译实际运行组件
 
 在仓库根目录执行：
