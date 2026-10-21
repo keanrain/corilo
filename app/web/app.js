@@ -12,7 +12,7 @@ function coriloError(error) {
     document.getElementById('corilo-save-draft').hidden = ![editor, editor2].some(cm => cm?.path && !cm.isClean());
 }
 const bar = document.createElement('header'); bar.id = 'corilo-bar';
-bar.innerHTML = '<strong>Corilo 可里</strong><button id="corilo-toggle">Agent 对话</button><button id="corilo-refresh">刷新文件</button><span id="corilo-status">正在打开本机知识库…</span>';
+bar.innerHTML = '<strong>Corilo 可里</strong><button id="corilo-toggle">Agent 对话</button><button id="corilo-refresh">刷新文件</button><button id="corilo-export" title="导出已保存笔记与附件，不含对话和配置">导出知识库</button><span id="corilo-status">正在打开本机知识库…</span>';
 document.body.appendChild(bar);
 const panel = document.createElement('section'); panel.id = 'corilo-agent';
 panel.innerHTML = `<strong>知识库对话</strong><small id="corilo-model">Pi 默认工具 · 在线模型</small>
@@ -201,3 +201,21 @@ window.addEventListener('unhandledrejection', event => { coriloError(event.reaso
 
 window.addEventListener('focus', () => coriloReload().catch(coriloError));
 window.addEventListener('blur', () => syncCurrentFile().catch(coriloError));
+
+$c('corilo-export').onclick = async () => {
+    if (coriloBusy || coriloSubmitting) { coriloError(new Error('请等待当前任务结束后导出')); return; }
+    const button = $c('corilo-export'); button.disabled = true;
+    coriloSubmitting = true; coriloUpdateInputLock();
+    try {
+        await coriloReloading; await coriloNavigation; await coriloSaving;
+        await syncCurrentFile();
+        if ([editor,editor2].some(cm => cm?.path && !cm.isClean())) throw new Error('请先保存或另存草稿，再导出');
+        const response = await coriloRequest('/api/export/knowledge');
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement('a');
+        link.href = url; link.download = 'corilo-knowledge.zip';
+        document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) { coriloError(error); }
+    finally { button.disabled = false; coriloSubmitting = false; coriloUpdateInputLock(); }
+};

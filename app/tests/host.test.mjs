@@ -118,3 +118,47 @@ test('sync serializes writes and agent starts while state remains readable', asy
   assert.equal((await running).status,200);
   assert.equal((await request('/api/fs/create',{data:{path:'allowed.md',kind:'file'}})).status,200);
 });
+
+test('knowledge export preserves original files and empty directories without exporting host secrets', async t => {
+  const { root, request, host } = await fixture(t);
+  await mkdir(root+'/notes/附件'); await mkdir(root+'/notes/空目录');
+  const binary = Buffer.from([0, 1, 255, 42]);
+  await writeFile(root+'/notes/附件/原图.bin', binary);
+  await writeFile(root+'/notes/.private', 'hidden-secret');
+  await writeFile(root+'/config/secret', 'host-secret');
+  assert.equal((await fetch(host.origin+'/api/export/knowledge')).status, 401);
+  assert.equal((await request('/api/export/knowledge', { headers: { Origin: 'https://evil.invalid' } })).status, 403);
+  const response = await request('/api/export/knowledge');
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('content-type'), 'application/zip');
+  const { unzipSync } = await import('fflate');
+  const archive = unzipSync(new Uint8Array(await response.arrayBuffer()));
+  assert.equal(Buffer.from(archive['knowledge/笔记.md']).toString(), '原始内容\n');
+  assert.deepEqual(Buffer.from(archive['knowledge/附件/原图.bin']), binary);
+  assert.ok(archive['knowledge/空目录/']);
+  assert.deepEqual(Object.keys(archive).sort(), ['README.txt','knowledge/','knowledge/空目录/','knowledge/笔记.md','knowledge/附件/','knowledge/附件/原图.bin','manifest.json'].sort());
+  const manifest = JSON.parse(Buffer.from(archive['manifest.json']).toString());
+  const { createHash } = await import('node:crypto');
+  for (const file of manifest.files) {
+    const data = archive['knowledge/'+file.path];
+    assert.equal(data.length, file.bytes);
+    assert.equal(createHash('sha256').update(data).digest('hex'), file.sha256);
+  }
+  assert.ok(manifest.excluded.includes('conversations'));
+  await symlink(root+'/config/secret', root+'/notes/leak.txt');
+  assert.equal((await request('/api/export/knowledge')).status, 400);
+});
+
+test('knowledge export rejects capacity limits and refuses an active agent', async t => {
+  const { root, host, request } = await fixture(t);
+  const { exportKnowledge } = await import('../host/export.mjs');
+  await assert.rejects(exportKnowledge(host.vault, { maxBytes: 1 }), e => e.status === 413);
+  await assert.rejects(exportKnowledge(host.vault, { maxEntries: 0 }), e => e.status === 413);
+  let release;
+  host.agent.ensureReady = async () => {};
+  host.agent.prompt = () => new Promise(resolve => { release = resolve; });
+  host.agent.stop = async () => release?.();
+  assert.equal((await request('/api/agent/prompt', { data: { text: 'export concurrency check' } })).status, 202);
+  assert.equal((await request('/api/export/knowledge')).status, 409);
+  await request('/api/agent/stop', { data: {} });
+});

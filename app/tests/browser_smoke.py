@@ -43,6 +43,19 @@ def main():
                 page.keyboard.press('Control+End')
                 page.keyboard.insert_text('浏览器编辑成功')
                 wait_for(lambda: '浏览器编辑成功' in note.read_text())
+                # A fresh unsaved edit must be flushed before the download.
+                page.evaluate("() => { clearInterval(window.saver); editor.replaceRange('导出前最新草稿', {line: editor.lastLine(), ch: 0}); }")
+                # Download via the actual UI; stdlib ZIP reader verifies interoperability.
+                with page.expect_download() as exported:
+                    page.locator('#corilo-export').click()
+                archive_path = base/'knowledge.zip'
+                exported.value.save_as(archive_path)
+                import zipfile
+                with zipfile.ZipFile(archive_path) as archive:
+                    assert archive.read('knowledge/笔记.md').decode() == note.read_text()
+                    assert '导出前最新草稿' in note.read_text()
+                    assert not any('/.git/' in name for name in archive.namelist())
+                    assert 'manifest.json' in archive.namelist()
                 page.reload(); page.wait_for_function('() => coriloReady')
                 assert '浏览器编辑成功' in page.locator('.CodeMirror').first.inner_text()
                 page.locator('#corilo-input').fill('无需 AI 的原话')
@@ -78,7 +91,7 @@ def main():
                 page.locator('#corilo-sync-close').click()
                 assert not errors, errors
                 assert not external, external
-                result = {'checks':['full Files.md editor loads','browser edit persists on disk','reload reads saved Markdown','capture without AI','external disk edit reloads','conflicting save preserves draft and external file','save conflicted draft as a separate file','no knowledge-library diagnostic logs','390px mobile sync panel remains usable'], 'pageErrors':errors,'externalRequests':external,'modelCalls':0}
+                result = {'checks':['full Files.md editor loads','browser edit persists on disk','ZIP export flushes draft and opens with Python zipfile','reload reads saved Markdown','capture without AI','external disk edit reloads','conflicting save preserves draft and external file','save conflicted draft as a separate file','no knowledge-library diagnostic logs','390px mobile sync panel remains usable'], 'pageErrors':errors,'externalRequests':external,'modelCalls':0}
                 (out/'corilo-browser-result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
                 print(json.dumps(result,ensure_ascii=False))
                 browser.close()

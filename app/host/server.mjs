@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Vault, fault } from './vault.mjs';
+import { exportKnowledge } from './export.mjs';
 import { GitSync } from './sync.mjs';
 import { PiAgent } from './agent.mjs';
 import { getAgentDir } from '@earendil-works/pi-coding-agent';
@@ -127,6 +128,15 @@ export async function startHost({ vault: root, configDir, port = 0, piAgentDir =
         messages: agent.messages(), liveText: agent.liveText ?? '', model: agent.session?.model ? `${agent.session.model.provider}/${agent.session.model.id}` : null,
         vault: vault.root, sync: sync.state(), syncing,
       });
+      if (req.method === 'GET' && route === '/api/export/knowledge') {
+        const archive = await exclusive(async () => {
+          if (busy || syncing || shuttingDown) throw fault(409, '请等待 Agent 或同步结束后导出');
+          return exportKnowledge(vault);
+        });
+        res.writeHead(200, { 'Content-Type': 'application/zip',
+          'Content-Disposition': 'attachment; filename="corilo-knowledge.zip"', 'Content-Length': archive.length });
+        return res.end(archive);
+      }
       if (req.method === 'POST' && ['/api/sync/bind','/api/sync/run','/api/sync/unbind'].includes(route)) {
         const data = await jsonBody(req);
         if (syncing || busy) throw fault(409, 'Agent 或同步正在运行，请稍后重试');
