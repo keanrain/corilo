@@ -8,3 +8,4 @@
 !app/cloud/
 !app/cloud/worker/
 !app/cloud/worker/main.mjs
+!app/cloud/worker/model-bridge.mjs

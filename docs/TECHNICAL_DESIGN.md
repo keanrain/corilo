@@ -45,7 +45,7 @@ flowchart TD
 
 网关验证登录会话、账号有效性、资源归属和 CSRF/Origin；使用 HttpOnly、Secure、SameSite 会话 cookie，不沿用本机 URL fragment token 做云端账户。当前实现采用服务端验证邮箱/密码，没有 OAuth 回调。未来若增加 OAuth/授权码登录，其回调必须核验 state/PKCE；密钥不进入网页或知识库。浏览器不使用数据库 service-role key。
 
-邀请兑换和建库需要数据库事务及唯一约束。当前 schema 包含 accounts、invitations、vaults、sessions，以及新增的 conversations、runs、run_events；model_grants/model_reservations 已保存调用准入预留；实际 usage/费用核对仍未实现。任务表与内部持久任务服务已加入迁移，但网关尚不开放任务 API，内部控制器已连接 Docker worker，模型出口已有内部实现，尚未接入 worker。个人待办另用 todos 概念，与 runs 分开；记忆、日程、提醒的目标结构见第 13–15 节，尚无对应迁移。邀请只存不可直接复用的摘要、接收身份、期限及兑换记录。userId 从已验证会话解析；vaultId/conversationId/runId 查询均带所有者条件。
+邀请兑换和建库需要数据库事务及唯一约束。当前 schema 包含 accounts、invitations、vaults、sessions，以及新增的 conversations、runs、run_events；model_grants/model_reservations 已保存调用准入预留；实际 usage/费用核对仍未实现。任务表与内部持久任务服务已加入迁移，但网关尚不开放任务 API，内部控制器已连接 Docker worker，模型出口已通过单任务 Unix socket 接入内部 worker。个人待办另用 todos 概念，与 runs 分开；记忆、日程、提醒的目标结构见第 13–15 节，尚无对应迁移。邀请只存不可直接复用的摘要、接收身份、期限及兑换记录。userId 从已验证会话解析；vaultId/conversationId/runId 查询均带所有者条件。
 
 服务端布局示意（与当前 gateway 目录参数对齐；cloud-files 不启动 Pi，sessions 为后续预留）：
 
@@ -179,7 +179,17 @@ worker 仅挂载当前知识库、会话状态、只读 Pi 配置和请求；Git
 
 真实 PostgreSQL 检查覆盖竞争预留、独立请求次数、重复签发、伪造归属、重建连接池与停止/失效；真实 Pi SDK 使用原生配置，通过合成 SSE 上游完成分片工具参数、默认 write 写文件、工具结果回传和最终回答。此证据是本机协议联调，不是真实 DeepSeek 或容器出口验收。
 
-Docker worker 保持无网络，出口尚未连接执行控制器/worker。预留输出 token 不是实际账单，输入/缓存/推理费用与用户每日预算仍需计量策略。单任务网络路径、身份装配/撤销、持久磁盘硬额度、实际模型和完整公网链路未完成。详见 [模型出口说明](../app/cloud/MODEL-OUTLET.md)。
+此阶段提交时，Docker worker 保持无网络，出口尚未连接执行控制器/worker；后续连接证据见下一小节。预留输出 token 不是实际账单，输入/缓存/推理费用与用户每日预算仍需计量策略。单任务网络路径、身份装配/撤销、持久磁盘硬额度、实际模型和完整公网链路未完成。详见 [模型出口说明](../app/cloud/MODEL-OUTLET.md)。
+
+### 容器内模型链路（2026-10-21）
+
+`RunModelOutlet` 接入执行控制器，为每个任务签发唯一模型身份及私有 Unix socket，socket 在预留额度前核对精确 token 和任务归属。worker 保持 `network=none`，只读挂载该 socket；容器内桥只监听 loopback 并固定转发 completion 路径，不提供通用代理、CONNECT 或升级。只读挂载必要行为设置，不挂载源认证/模型目录；临时配置仍使用 Pi 原生格式，位于受限 tmpfs。容器与控制器当前使用相同非 root UID。镜像明确设置代码文件与目录的读取/遍历权限，避免受构建上下文 0600 权限影响。
+
+任务结束、失败、停止和恢复先关闭出口/撤销身份，再确认容器终止；数据库撤销失败仍尝试停止 worker，文件占用不提前释放。socket 清理只操作已知文件与空目录，发现未知文件则保守拒绝，不自动重新签发任务身份。
+
+实际 Docker/PostgreSQL 使用正式入口完成合成 SSE → 真实 Pi 默认 write/bash → 文件写入/结果回传。容器内检查仅有 loopback、没有源认证/模型文件或 Docker socket；另一个用户的有效 token 在当前任务 socket 被拒绝且不扣额度。流式停止取消上游、撤销授权、删除容器并释放文件占用。原启动/停止竞争、创建结果未知和宿主重启检查继续保留。测试没有调用真实 DeepSeek，不包含生产网络、控制器 SIGKILL、磁盘硬额度或完整费用验收。
+
+这是内部链路。公共网关与网页仍未开放 Agent，CLI 不启动完整调度器；任务/会话 UI、真实身份和模型联调、持久磁盘额度、部署与完整 N01–N19 仍待完成。前两小节记载阶段提交时的缺口，本小节是最新连接状态。
 
 ## 12. 四项设计的共同边界
 
@@ -296,7 +306,7 @@ manifest 含 format/version、exportId、UTC 创建时间、snapshotRevision、�
 | 身份 | Supabase Auth；接注册/恢复时采用官方 SDK 的服务端身份操作 | 保留邀请、内部账号、资料归属；当前仍是直接 password grant 适配器，未接 SDK 或完整注册流程 |
 | 应用会话 | 首期保留不透明 HttpOnly Cookie 与服务端会话摘要 | 已实现退出/停用检查；不同时新增另一套浏览器 Supabase 登录态 |
 | 任务 | 保留 PostgreSQL Runs 为唯一业务状态来源 | 已有幂等、容量和恢复状态；首期不叠加 pg-boss/Redis，不扩展成通用队列产品 |
-| 沙箱 | 首个 worker 后端选择 Docker Engine；随后评估 gVisor runtime | 内部执行控制器与无网络容器检查已实现；出口与 worker 连接、持久磁盘额度与完整隔离验收未完成 |
+| 沙箱 | 首个 worker 后端选择 Docker Engine；随后评估 gVisor runtime | 内部执行控制器与无网络容器检查已实现；出口已连接 worker，持久磁盘额度与完整隔离验收未完成 |
 | HTTPS 与部署 | Caddy + Docker Compose；网页/API 同源 | 新增可复现部署与回退配置；不是将现有 loopback 入口直接公布到公网 |
 | 构建发布 | GitHub Actions + OCI 镜像，GHCR 为优先仓库 | 已有测试 CI 与 worker 测试镜像构建；发布镜像及部署流程未实现，不自动修改仓库可见性 |
 | 版本与备份 | Git + restic，备份目标采用 S3 兼容存储，优先评估 R2 | Git 基础已存在；一致快照、独立备份、恢复演练尚未实现 |

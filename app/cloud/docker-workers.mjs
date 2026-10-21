@@ -70,7 +70,7 @@ export class DockerWorkers {
       return result;
     } catch (e) { if (e.status === 404) return null; throw e; }
   }
-  async start(claim, mayStart) {
+  async start(claim, mayStart, modelBinding) {
     return this.serial(claim.id, async () => {
       if (![claim.vaultId,claim.conversationId].every(uuid) || typeof claim.prompt !== 'string' || Buffer.byteLength(claim.prompt)>65536)
         throw new Error('Invalid claimed run');
@@ -92,8 +92,31 @@ export class DockerWorkers {
       for(const mount of [knowledge,state,pi]) {
         if(this.journalRoot===mount || this.journalRoot.startsWith(mount+path.sep) || mount.startsWith(this.journalRoot+path.sep))throw new Error('Worker and controller state must be separate');
       }
+      let model, socketPath, settingsPath;
+      if(modelBinding!==undefined) {
+        const candidate=modelBinding;
+        if(!candidate || typeof candidate.model!=='string' || !/^[A-Za-z0-9._-]{1,128}$/.test(candidate.model) ||
+          typeof candidate.token!=='string' || !/^[a-f0-9]{64}$/.test(candidate.token) || !number(candidate.maxTokens,1,1000000) ||
+          typeof candidate.socketPath!=='string' || !path.isAbsolute(candidate.socketPath) || path.basename(candidate.socketPath)!=='m.sock' ||
+          path.basename(path.dirname(candidate.socketPath))!==claim.id)throw new Error('Invalid run model binding');
+        socketPath=candidate.socketPath;
+        const socket=await fs.lstat(socketPath), parent=await fs.lstat(path.dirname(socketPath));
+        if(await fs.realpath(socketPath)!==socketPath || !socket.isSocket() || socket.uid!==this.uid || (socket.mode&0o077)!==0 ||
+          !parent.isDirectory() || parent.uid!==process.getuid() || (parent.mode&0o077)!==0)throw new Error('Unsafe model socket mount');
+        for(const mount of [knowledge,state,pi]) {
+          if(socketPath.startsWith(mount+path.sep))throw new Error('Model socket must be outside worker data');
+        }
+        model={model:candidate.model,token:candidate.token,maxTokens:candidate.maxTokens};
+        // Expose only behavior settings, never unrelated auth/models/extensions.
+        const settings=path.join(pi,'settings.json');
+        const info=await fs.lstat(settings).catch(e=>{if(e.code!=='ENOENT')throw e;return null;});
+        if(info) {
+          if(!info.isFile() || info.nlink!==1 || info.size>65536)throw new Error('Unsafe Pi settings mount');
+          settingsPath=settings;
+        }
+      }
       const request = path.join(dir,'request.json');
-      await fs.writeFile(request,JSON.stringify({prompt:claim.prompt}),{flag:'wx',mode:0o400});
+      await fs.writeFile(request,JSON.stringify({prompt:claim.prompt,...(model?{model}:{})}),{flag:'wx',mode:0o400});
       const owner=await fs.stat(request);
       if(owner.uid!==this.uid || owner.gid!==this.gid)await fs.chown(request,this.uid,this.gid);
       if (await mayStart() !== true) { await this.save(claim.id,{...record,phase:'stopped'}); return null; }
@@ -107,7 +130,9 @@ export class DockerWorkers {
           Tmpfs:{'/tmp':`rw,noexec,nosuid,nodev,size=${this.tmpMiB}m,uid=${this.uid},gid=${this.gid}`},
           Mounts:[bind(knowledge,'/knowledge'),bind(git,'/knowledge/.git',true),
             ...locks.map(name=>bind(path.join(knowledge,name),'/knowledge/'+name,true)),
-            bind(state,'/state'),bind(pi,'/pi',true),bind(request,'/run/corilo/request.json',true)] } };
+            bind(state,'/state'),
+            ...(model ? [...(settingsPath?[bind(settingsPath,'/pi/settings.json',true)]:[]),bind(socketPath,'/run/corilo/model.sock',true)] : [bind(pi,'/pi',true)]),
+            bind(request,'/run/corilo/request.json',true)] } };
       // Persist intent before issuing create. A transport failure is NOT proof that
       // Docker did not create a container; stop/recovery must reconcile the journal.
       await this.save(claim.id,{...record,phase:'creating'});

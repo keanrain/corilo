@@ -1,6 +1,6 @@
 # 内部模型出口与任务额度
 
-本模块供可信控制面调用，未接入公共网关或 Docker worker；`start:cloud` 仍不启动 Agent。出口只承载模型协议，不提供通用代理、配置管理或新工具权限框架。
+本模块供可信控制面调用，已接入内部 Docker worker 控制器，未接入公共网关；`start:cloud` 仍不启动 Agent。出口只承载模型协议，不提供通用代理、配置管理或新工具权限框架。
 
 ## 身份与额度
 
@@ -12,7 +12,7 @@
 
 ## 模型协议
 
-`startModelRelay` 只监听 loopback，接收限路径的 OpenAI 兼容 completion 请求。部署方在服务端指定模型白名单和资源上限，调用方只能使用任务授权模型。平台长期密钥由出口持有；Pi 仅持有短期任务身份。上游目的地来自可信服务配置，不来自请求；不转发客户端任意认证头、Cookie 或任意 URL，不自动跟随跳转或重试。
+`startModelRelay` 支持 loopback 或私有 Unix socket，接收限路径的 OpenAI 兼容 completion 请求。部署方在服务端指定模型白名单和资源上限，调用方只能使用任务授权模型。平台长期密钥由出口持有；Pi 仅持有短期任务身份。上游目的地来自可信服务配置，不来自请求；不转发客户端任意认证头、Cookie 或任意 URL，不自动跟随跳转或重试。
 
 Pi 继续使用原生 `models.json`、`settings.json`、`auth.json`。沿用 `deepseek` provider 身份覆盖 endpoint，保留固定 SDK 的 DeepSeek 协议适配；具体模型必须以部署时可用型号为准，依赖内置模型目录不等于供应商当前可用性验证。应通过 Pi 原生 `modelOverrides` 使模型的单次输出上限与任务额度一致，避免 SDK 默认的大上限被出口拒绝。SDK 自身的重试也逐次占用额度；出口不代为重试。不得挂载运营者自己的共享 Pi 认证目录。
 
@@ -20,6 +20,12 @@ Pi 继续使用原生 `models.json`、`settings.json`、`auth.json`。沿用 `de
 
 `npm test` 包含出口 HTTP/流式边界检查；`npm run test:cloud` 包含真实 PostgreSQL 额度检查与真实 Pi SDK 经出口执行默认文件工具的协议检查。模型响应是测试文件生成的合成 SSE，不访问真实 DeepSeek、不产生模型费用，不代表线上模型验收。测试只使用可丢弃数据库与虚构资料。
 
-当前 Docker worker 保持 `network=none`，没有模型出口连接；不得为通过测试改成 host 网络或通用可外连 bridge。下一步需要验证单任务连接路径、任务身份装配与撤销、原生 Pi 配置及会话恢复，并补齐知识库/会话硬磁盘额度。Unix socket 挂载配合容器内 loopback 转接是可评估方案，尚未实现。
+Docker worker 保持 `network=none`，经只读挂载的单个 Unix socket 连接可信模型出口，未开放 host 网络或通用可外连 bridge。`RunModelOutlet` 为每个 run 创建独立 socket，并在扣额度前核对精确任务 token；持有其他有效任务的 token 也不能通过此 socket 调用。socket 使用私有目录和 0600 权限，当前要求控制器与 worker 使用相同的非 root UID，并使用同机本地文件系统，socket 完整路径不超过 100 字节。
 
-真实供应商调用、完整费用预算、worker 到出口隔离、平台凭据轮换、账号删除/计量记录保留、部署与公网 Agent 仍未验收。出口取消上游 HTTP 请求也不保证供应商立即停止计算或退款。
+控制器 `prepare` 签发身份及建立出口，随后启动 worker；结束/错误/停止先关闭出口和撤销授权，再停止容器。数据库撤销失败时仍尝试终止容器，文件占用保持关闭，留待恢复。恢复不重新签发或重放 prompt；仅清理该任务的已知 socket 与空目录，不递归删除未知文件。
+
+worker 内固定 loopback 桥只接受 completion 路径，不允许 CONNECT、升级、任意目标或头转发。临时 Pi 原生配置写入受限 `/tmp`；只带本任务身份、模型及输出上限。只读挂载源 `settings.json`（如有），仅保留 defaultThinkingLevel、compaction.enabled、retry.enabled；不挂载原有 auth/models/扩展目录，不改变源设置。本路径不是任意 Pi 扩展/多供应商配置迁移；本机配置行为不变。平台长期密钥没有进入 worker。
+
+`npm run test:worker` 包含实际正式入口的容器模型链路；具体结果见技术设计第 11 节。供应商仍为合成 SSE。下一步还需真实模型、会话/任务网页接口、知识库与会话硬磁盘额度及部署验证。
+
+真实供应商调用、完整费用预算、更完整的执行隔离验收、平台凭据轮换、账号删除/计量记录保留、部署与公网 Agent 仍未验收。出口取消上游 HTTP 请求也不保证供应商立即停止计算或退款。

@@ -58,11 +58,11 @@ CI 使用独立 PostgreSQL 容器，见 `.github/workflows/cloud.yml`。工作�
 
 `--migrate` 同时创建 conversations、runs、run_events、model_grants、model_reservations。`runs.mjs` 提供控制面内部的会话、幂等提交、状态/事件读取、领取、心跳、停止及恢复状态管理；要求显式配置队列、并发、租约和时长，测试覆盖真实 PostgreSQL。`npm run test:cloud` 顺序运行文件/身份、任务、模型调用额度和真实 Pi/合成模型出口集成测试，共用可丢弃数据库。
 
-当前网关不开放这些任务接口，CLI 不启动调度器，也没有启用云端 AI 的参数。内部 Docker worker 控制器已连接 Runs、文件宿主持久占用和按会话隔离的状态目录，另有真实容器测试。内部模型出口与任务调用额度已有实现，但尚未连接 worker；公共任务与消息接口尚未连接；任务状态不能作为真实进程已终止的证明。运行及限制见 [worker 说明](worker/README.md)。
+当前网关不开放这些任务接口，CLI 不启动调度器，也没有启用云端 AI 的参数。内部 Docker worker 控制器已连接 Runs、文件宿主持久占用和按会话隔离的状态目录，另有真实容器测试。内部模型出口与任务调用额度已通过单任务 socket 连接 worker；公共任务与消息接口尚未连接；任务状态不能作为真实进程已终止的证明。运行及限制见 [worker 说明](worker/README.md)。
 
 ## 内部模型出口
 
-`ModelGrants` 将限任务、限模型身份及请求次数/输出 token 预留保存在 PostgreSQL；`startModelRelay` 提供有界的 DeepSeek 兼容流式协议，平台密钥只在可信出口使用。现有 CLI 不启动出口，不新增启用公网 AI 的开关。真实 Pi 默认文件工具已通过合成上游协议检查，没有调用真实 DeepSeek；完整费用计量、worker 连接与部署仍缺失。边界见 [模型出口说明](MODEL-OUTLET.md)。
+`ModelGrants` 将限任务、限模型身份及请求次数/输出 token 预留保存在 PostgreSQL；`startModelRelay` 提供有界的 DeepSeek 兼容流式协议，平台密钥只在可信出口使用。现有 CLI 不启动出口，不新增启用公网 AI 的开关。真实 Pi 默认文件工具已通过正式 Docker 入口与合成上游协议检查，没有调用真实 DeepSeek；完整费用计量、持久磁盘额度、公共任务/会话接口与部署仍缺失。边界见 [模型出口说明](MODEL-OUTLET.md)。
 
 ## 后续组件接入
 

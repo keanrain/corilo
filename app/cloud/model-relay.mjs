@@ -1,5 +1,7 @@
 import http from 'node:http';
 import { once } from 'node:events';
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
 
 class RelayError extends Error {
   constructor(status) { super('Model request unavailable'); this.status=status; }
@@ -40,7 +42,7 @@ function jsonError(res,status) {
 // Trusted, internal-only service. No browser route, user-selected upstream, retries,
 // credential discovery or worker networking is enabled by constructing this relay.
 export async function startModelRelay({grants,apiKey,allowedModels,upstreamUrl='https://api.deepseek.com/chat/completions',
-  maxRequestBytes,maxResponseBytes,maxDurationMs,maxConcurrent,checkIntervalMs=250,fetchImpl=fetch}={}) {
+  maxRequestBytes,maxResponseBytes,maxDurationMs,maxConcurrent,checkIntervalMs=250,fetchImpl=fetch,socketPath}={}) {
   if(!grants?.reserve || !grants?.assertActive || typeof apiKey!=='string' || !apiKey || /[\r\n]/.test(apiKey) ||
       !Array.isArray(allowedModels) || !allowedModels.length || allowedModels.length>32 || allowedModels.some(m=>typeof m!=='string' || !/^[a-zA-Z0-9._-]{1,128}$/.test(m))) throw new Error('Explicit relay credentials, grants and models required');
   for(const [value,min,max] of [[maxRequestBytes,1024,16777216],[maxResponseBytes,1024,16777216],[maxDurationMs,100,600000],[maxConcurrent,1,256],[checkIntervalMs,20,5000]])
@@ -49,6 +51,13 @@ export async function startModelRelay({grants,apiKey,allowedModels,upstreamUrl='
   // Alternate endpoints are trusted constructor configuration for local protocol tests.
   if(upstream.username || upstream.password || upstream.hash || upstream.search ||
       !(upstream.protocol==='https:' || upstream.protocol==='http:' && ['127.0.0.1','[::1]','localhost'].includes(upstream.hostname))) throw new Error('Unsafe model upstream');
+  if(socketPath!==undefined) {
+    if(typeof socketPath!=='string' || !path.isAbsolute(socketPath) || socketPath.includes('\0') || Buffer.byteLength(socketPath)>100)throw new Error('Invalid model socket');
+    const parent=path.dirname(socketPath), info=await fs.lstat(parent);
+    if(await fs.realpath(parent)!==parent || !info.isDirectory() || info.uid!==process.getuid() || (info.mode&0o077)!==0)throw new Error('Private canonical socket directory required');
+    const existing=await fs.lstat(socketPath).catch(e=>{if(e.code!=='ENOENT')throw e;return null;});
+    if(existing)throw new Error('Model socket already exists');
+  }
   const models=new Set(allowedModels), pending=new Set();
   let closing=false;
   const server=http.createServer(async(req,res)=> {
@@ -141,6 +150,10 @@ export async function startModelRelay({grants,apiKey,allowedModels,upstreamUrl='
     }
   });
   server.requestTimeout=maxDurationMs;server.headersTimeout=Math.min(maxDurationMs,30000);server.maxHeadersCount=32;
-  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
-  return {origin:'http://127.0.0.1:'+server.address().port,async close(){closing=true;for(const task of pending)task.abort();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}};
+  server.on('connect',(_req,socket)=>socket.destroy());
+  server.on('upgrade',(_req,socket)=>socket.destroy());
+  await new Promise((resolve,reject)=>{server.once('error',reject);if(socketPath)server.listen(socketPath,resolve);else server.listen(0,'127.0.0.1',resolve);});
+  try { if(socketPath)await fs.chmod(socketPath,0o600); }
+  catch(e) { server.closeAllConnections();await new Promise(resolve=>server.close(resolve));throw e; }
+  return {socketPath,origin:socketPath?null:'http://127.0.0.1:'+server.address().port,async close(){closing=true;for(const task of pending)task.abort();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}};
 }

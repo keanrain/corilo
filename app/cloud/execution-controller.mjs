@@ -6,9 +6,10 @@ import { spawn } from 'node:child_process';
 // Trusted single-host controller. Not instantiated by the public cloud gateway yet.
 // hostFor must resolve the claimed vault from the control DB, never browser paths.
 export class ExecutionController {
-  constructor({ runs, workers, hostFor, pollMs = 250 }) {
+  constructor({ runs, workers, hostFor, modelOutlet = null, pollMs = 250 }) {
     if (!Number.isInteger(pollMs) || pollMs < 20 || pollMs > 5000) throw new Error('Invalid controller poll interval');
-    Object.assign(this,{runs,workers,hostFor,pollMs}); this.closed=false; this.running=new Set();
+    if (modelOutlet && ['prepare','revoke','close'].some(method=>typeof modelOutlet[method]!=='function'))throw new Error('Invalid model outlet');
+    Object.assign(this,{runs,workers,hostFor,modelOutlet,pollMs}); this.closed=false; this.running=new Set();
   }
   async init() {
     if (this.lock) throw new Error('Controller already initialized');
@@ -35,7 +36,8 @@ export class ExecutionController {
     let failure=false;
     const mayStart=async()=> !this.closed && (await this.runs.heartbeat(claim.id,claim.token)).continue;
     try {
-      await this.workers.start(claim,mayStart);
+      const model = this.modelOutlet ? await this.modelOutlet.prepare(claim) : undefined;
+      await this.workers.start(claim,mayStart,model);
       while (true) {
         if (!await mayStart()) break;
         const state=await this.workers.status(claim.id);
@@ -45,11 +47,20 @@ export class ExecutionController {
     } catch { failure=true; }
     // A failed Docker request has an unknown outcome. Do not release the DB slot
     // or the persistent file gate until stop can prove there is no late worker.
-    if (await this.workers.stop(claim.id) !== true) throw new Error('Worker termination unconfirmed; vault remains held');
+    if (await this.stopRun(claim.id) !== true) throw new Error('Worker termination unconfirmed; vault remains held');
     await host.checkpointRun(claim.id);
     const result=await this.runs.finish(claim.id,claim.token,failure?'failed':this.closed?'stopped':'completed');
     await host.releaseRun(claim.id);
     return result;
+  }
+  async stopRun(id) {
+    let revocationError;
+    try { await this.modelOutlet?.revoke(id); } catch (error) { revocationError=error; }
+    // Losing the database must not leave a model-enabled worker alive. Still
+    // attempt termination, but retain the gate if revocation was not confirmed.
+    const stopped=await this.workers.stop(id);
+    if(revocationError)throw new Error('Model revocation unconfirmed; vault remains held',{cause:revocationError});
+    return stopped;
   }
   // Startup recovery only: old controller must have released the process lock.
   // No prompt replay. Leases that are still live remain occupied until expiration.
@@ -58,10 +69,13 @@ export class ExecutionController {
     const results=[];
     for(const run of await this.runs.recoveryCandidates()) {
       const row=(await this.runs.pool.query('SELECT owner_id,vault_id,conversation_id FROM corilo_private.runs WHERE id=$1',[run.id])).rows[0];
-      const host=await this.hostFor({id:run.id,ownerId:row.owner_id,vaultId:row.vault_id,conversationId:row.conversation_id});
-      await host.beginRun(run.id);
+      let host;
+      try {
+        host=await this.hostFor({id:run.id,ownerId:row.owner_id,vaultId:row.vault_id,conversationId:row.conversation_id});
+        await host.beginRun(run.id);
+      } catch(error) { await this.stopRun(run.id); throw error; }
       const result=await this.runs.reconcile(run.id,async()=> {
-        if (await this.workers.stop(run.id)!==true)return false;
+        if (await this.stopRun(run.id)!==true)return false;
         await host.checkpointRun(run.id); return true;
       });
       if(result) { await host.releaseRun(run.id); results.push(result); }
@@ -72,9 +86,9 @@ export class ExecutionController {
       if(!/^[a-f0-9-]{36}$/.test(id))continue;
       const row=(await this.runs.pool.query("SELECT * FROM corilo_private.runs WHERE id=$1 AND state IN ('completed','failed','stopped','interrupted')",[id])).rows[0];
       if(!row)continue;
+      if(await this.stopRun(id)!==true)throw new Error('Terminal worker termination unconfirmed');
       const host=await this.hostFor({id,ownerId:row.owner_id,vaultId:row.vault_id,conversationId:row.conversation_id});
       if(host.activeRunId()!==id)continue;
-      if(await this.workers.stop(id)!==true)throw new Error('Terminal worker termination unconfirmed');
       await host.checkpointRun(id);await host.releaseRun(id);results.push({id,state:row.state});
     }
     return results;
@@ -82,6 +96,7 @@ export class ExecutionController {
   async close() {
     this.closed=true;
     await Promise.allSettled([...this.running]);
-    if(this.lock) { await this.lock.close(); this.lock=null; }
+    try { await this.modelOutlet?.close(); }
+    finally { if(this.lock) { await this.lock.close(); this.lock=null; } }
   }
 }
