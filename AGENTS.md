@@ -4,7 +4,7 @@
 
 用户要求简单、一体化、直接开发正式应用。模型认证与选择直接复用 Pi 标准配置（含 PI_CODING_AGENT_DIR），不另做用户模型配置表单或强制覆盖已有模型。本机模式复用原配置、不复制认证；云端使用各用户执行环境的 Pi 原生配置，由服务端管理，不能挂载运营者本机的共享认证目录。不新增替代 demo，不为 Pi 另做权限、逐文件审批、事务写入或模型管理框架；不恢复旧 Today/Bot 原型；记忆、待办、一次性提醒按最新规格分阶段实现，通知不得以模型承诺代替可靠调度。新增云端账户、跨设备访问与用户隔离按 v0.15 实现；隔离、额度和平台凭据保护属于服务端边界，不是另造 Pi 工具权限框架。系统提示词约束行为，不把 cwd 宣称为沙箱。产品规则仅在 docs/PRODUCT-SPEC.md 维护，其他文档不得创建平行 PRD。
 
-当前正式代码位于 app/：完整 Files.md 页面以原样 vendor＋适配层接入磁盘宿主，Pi 默认 SDK 和本地 Git 历史、GitHub 同步与冲突 UI 已接入（临时远端/Linux 检查）；真实 GitHub 凭据联调、分发安装包与 APK 尚未完成。当前优先云端改造，app/host/ 保留本机宿主；不能只改监听地址就宣称可公网多用户部署。app/cloud/ 已实现首条邀请/会话/独立文件服务链路，真实 PostgreSQL/Chromium 与合成身份检查通过；真实 Supabase、执行隔离、持久任务和额度未完成。android/ 暂停并保留，仅手动 CI；禁止用缺失 runtime 的空壳 APK 冒充可用版本。prototype/ Python 原型继续保留，不作为正式入口扩展。p0/ 的片段、候选和历史日志不代表正式实现。docs/upstream-baseline.json 是调查基线；实际依赖锁为 package-lock.json，完整 Files.md 来源记录在 app/vendor/filesmd/SOURCE.json。只有真实运行后才写通过，区分函数、浏览器、模型、桌面及 Android 真机证据。
+当前正式代码位于 app/：完整 Files.md 页面以原样 vendor＋适配层接入磁盘宿主，Pi 默认 SDK 和本地 Git 历史、GitHub 同步与冲突 UI 已接入（临时远端/Linux 检查）；真实 GitHub 凭据联调、分发安装包与 APK 尚未完成。当前优先云端改造，app/host/ 保留本机宿主；不能只改监听地址就宣称可公网多用户部署。app/cloud/ 已实现首条邀请/会话/独立文件服务链路，真实 PostgreSQL/Chromium 与合成身份检查通过；已有内部持久任务表与状态服务，尚未连接 worker、文件写入协调或网关任务接口；真实 Supabase、执行隔离、模型出口和执行额度未完成。android/ 暂停并保留，仅手动 CI；禁止用缺失 runtime 的空壳 APK 冒充可用版本。prototype/ Python 原型继续保留，不作为正式入口扩展。p0/ 的片段、候选和历史日志不代表正式实现。docs/upstream-baseline.json 是调查基线；实际依赖锁为 package-lock.json，完整 Files.md 来源记录在 app/vendor/filesmd/SOURCE.json。只有真实运行后才写通过，区分函数、浏览器、模型、桌面及 Android 真机证据。
 
 使用现有 checkout；用户未要求时不创建 worktree。保留现有改动、历史、许可与兼容标识，包括 .personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/、库识别和会话键，不因品牌替换迁移用户数据。
 
