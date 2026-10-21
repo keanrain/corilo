@@ -30,13 +30,14 @@ npm run start:cloud
 
 网关只监听 `127.0.0.1`，由同机 HTTPS 反向代理接入，代理必须保留正确 Host，且不得缓存页面、API、登录响应和下载。网关严格检查配置的 Host、Origin，以及写请求来源；不相信客户端传来的用户 ID、内部宿主 token 或 X-Forwarded-For。生产会话使用 `__Host-`、HttpOnly、Secure、SameSite=Strict cookie，24 小时有效；退出撤销当前会话，停用账号在下一请求生效。HTTP 仅允许 `127.0.0.1` 开发用途，未增加生产不安全 cookie 模式。
 
-每个账号创建的知识库由数据库生成 UUID 标识，正文与状态分目录保存。底层复用本机文件宿主，网关内部注入宿主凭证，不把凭证交给浏览器。文件宿主在云端模式不实例化 Pi，不读取运营者的 Pi 密钥或调用 Git 同步。每实例当前最多保留 20 个文件宿主，直到正常退出；满额返回明确错误。不是多节点或自动扩容实现。
+每个账号创建的知识库由服务端生成 UUID 并在数据库中绑定归属，正文与状态分目录保存。底层复用本机文件宿主，网关内部注入宿主凭证，不把凭证交给浏览器。文件宿主在云端模式不实例化 Pi，不读取运营者的 Pi 密钥或调用 Git 同步。每实例当前最多保留 20 个文件宿主，直到正常退出；满额返回明确错误。不是多节点或自动扩容实现。
 
 ## 检查
 
 ```bash
 # 指向可丢弃的测试数据库；真实密码从环境注入。
-CORILO_TEST_DATABASE_URL="$DATABASE_URL" npm run test:cloud
+# 先单独配置 CORILO_TEST_DATABASE_URL，绝不要从生产 DATABASE_URL 直接复用。
+npm run test:cloud
 ```
 
 不要将上例指向生产数据库：测试会创建虚构账号和邀请。测试需要 Python Playwright/Chromium；安装方式见根 README。检查使用真实 PostgreSQL、真实文件宿主、真实 Chromium 登录/原话保存/下载/退出与第二设备刷新；只有身份提供商使用合成响应，另测试 Supabase adapter 的响应校验。测试替身只在测试文件中注入，正式 CLI 不提供绕过身份开关。

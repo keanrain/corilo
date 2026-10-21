@@ -2,9 +2,9 @@
 
 先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md。当前依据 v0.14（2026-10-21）：云端个人记忆与行动助手，简单使用、资料可带走；完整 Files.md 页面/编辑器、服务端 Pi 默认能力、初始 DeepSeek；邀请制小范围使用，每人独立知识库。桌面/Android/iPhone 使用响应式网页。暂停本地启动器和 Android 集成 APK；GitHub 不再是客户端同步或使用前提。
 
-用户要求简单、一体化、直接开发正式应用。模型认证与选择直接复用 Pi 标准配置（含 PI_CODING_AGENT_DIR），不另做配置表单、不复制模型配置或强制选模型。不新增替代 demo，不为 Pi 另做权限、逐文件审批、事务写入或模型管理框架；不恢复旧 Today/Bot 原型；记忆、待办、一次性提醒按最新规格分阶段实现，通知不得以模型承诺代替可靠调度。新增云端账户、跨设备访问与用户隔离按 v0.14 实现；隔离、额度和平台凭据保护属于服务端边界，不是另造 Pi 工具权限框架。系统提示词约束行为，不把 cwd 宣称为沙箱。产品规则仅在 docs/PRODUCT-SPEC.md 维护，其他文档不得创建平行 PRD。
+用户要求简单、一体化、直接开发正式应用。模型认证与选择直接复用 Pi 标准配置（含 PI_CODING_AGENT_DIR），不另做用户模型配置表单或强制覆盖已有模型。本机模式复用原配置、不复制认证；云端使用各用户执行环境的 Pi 原生配置，由服务端管理，不能挂载运营者本机的共享认证目录。不新增替代 demo，不为 Pi 另做权限、逐文件审批、事务写入或模型管理框架；不恢复旧 Today/Bot 原型；记忆、待办、一次性提醒按最新规格分阶段实现，通知不得以模型承诺代替可靠调度。新增云端账户、跨设备访问与用户隔离按 v0.14 实现；隔离、额度和平台凭据保护属于服务端边界，不是另造 Pi 工具权限框架。系统提示词约束行为，不把 cwd 宣称为沙箱。产品规则仅在 docs/PRODUCT-SPEC.md 维护，其他文档不得创建平行 PRD。
 
-当前正式代码位于 app/：完整 Files.md 页面以原样 vendor＋适配层接入磁盘宿主，Pi 默认 SDK 和本地 Git 历史、GitHub 同步与冲突 UI 已接入（临时远端/Linux 检查）；真实 GitHub 凭据联调、分发安装包与 APK 尚未完成。当前优先云端改造，但现有 app/ 仍是本机宿主，不能只改监听地址就宣称可公网多用户部署。app/cloud/ 已实现首条邀请/会话/独立文件服务链路，真实 PostgreSQL/Chromium 与合成身份检查通过；真实 Supabase、执行隔离、持久任务和额度未完成。android/ 暂停并保留，仅手动 CI；禁止用缺失 runtime 的空壳 APK 冒充可用版本。prototype/ Python 原型继续保留，不作为正式入口扩展。p0/ 的片段、候选和历史日志不代表正式实现。docs/upstream-baseline.json 是调查基线；实际依赖锁为 package-lock.json，完整 Files.md 来源记录在 app/vendor/filesmd/SOURCE.json。只有真实运行后才写通过，区分函数、浏览器、模型、桌面及 Android 真机证据。
+当前正式代码位于 app/：完整 Files.md 页面以原样 vendor＋适配层接入磁盘宿主，Pi 默认 SDK 和本地 Git 历史、GitHub 同步与冲突 UI 已接入（临时远端/Linux 检查）；真实 GitHub 凭据联调、分发安装包与 APK 尚未完成。当前优先云端改造，app/host/ 保留本机宿主；不能只改监听地址就宣称可公网多用户部署。app/cloud/ 已实现首条邀请/会话/独立文件服务链路，真实 PostgreSQL/Chromium 与合成身份检查通过；真实 Supabase、执行隔离、持久任务和额度未完成。android/ 暂停并保留，仅手动 CI；禁止用缺失 runtime 的空壳 APK 冒充可用版本。prototype/ Python 原型继续保留，不作为正式入口扩展。p0/ 的片段、候选和历史日志不代表正式实现。docs/upstream-baseline.json 是调查基线；实际依赖锁为 package-lock.json，完整 Files.md 来源记录在 app/vendor/filesmd/SOURCE.json。只有真实运行后才写通过，区分函数、浏览器、模型、桌面及 Android 真机证据。
 
 使用现有 checkout；用户未要求时不创建 worktree。保留现有改动、历史、许可与兼容标识，包括 .personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/、库识别和会话键，不因品牌替换迁移用户数据。
 
@@ -17,3 +17,5 @@
 云端业务验收使用 N01–N19，旧 C 系列与本地测试不替代云端验收。正式产品规则只在 PRODUCT-SPEC.md 更新，其他文件引用或解释实现。先完成邀请登录与云端文件纵向链路，再接隔离执行的 Pi；不把尚未实现的云端模式写成可运行命令。
 
 云端改动运行 `npm run test:cloud`，必须使用可丢弃 PostgreSQL 数据库（CORILO_TEST_DATABASE_URL），不可指向生产库。正式 CLI 不允许测试身份绕过。云端文件模式在执行隔离完成前禁止开放 Agent；账户文件路由隔离不等于 shell 隔离。
+
+文档对齐：PRODUCT-SPEC 第 0 节区分 Agent run、用户 todo、日程 event 与 reminder，第 8 节集中待定决策。技术设计第 8 节是阶段计划、第 11 节是当前证据，第 9/10 节是历史快照，不覆盖现状。不得把提醒渠道、自动记忆策略、自托管交付日期或未设计的数据桥接方案写成用户已确认选择。
