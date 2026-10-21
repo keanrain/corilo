@@ -23,7 +23,7 @@ def main():
                 options={'headless':True}
                 if shutil.which('chromium'):options['executable_path']=shutil.which('chromium')
                 browser=p.chromium.launch(**options); page=browser.new_page()
-                page.goto(url); page.wait_for_function('() => coriloReady')
+                page.goto(url); page.wait_for_function('() => typeof coriloReady !== "undefined" && coriloReady')
                 page.evaluate('() => clearInterval(window.saver)')
                 failures=[]
                 page.evaluate("() => openFile('/source.md')")

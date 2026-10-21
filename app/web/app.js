@@ -17,11 +17,108 @@ bar.innerHTML = '<strong>Corilo 可里</strong><button id="corilo-toggle">Agent 
 document.body.appendChild(bar);
 const panel = document.createElement('section'); panel.id = 'corilo-agent';
 panel.innerHTML = `<strong>知识库对话</strong><small id="corilo-model">Pi 默认工具 · 在线模型</small>
+<div id="corilo-conversations" hidden><label for="corilo-conversation-select">已保存对话</label><select id="corilo-conversation-select" aria-label="已保存对话"></select><button id="corilo-conversation-more" hidden>更早的对话</button><small id="corilo-conversation-status" role="status"></small></div>
 <div id="corilo-messages"></div><div id="corilo-results"></div><div id="corilo-error" role="alert"></div><button id="corilo-save-draft" hidden>另存当前草稿</button><small id="corilo-activity"></small>
 <textarea id="corilo-input" placeholder="向知识库提问，或说明要整理、保存的内容"></textarea>
 <div><button id="corilo-send">发送</button> <button id="corilo-capture">仅保存原话</button> <button id="corilo-stop" disabled>停止</button></div>`;
 document.body.appendChild(panel);
 const $c = id => document.getElementById(id);
+// Cloud history is read-only. Selection and transcripts stay in this page, never across accounts.
+let coriloConversationId = '', coriloConversationRun = null, coriloConversationVersion = 0;
+let coriloConversationSignature = '', coriloConversationNext = null, coriloConversationStopping = '';
+let coriloConversationListAt = 0, coriloConversationDetailAt = 0, coriloConversationPolling = false;
+let coriloConversationOlderLoaded = false;
+const coriloConversationItems = new Map();
+const coriloRunLabels = {queued:'等待执行',running:'Agent 正在运行…',stopping:'正在停止，请稍候…',stopped:'已停止',completed:'本轮已结束',failed:'本轮失败',interrupted:'任务已中断'};
+function coriloCloudRunControls() {
+    if (!coriloCloud) return;
+    const run = coriloConversationRun;
+    $c('corilo-stop').disabled = !run || !['queued','running'].includes(run.state) || !!coriloConversationStopping;
+    $c('corilo-activity').textContent = run ? coriloRunLabels[run.state] || '状态待确认' : '';
+}
+function coriloSelectConversation(id) {
+    coriloConversationId = id; coriloConversationVersion++;
+    coriloConversationRun = null; coriloConversationSignature = ''; coriloConversationDetailAt = 0;
+    $c('corilo-messages').replaceChildren();
+    $c('corilo-conversation-status').textContent = id ? '正在读取对话…' : '暂无已保存对话';
+    coriloCloudRunControls();
+}
+function coriloConversationOptions() {
+    const select = $c('corilo-conversation-select');
+    const previous = select.value;
+    const items = [...coriloConversationItems.values()].sort((a,b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    const signature = JSON.stringify(items.map(item => [item.id,item.createdAt,item.lastRun?.state]));
+    if (select.dataset.signature === signature) return;
+    select.dataset.signature = signature; select.replaceChildren();
+    for (const item of items) {
+        const option = document.createElement('option'); option.value = item.id;
+        const date = new Date(item.createdAt);
+        option.textContent = `${Number.isNaN(date.getTime()) ? '已保存对话' : date.toLocaleString()} · ${coriloRunLabels[item.lastRun?.state] || '无任务'}`;
+        select.append(option);
+    }
+    if (!coriloConversationId && items.length) coriloSelectConversation(items[0].id);
+    select.value = coriloConversationId || previous; select.disabled = !items.length;
+}
+async function coriloLoadConversationList(cursor = null) {
+    coriloConversationListAt = Date.now();
+    const result = await coriloJSON('/api/conversations' + (cursor ? '?before='+encodeURIComponent(cursor) : ''));
+    for (const item of (result.items || []).slice(0,100)) coriloConversationItems.set(item.id,item);
+    // Refreshing the first page must not reset pagination after older pages were loaded.
+    if (cursor || !coriloConversationOlderLoaded) coriloConversationNext = result.nextCursor || null;
+    if (cursor) coriloConversationOlderLoaded = true;
+    coriloConversationListAt = Date.now(); coriloConversationOptions();
+    $c('corilo-conversation-more').hidden = !coriloConversationNext;
+    if (!coriloConversationId) $c('corilo-conversation-status').textContent = '暂无已保存对话';
+}
+async function coriloLoadConversation() {
+    const id = coriloConversationId, version = coriloConversationVersion;
+    if (!id) return;
+    coriloConversationDetailAt = Date.now();
+    const detail = await coriloJSON('/api/conversations/'+encodeURIComponent(id));
+    if (id !== coriloConversationId || version !== coriloConversationVersion) return;
+    coriloConversationDetailAt = Date.now();
+    const runs = [...(detail.runs || [])].sort((a,b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    coriloConversationRun = runs.find(run => ['queued','running','stopping'].includes(run.state)) || runs[0] || null;
+    coriloCloudRunControls();
+    const notices = {ready:'已保存的对话记录',running:'任务执行中，结束后更新已保存对话',empty:'此对话暂无消息',unavailable:'对话记录暂不可用，任务状态仍可查看'};
+    $c('corilo-conversation-status').textContent = notices[detail.messagesStatus] || '对话记录暂不可用';
+    // Keep a previously loaded transcript during a running task or a temporary read failure.
+    if (!['ready','empty'].includes(detail.messagesStatus)) return;
+    const messages = (detail.messages || []).slice(-500).map(message => ({role:message.role,text:String(message.text || '')}));
+    if ((detail.messages || []).length > 500) $c('corilo-conversation-status').textContent = '仅显示最近 500 条已保存消息';
+    const signature = JSON.stringify([id,messages]);
+    if (signature === coriloConversationSignature) return;
+    const container = $c('corilo-messages');
+    const follow = !coriloConversationSignature || container.scrollHeight-container.scrollTop-container.clientHeight < 48;
+    const scrollTop = container.scrollTop;
+    coriloConversationSignature = signature; container.replaceChildren();
+    for (const message of messages) {
+        const article = document.createElement('article');
+        article.textContent = `${message.role === 'user' ? '你' : 'Agent'}\n${message.text}`;
+        container.append(article);
+    }
+    container.scrollTop = follow ? container.scrollHeight : scrollTop;
+}
+async function coriloPollConversations(force = false) {
+    if (!coriloCloud || coriloConversationPolling) return;
+    coriloConversationPolling = true;
+    try {
+        if (force || Date.now()-coriloConversationListAt > 5000) await coriloLoadConversationList();
+        if (force || Date.now()-coriloConversationDetailAt > 2000) await coriloLoadConversation();
+    } catch (_) {
+        $c('corilo-conversation-status').textContent = '对话读取失败，将自动重试；草稿已保留';
+    } finally { coriloConversationPolling = false; }
+}
+$c('corilo-conversation-select').onchange = () => {
+    coriloSelectConversation($c('corilo-conversation-select').value);
+    coriloLoadConversation().catch(() => { $c('corilo-conversation-status').textContent = '对话读取失败，将自动重试；草稿已保留'; });
+};
+$c('corilo-conversation-more').onclick = async () => {
+    const button = $c('corilo-conversation-more'); button.disabled = true;
+    try { if (coriloConversationNext) await coriloLoadConversationList(coriloConversationNext); }
+    catch (_) { $c('corilo-conversation-status').textContent = '更早的对话读取失败，请重试'; }
+    finally { button.disabled = false; }
+};
 $c('corilo-toggle').onclick = () => panel.classList.toggle('open');
 // The old Files.md chat navigation now opens the Pi conversation.
 openChat = async () => { panel.classList.add('open'); $c('corilo-input').focus(); };
@@ -127,12 +224,13 @@ async function coriloPoll() {
     document.body.classList.toggle('corilo-busy', coriloBusy || coriloSubmitting);
     for (const cm of [editor, editor2]) cm?.setOption('readOnly', coriloBusy || coriloSubmitting || coriloNavigating || !!coriloReloading);
     $c('corilo-send').disabled = !coriloAgentEnabled || coriloBusy || coriloSubmitting; $c('corilo-capture').disabled = coriloBusy || coriloSubmitting;
-    $c('corilo-stop').disabled = !state.busy;
+    $c('corilo-conversations').hidden = !coriloCloud;
+    if (!coriloCloud) $c('corilo-stop').disabled = !state.busy;
     $c('corilo-model').textContent = !coriloAgentEnabled ? '云端 AI 尚未开放 · 可保存原话' : state.model || '尚未选择模型 · 可先保存原话';
     $c('corilo-activity').textContent = state.syncing ? '正在同步文件…' : state.busy ? state.activity || 'Agent 正在运行…' : ({completed:'本轮已结束',failed:'本轮失败',stopped:'已停止'}[state.outcome] || '');
     if (state.error) $c('corilo-error').textContent = state.error;
     const signature = JSON.stringify([state.messages, state.liveText]);
-    if (signature !== coriloMessagesSignature) {
+    if (!coriloCloud && signature !== coriloMessagesSignature) {
         coriloMessagesSignature = signature; $c('corilo-messages').replaceChildren();
         for (const message of [...state.messages, ...(state.liveText ? [{role:'assistant',text:state.liveText}] : [])]) {
             const item = document.createElement('article'); item.textContent = `${message.role === 'user' ? '你' : 'Agent'}\n${message.text}${message.error ? '\n'+message.error : ''}`;
@@ -140,6 +238,7 @@ async function coriloPoll() {
         }
         $c('corilo-messages').scrollTop = $c('corilo-messages').scrollHeight;
     }
+    if (coriloCloud) { coriloCloudRunControls(); void coriloPollConversations(); }
     if (state.revision !== coriloLastRevision) {
         coriloLastRevision = state.revision;
         $c('corilo-results').replaceChildren();
@@ -164,7 +263,7 @@ function coriloUpdateInputLock() {
     $c('corilo-capture').disabled = coriloBusy || coriloSubmitting;
 }
 $c('corilo-send').onclick = async () => {
-    if (coriloBusy || coriloSubmitting) return;
+    if (!coriloAgentEnabled || coriloBusy || coriloSubmitting) return;
     const text = $c('corilo-input').value;
     if (!text.trim()) return;
     coriloSubmitting = true; coriloUpdateInputLock();
@@ -188,7 +287,22 @@ $c('corilo-capture').onclick = async () => {
         $c('corilo-input').value = ''; await coriloReload(); await openFile('/'+result.path);
     } catch (e) { coriloError(e); }
 };
-$c('corilo-stop').onclick = () => coriloJSON('/api/agent/stop', {}).then(coriloPoll).catch(coriloError);
+$c('corilo-stop').onclick = async () => {
+    if (!coriloCloud) return coriloJSON('/api/agent/stop', {}).then(coriloPoll).catch(coriloError);
+    const run = coriloConversationRun, conversation = coriloConversationId;
+    if (!run || !['queued','running'].includes(run.state) || coriloConversationStopping) return;
+    coriloConversationStopping = run.id; coriloCloudRunControls();
+    try {
+        const stopped = await coriloJSON('/api/runs/'+encodeURIComponent(run.id)+'/stop', {});
+        if (conversation === coriloConversationId && coriloConversationRun?.id === run.id) {
+            coriloConversationVersion++; // Ignore detail responses started before the stop was confirmed.
+            coriloConversationRun = stopped;
+        }
+        coriloConversationDetailAt = 0;
+    } catch (_) {
+        $c('corilo-conversation-status').textContent = '停止请求未确认，请查看最新状态后重试';
+    } finally { coriloConversationStopping = ''; coriloCloudRunControls(); }
+};
 $c('corilo-save-draft').onclick = async () => {
     try {
         const cm = [currentEditor, editor, editor2].find(candidate => candidate?.path && !candidate.isClean());

@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { randomUUID, createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { Accounts, SupabaseIdentity } from '../cloud/accounts.mjs';
+import path from 'node:path';
+import { Runs } from '../cloud/runs.mjs';
+import { CURRENT_SESSION_VERSION } from '@earendil-works/pi-coding-agent';
 import { startCloud } from '../cloud/gateway.mjs';
 if (!process.env.CORILO_TEST_DATABASE_URL) throw new Error('CORILO_TEST_DATABASE_URL must point to a disposable PostgreSQL database');
 const hash = s => createHash('sha256').update(s).digest('hex');
@@ -76,6 +79,27 @@ test('cloud invitation, persistence, authorization, files and real browser flow'
   assert.equal((await request('/api/sync/run',a,{})).status,503);
   const state=await (await request('/api/state',a)).json();
   assert.equal(state.vault,'我的知识库'); assert.equal(state.capabilities.agent,false);
+  // The public observation API never accepts a browser-selected owner or submits work.
+  const runs = new Runs(accounts.pool, { maxRunning: 1, maxQueued: 2, leaseSeconds: 30, maxRunSeconds: 120 });
+  const conversation = await runs.conversation(aRecord.id);
+  const task = await runs.submit(aRecord.id, { conversationId: conversation, key: 'observe', prompt: 'private prompt' });
+  assert.equal((await request('/api/conversations')).status,401);
+  assert.equal((await request('/api/conversations',a,{})).status,404);
+  assert.equal((await request('/api/runs',a,{})).status,404);
+  assert.equal((await request('/api/conversations?owner='+aRecord.id,b)).status,400);
+  assert.equal((await request('/api/conversations?limit=1&limit=2',a)).status,400);
+  assert.deepEqual((await (await request('/api/conversations',b)).json()).items,[]);
+  assert.equal((await request('/api/conversations/'+conversation,b)).status,404);
+  assert.equal((await request('/api/runs/'+task.id+'/stop',b,{})).status,404);
+  assert.equal((await fetch(cloud.address+'/api/runs/'+task.id+'/stop',{method:'POST',headers:{Cookie:`__Host-corilo-session=${a}`}})).status,403);
+  const detail = await (await request('/api/conversations/'+conversation,a)).json();
+  assert.equal(detail.messagesStatus,'running'); assert.equal(detail.runs[0].state,'queued');
+  assert.ok(!JSON.stringify(detail).includes('private prompt'));
+  const claimed = await runs.claim(); assert.equal(claimed.id,task.id);
+  assert.equal((await (await request('/api/runs/'+task.id+'/stop',a,{})).json()).state,'stopping');
+  assert.equal((await (await request('/api/conversations/'+conversation,a2)).json()).runs[0].state,'stopping');
+  await runs.reconcile(task.id,async()=>true); // No worker is created in this API fixture.
+  assert.equal((await (await request('/api/runs/'+task.id+'/stop',a,{})).json()).state,'stopped');
   const html=await (await request('/',a)).text(); assert.ok(!html.includes('/corilo/sync.js'));
   assert.equal((await fetch(cloud.address+'/api/capture',{method:'POST',headers:{Cookie:`__Host-corilo-session=${a}`,Origin:'https://evil.invalid'},body:'{}'})).status,403);
   assert.equal((await fetch(cloud.address+'/auth/logout',{method:'POST',headers:{Cookie:`__Host-corilo-session=${a}`}})).status,403);
@@ -90,10 +114,22 @@ test('cloud invitation, persistence, authorization, files and real browser flow'
   // Restart both the gateway and its vault hosts: database session and disk files survive.
   await cloud.close(); cloud=await startCloud({accounts,identity,dataRoot:root,publicOrigin:'http://127.0.0.1:0'});
   assert.equal(await (await request('/api/fs/read?path='+encodeURIComponent(filename),a2)).text(),'new content');
+  // Synthetic native Pi transcript, rendered by the real browser on two devices.
+  const sessionDir=path.join(root,aRecord.vault_id,'state','conversations',conversation,'sessions');
+  await mkdir(sessionDir,{recursive:true});
+  await writeFile(path.join(sessionDir,'fixture.jsonl'),[
+    {type:'session',version:CURRENT_SESSION_VERSION,id:randomUUID(),timestamp:new Date().toISOString(),cwd:'/knowledge'},
+    {type:'message',id:'user',parentId:null,message:{role:'user',content:'Remember <img src=x onerror="window.historyUnsafe=true">'}},
+    {type:'message',id:'assistant',parentId:'user',message:{role:'assistant',content:[{type:'text',text:'Saved synthetic conversation'}]}}
+  ].map(x=>JSON.stringify(x)).join('\n')+'\n');
+  for (let i=0;i<26;i++) await runs.conversation(aRecord.id);
+  const queuedConversation=await runs.conversation(aRecord.id);
+  const queuedTask=await runs.submit(aRecord.id,{conversationId:queuedConversation,key:'browser-stop',prompt:'do not execute'});
   // Actual browser login/edit/export/logout. Identity adapter alone is synthetic.
-  const result=await promisify(execFile)('python3',['app/tests/browser_cloud.py'],{env:{...process.env,CORILO_TEST_CLOUD_ORIGIN:cloud.address,CORILO_TEST_EMAIL:alice},timeout:60000});
+  const result=await promisify(execFile)('python3',['app/tests/browser_cloud.py'],{env:{...process.env,CORILO_TEST_CLOUD_ORIGIN:cloud.address,CORILO_TEST_EMAIL:alice,CORILO_TEST_CONVERSATION:conversation,CORILO_TEST_QUEUED_CONVERSATION:queuedConversation},timeout:60000});
   assert.match(result.stdout,/Cloud browser checks passed/);
   console.log(result.stdout.trim());
+  assert.equal((await runs.get(aRecord.id,queuedTask.id)).state,'stopped');
 });
 
 test('Supabase identity adapter accepts only confirmed matching provider identities', async t => {

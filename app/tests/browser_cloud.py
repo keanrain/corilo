@@ -21,6 +21,23 @@ with sync_playwright() as p:
     page.wait_for_function('() => typeof coriloReady !== "undefined" && coriloReady')
     assert page.locator('#corilo-send').is_disabled()
     assert page.locator('#corilo-sync-toggle').count()==0
+    history=os.environ['CORILO_TEST_CONVERSATION']
+    queued=os.environ['CORILO_TEST_QUEUED_CONVERSATION']
+    page.wait_for_function('id => !!document.querySelector(`#corilo-conversation-select option[value="${id}"]`)',arg=queued)
+    page.locator('#corilo-conversation-select').select_option(queued)
+    page.wait_for_function('() => !document.querySelector("#corilo-stop").disabled')
+    page.locator('#corilo-stop').click()
+    page.wait_for_function('() => document.querySelector("#corilo-stop").disabled')
+    page.locator('#corilo-conversation-more').click()
+    page.wait_for_function('id => !!document.querySelector(`#corilo-conversation-select option[value="${id}"]`)',arg=history)
+    page.locator('#corilo-conversation-select').select_option(history)
+    page.wait_for_function('() => document.querySelector("#corilo-messages").textContent.includes("Saved synthetic conversation")')
+    assert page.locator('#corilo-messages img').count()==0
+    assert page.evaluate('() => window.historyUnsafe !== true')
+    page.locator('#corilo-input').fill('Preserved draft')
+    page.wait_for_timeout(1800)
+    assert page.locator('#corilo-input').input_value()=='Preserved draft'
+    assert page.locator('#corilo-send').is_disabled()
     page.locator('#corilo-input').fill('Cloud browser note')
     page.locator('#corilo-capture').click()
     page.wait_for_function('() => editor.getValue().includes("Cloud browser note")')
@@ -38,6 +55,11 @@ with sync_playwright() as p:
     other.locator('[name=password]').fill('synthetic-password')
     other.locator('button').click()
     other.wait_for_function('() => typeof coriloReady !== "undefined" && coriloReady')
+    other.locator('#corilo-conversation-more').click()
+    other.wait_for_function('id => !!document.querySelector(`#corilo-conversation-select option[value="${id}"]`)',arg=history)
+    other.locator('#corilo-conversation-select').select_option(history)
+    other.wait_for_function('() => document.querySelector("#corilo-messages").textContent.includes("Saved synthetic conversation")')
+    assert other.locator('#corilo-send').is_disabled()
     page.locator('#corilo-input').fill('Second device sees this')
     page.locator('#corilo-capture').click()
     page.wait_for_function('() => editor.getValue().includes("Second device sees this")')
@@ -51,4 +73,4 @@ with sync_playwright() as p:
     assert '请重新登录' in page.locator('body').inner_text()
     assert not errors,errors
     browser.close()
-print('Cloud browser checks passed: login, mobile capture, ZIP download, second-device refresh, logout; real PostgreSQL and files, synthetic identity')
+print('Cloud browser checks passed: login, mobile capture, ZIP download, second-device refresh, conversation history, escaped text, queued stop, preserved draft, logout; real PostgreSQL and files, synthetic identity')

@@ -8,17 +8,9 @@ const terminal = new Set(['completed', 'failed', 'stopped', 'interrupted']);
 const view = row => ({ id: row.id, conversationId: row.conversation_id, state: row.state, reason: row.reason,
   createdAt: row.created_at, startedAt: row.started_at, finishedAt: row.finished_at });
 
-// Internal control-plane service, not a browser or worker database API. All callers
-// share these deployment-wide limits. Worker execution and model budgets are separate.
-export class Runs {
-  constructor(pool, { maxRunning, maxQueued, leaseSeconds, maxRunSeconds } = {}) {
-    for (const [name, value, limit] of [['maxRunning', maxRunning, 1000], ['maxQueued', maxQueued, 10000],
-      ['leaseSeconds', leaseSeconds, 300], ['maxRunSeconds', maxRunSeconds, 86400]]) {
-      if (!Number.isInteger(value) || value < 1 || value > limit) throw new Error(`Invalid ${name}`);
-    }
-    if (leaseSeconds > maxRunSeconds) throw new Error('Lease cannot exceed run duration');
-    Object.assign(this, { pool, maxRunning, maxQueued, leaseSeconds, maxRunSeconds });
-  }
+// Owner-scoped observation/cancellation needs no scheduler capacity configuration.
+export class RunObservation {
+  constructor(pool) { this.pool = pool; }
   async transaction(task) {
     const client = await this.pool.connect();
     try {
@@ -41,6 +33,48 @@ export class Runs {
   async event(client, run) {
     await client.query('INSERT INTO corilo_private.run_events(run_id,state,reason) VALUES($1,$2,$3)', [run.id, run.state, run.reason]);
     return view(run);
+  }
+  async owned(client, ownerId, runId) {
+    await this.owner(client, ownerId);
+    if (!uuid(runId)) throw fault(404, '任务不存在');
+    const run = (await client.query('SELECT * FROM corilo_private.runs WHERE id=$1 AND owner_id=$2', [runId, ownerId])).rows[0];
+    if (!run) throw fault(404, '任务不存在');
+    return run;
+  }
+  async get(ownerId, runId) {
+    return this.transaction(async client => view(await this.owned(client, ownerId, runId)));
+  }
+  async events(ownerId, runId, after = '0') {
+    if (typeof after !== 'string' || !/^\d{1,18}$/.test(after)) throw fault(400, '事件游标无效');
+    return this.transaction(async client => {
+      await this.owned(client, ownerId, runId);
+      return (await client.query(`SELECT id,state,reason,created_at AS "createdAt" FROM corilo_private.run_events
+        WHERE run_id=$1 AND id>$2 ORDER BY id LIMIT 100`, [runId, after])).rows;
+    });
+  }
+  async stop(ownerId, runId) {
+    return this.transaction(async client => {
+      const run = await this.owned(client, ownerId, runId);
+      if (!active.has(run.state) || run.state === 'stopping') return view(run);
+      const state = run.state === 'queued' ? 'stopped' : 'stopping';
+      const updated = (await client.query(`UPDATE corilo_private.runs SET state=$2,reason='user_stop',
+        finished_at=CASE WHEN $2='stopped' THEN now() ELSE NULL END WHERE id=$1 RETURNING *`, [runId, state])).rows[0];
+      return this.event(client, updated);
+    });
+  }
+}
+
+// Internal control-plane service, not a browser or worker database API. All callers
+// share these deployment-wide limits. Worker execution and model budgets are separate.
+export class Runs extends RunObservation {
+  constructor(pool, { maxRunning, maxQueued, leaseSeconds, maxRunSeconds } = {}) {
+    super(pool);
+    for (const [name, value, limit] of [['maxRunning', maxRunning, 1000], ['maxQueued', maxQueued, 10000],
+      ['leaseSeconds', leaseSeconds, 300], ['maxRunSeconds', maxRunSeconds, 86400]]) {
+      if (!Number.isInteger(value) || value < 1 || value > limit) throw new Error(`Invalid ${name}`);
+    }
+    if (leaseSeconds > maxRunSeconds) throw new Error('Lease cannot exceed run duration');
+    Object.assign(this, { pool, maxRunning, maxQueued, leaseSeconds, maxRunSeconds });
   }
   async conversation(ownerId, conversationId = randomUUID()) {
     if (!uuid(conversationId)) throw fault(400, '会话 ID 无效');
@@ -75,34 +109,6 @@ export class Runs {
       const run = (await client.query(`INSERT INTO corilo_private.runs(id,owner_id,vault_id,conversation_id,request_key,request_digest,prompt,state)
         VALUES($1,$2,$3,$4,$5,$6,$7,'queued') RETURNING *`, [randomUUID(), ownerId, owner.vault_id, conversationId, key, hash(prompt), prompt])).rows[0];
       return this.event(client, run);
-    });
-  }
-  async owned(client, ownerId, runId) {
-    await this.owner(client, ownerId);
-    if (!uuid(runId)) throw fault(404, '任务不存在');
-    const run = (await client.query('SELECT * FROM corilo_private.runs WHERE id=$1 AND owner_id=$2', [runId, ownerId])).rows[0];
-    if (!run) throw fault(404, '任务不存在');
-    return run;
-  }
-  async get(ownerId, runId) {
-    return this.transaction(async client => view(await this.owned(client, ownerId, runId)));
-  }
-  async events(ownerId, runId, after = '0') {
-    if (typeof after !== 'string' || !/^\d{1,18}$/.test(after)) throw fault(400, '事件游标无效');
-    return this.transaction(async client => {
-      await this.owned(client, ownerId, runId);
-      return (await client.query(`SELECT id,state,reason,created_at AS "createdAt" FROM corilo_private.run_events
-        WHERE run_id=$1 AND id>$2 ORDER BY id LIMIT 100`, [runId, after])).rows;
-    });
-  }
-  async stop(ownerId, runId) {
-    return this.transaction(async client => {
-      const run = await this.owned(client, ownerId, runId);
-      if (!active.has(run.state) || run.state === 'stopping') return view(run);
-      const state = run.state === 'queued' ? 'stopped' : 'stopping';
-      const updated = (await client.query(`UPDATE corilo_private.runs SET state=$2,reason='user_stop',
-        finished_at=CASE WHEN $2='stopped' THEN now() ELSE NULL END WHERE id=$1 RETURNING *`, [runId, state])).rows[0];
-      return this.event(client, updated);
     });
   }
   async cancelDisabledQueued(client) {

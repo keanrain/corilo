@@ -37,3 +37,8 @@ body { margin:0; box-sizing:border-box; overflow:hidden; }
     #corilo-agent { width:100%; }
     #corilo-sync { width:100%; }
 }
+
+#corilo-conversations { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+#corilo-conversations[hidden] { display:none; }
+#corilo-conversation-select { width:100%; min-width:0; padding:8px; background:inherit; color:inherit; }
+#corilo-conversation-status { width:100%; overflow-wrap:anywhere; }

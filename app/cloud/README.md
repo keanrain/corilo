@@ -58,14 +58,24 @@ CI 使用独立 PostgreSQL 容器，见 `.github/workflows/cloud.yml`。工作�
 
 `--migrate` 同时创建 conversations、runs、run_events、model_grants、model_reservations。`runs.mjs` 提供控制面内部的会话、幂等提交、状态/事件读取、领取、心跳、停止及恢复状态管理；要求显式配置队列、并发、租约和时长，测试覆盖真实 PostgreSQL。`npm run test:cloud` 顺序运行文件/身份、任务、模型调用额度和真实 Pi/合成模型出口集成测试，共用可丢弃数据库。
 
-当前网关不开放这些任务接口，CLI 不启动调度器，也没有启用云端 AI 的参数。内部 Docker worker 控制器已连接 Runs、文件宿主持久占用和按会话隔离的状态目录，另有真实容器测试。内部模型出口与任务调用额度已通过单任务 socket 连接 worker；公共任务与消息接口尚未连接；任务状态不能作为真实进程已终止的证明。运行及限制见 [worker 说明](worker/README.md)。
+当前网关只开放所属账号的会话查看与停止，不开放任务创建/提交；CLI 不启动调度器，也没有启用云端 AI 的参数。内部 Docker worker 控制器已连接 Runs、文件宿主持久占用和按会话隔离的状态目录，另有真实容器测试。内部模型出口与任务调用额度已通过单任务 socket 连接 worker；会话读取与停止已连接，任务提交尚未开放；任务状态不能作为真实进程已终止的证明。运行及限制见 [worker 说明](worker/README.md)。
 
 ## 内部模型出口
 
-`ModelGrants` 将限任务、限模型身份及请求次数/输出 token 预留保存在 PostgreSQL；`startModelRelay` 提供有界的 DeepSeek 兼容流式协议，平台密钥只在可信出口使用。现有 CLI 不启动出口，不新增启用公网 AI 的开关。真实 Pi 默认文件工具已通过正式 Docker 入口与合成上游协议检查，没有调用真实 DeepSeek；完整费用计量、持久磁盘额度、公共任务/会话接口与部署仍缺失。边界见 [模型出口说明](MODEL-OUTLET.md)。
+`ModelGrants` 将限任务、限模型身份及请求次数/输出 token 预留保存在 PostgreSQL；`startModelRelay` 提供有界的 DeepSeek 兼容流式协议，平台密钥只在可信出口使用。现有 CLI 不启动出口，不新增启用公网 AI 的开关。真实 Pi 默认文件工具已通过正式 Docker 入口与合成上游协议检查，没有调用真实 DeepSeek；完整费用计量、持久磁盘额度、公共任务提交与部署仍缺失。边界见 [模型出口说明](MODEL-OUTLET.md)。
 
 ## 后续组件接入
 
 成熟组件选型见 [技术设计第 17 节](../../docs/TECHNICAL_DESIGN.md#17-成熟组件选型与接入边界2026-10-21)。首期保留内部应用会话和 Runs；接 Supabase 官方身份操作、Docker worker、Caddy/Compose 与 restic 备份。当前没有 SDK 迁移、生产镜像、部署配置或备份交付，不能直接按目标拓扑启动。
 
 特别注意：Supabase 管理台停用身份或重置密码不会自动删除当前 Corilo 应用会话；目前停用须落实到 Corilo 账号状态，后续恢复密码流程需要接应用会话撤销。网关仍固定 loopback，Caddy 与网关分容器前需实现受控 bind 配置，不能通过放宽 Host/Origin 检查解决连接问题。
+
+## 对话查看与停止
+
+登录后 `GET /api/conversations?before=<会话UUID>&limit=25` 按时间分页（1–100 条），`GET /api/conversations/:id` 返回最多 25 个最近任务及已保存的 Pi 用户/助手文本。服务端从账号推导知识库路径，分页游标也须属于当前账号；不接收 owner 或磁盘路径。`POST /api/runs/:id/stop` 要求正常 Cookie 和同源 Origin。排队取消直接进入 stopped；运行任务先进入 stopping，必须由控制器确认 worker 退出后才结束。CLI 未启动控制器时不会自行完成运行任务的停止。
+
+网页可选对话、加载更早记录、刷新任务状态和停止；保留输入/编辑草稿，最多显示最近 500 条消息，不自动重放任务。新 AI 提交仍禁用。
+
+读取使用 Pi 原生当前分支投影，过滤工具结果、思考块与错误诊断；不修改或迁移会话文件，不是完整会话归档。Linux 文件描述符逐级锚定目录，拒绝软/硬链接与特殊文件，读取限制 4 MiB/2000 行。该知识库有 queued/running/stopping 任务时暂停正文读取；缺失正文显示空，损坏/过大/多个 session 文件显示暂不可用，任务状态仍可查看。Pi 压缩前文本不保证展示，图片附件暂不渲染。
+
+当前开发 `/workspace` 为 overlay，未验证项目配额支持。bind mount、容器根层大小限制或定期目录大小统计都不限制用户持久目录的即时写入；持久磁盘硬额度仍是开放 Agent 前的缺口。

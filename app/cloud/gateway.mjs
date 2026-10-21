@@ -2,6 +2,8 @@ import http from 'node:http';
 import path from 'node:path';
 import { readFile, mkdir, realpath } from 'node:fs/promises';
 import { startHost } from '../host/server.mjs';
+import { CloudConversations } from './conversations.mjs';
+import { RunObservation } from './runs.mjs';
 import { fault } from '../host/vault.mjs';
 const cookieName = '__Host-corilo-session';
 const json = (res, status, value) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(value)); };
@@ -20,6 +22,8 @@ export async function startCloud({ accounts, identity, dataRoot, publicOrigin, p
   await mkdir(dataRoot, { recursive: true, mode: 0o700 });
   dataRoot = await realpath(dataRoot);
   const hosts = new Map(), limits = new Map();
+  const conversations = new CloudConversations(accounts.pool, { dataRoot });
+  const runs = new RunObservation(accounts.pool);
   let closing = false;
   const cookie = (token, age) => `${cookieName}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${age}`;
   async function hostFor(account) {
@@ -81,6 +85,22 @@ export async function startCloud({ accounts, identity, dataRoot, publicOrigin, p
       }
       if (req.method === 'GET' && url.pathname === '/auth/me') return json(res, 200, { email: account.email });
       if (url.pathname.startsWith('/auth/')) throw fault(404, '接口不存在');
+      if (req.method === 'GET' && url.pathname === '/api/conversations') {
+        if ([...url.searchParams.keys()].some(key => !['before', 'limit'].includes(key)) ||
+            [...url.searchParams.keys()].some(key => url.searchParams.getAll(key).length !== 1)) throw fault(400, '查询参数无效');
+        const limit = url.searchParams.get('limit');
+        if (limit !== null && !/^(?:[1-9]\d?|100)$/.test(limit)) throw fault(400, '分页大小无效');
+        return json(res, 200, await conversations.list(account.id, {
+          ...(url.searchParams.has('before') ? { before: url.searchParams.get('before') } : {}),
+          ...(limit === null ? {} : { limit: Number(limit) }),
+        }));
+      }
+      const conversationRoute = /^\/api\/conversations\/([^/]+)$/.exec(url.pathname);
+      if (req.method === 'GET' && conversationRoute) return json(res, 200, await conversations.detail(account.id, conversationRoute[1]));
+      const stopRoute = /^\/api\/runs\/([^/]+)\/stop$/.exec(url.pathname);
+      if (req.method === 'POST' && stopRoute) return json(res, 200, await runs.stop(account.id, stopRoute[1]));
+      // No conversation creation or run submission is exposed until isolation is complete.
+      if (/^\/api\/(conversations|runs)(\/|$)/.test(url.pathname)) throw fault(404, '接口不存在');
       // Forward only fixed safe headers. Never trust a browser-selected tenant or host token.
       const host = await hostFor(account);
       const headers = { host: new URL(host.origin).host, 'x-corilo-token': host.token };
