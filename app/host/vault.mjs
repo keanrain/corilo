@@ -8,7 +8,7 @@ export const fault = (status, message) => Object.assign(new Error(message), { st
 const digest = b => createHash('sha256').update(b).digest('hex');
 
 export class Vault {
-  constructor(root) { this.root = path.resolve(root); }
+  constructor(root, { isolatedHistory = false } = {}) { this.root = path.resolve(root); this.isolatedHistory = isolatedHistory; }
   async init() {
     await fs.mkdir(this.root, { recursive: true });
     this.root = await fs.realpath(this.root);
@@ -20,8 +20,8 @@ export class Vault {
     await this.checkpoint('Corilo: initial local history');
   }
   async git(args) {
-    return (await exec('git', ['-c', 'user.name=Corilo', '-c', 'user.email=local@corilo.invalid', '-c', 'commit.gpgsign=false', ...args], {
-      cwd: this.root, maxBuffer: 16 * 1024 * 1024, windowsHide: true,
+    return (await exec('git', [...(this.isolatedHistory ? ['-c','core.hooksPath=/dev/null','-c','core.fsmonitor=false'] : []), '-c', 'user.name=Corilo', '-c', 'user.email=local@corilo.invalid', '-c', 'commit.gpgsign=false', ...args], {
+      cwd: this.root, ...(this.isolatedHistory ? { env: {...process.env, GIT_CONFIG_NOSYSTEM:'1', GIT_CONFIG_GLOBAL:'/dev/null'} } : {}), maxBuffer: 16 * 1024 * 1024, windowsHide: true,
     })).stdout;
   }
   async checkpoint(message) {

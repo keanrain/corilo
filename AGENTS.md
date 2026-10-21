@@ -4,7 +4,7 @@
 
 用户要求简单、一体化、直接开发正式应用。模型认证与选择直接复用 Pi 标准配置（含 PI_CODING_AGENT_DIR），不另做用户模型配置表单或强制覆盖已有模型。本机模式复用原配置、不复制认证；云端使用各用户执行环境的 Pi 原生配置，由服务端管理，不能挂载运营者本机的共享认证目录。不新增替代 demo，不为 Pi 另做权限、逐文件审批、事务写入或模型管理框架；不恢复旧 Today/Bot 原型；记忆、待办、一次性提醒按最新规格分阶段实现，通知不得以模型承诺代替可靠调度。新增云端账户、跨设备访问与用户隔离按 v0.16 实现；隔离、额度和平台凭据保护属于服务端边界，不是另造 Pi 工具权限框架。系统提示词约束行为，不把 cwd 宣称为沙箱。产品规则仅在 docs/PRODUCT-SPEC.md 维护，其他文档不得创建平行 PRD。
 
-当前正式代码位于 app/：完整 Files.md 页面以原样 vendor＋适配层接入磁盘宿主，Pi 默认 SDK 和本地 Git 历史、GitHub 同步与冲突 UI 已接入（临时远端/Linux 检查）；真实 GitHub 凭据联调、分发安装包与 APK 尚未完成。当前优先云端改造，app/host/ 保留本机宿主；不能只改监听地址就宣称可公网多用户部署。app/cloud/ 已实现首条邀请/会话/独立文件服务链路，真实 PostgreSQL/Chromium 与合成身份检查通过；已有内部持久任务表与状态服务，尚未连接 worker、文件写入协调或网关任务接口；真实 Supabase、执行隔离、模型出口和执行额度未完成。android/ 暂停并保留，仅手动 CI；禁止用缺失 runtime 的空壳 APK 冒充可用版本。prototype/ Python 原型继续保留，不作为正式入口扩展。p0/ 的片段、候选和历史日志不代表正式实现。docs/upstream-baseline.json 是调查基线；实际依赖锁为 package-lock.json，完整 Files.md 来源记录在 app/vendor/filesmd/SOURCE.json。只有真实运行后才写通过，区分函数、浏览器、模型、桌面及 Android 真机证据。
+当前正式代码位于 app/：完整 Files.md 页面以原样 vendor＋适配层接入磁盘宿主，Pi 默认 SDK 和本地 Git 历史、GitHub 同步与冲突 UI 已接入（临时远端/Linux 检查）；真实 GitHub 凭据联调、分发安装包与 APK 尚未完成。当前优先云端改造，app/host/ 保留本机宿主；不能只改监听地址就宣称可公网多用户部署。app/cloud/ 已实现首条邀请/会话/独立文件服务链路，真实 PostgreSQL/Chromium 与合成身份检查通过；已有内部持久任务、Docker worker 控制器和持久文件写入协调，真实容器默认 Pi 工具检查通过；网关任务接口、真实 Supabase、模型出口及持久磁盘额度未完成，公网 Agent 仍禁用。android/ 暂停并保留，仅手动 CI；禁止用缺失 runtime 的空壳 APK 冒充可用版本。prototype/ Python 原型继续保留，不作为正式入口扩展。p0/ 的片段、候选和历史日志不代表正式实现。docs/upstream-baseline.json 是调查基线；实际依赖锁为 package-lock.json，完整 Files.md 来源记录在 app/vendor/filesmd/SOURCE.json。只有真实运行后才写通过，区分函数、浏览器、模型、桌面及 Android 真机证据。
 
 使用现有 checkout；用户未要求时不创建 worktree。保留现有改动、历史、许可与兼容标识，包括 .personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/、库识别和会话键，不因品牌替换迁移用户数据。
 
@@ -21,3 +21,5 @@
 文档对齐：PRODUCT-SPEC 第 0 节区分 Agent run、用户 todo、日程 event 与 reminder，第 8 节集中待定决策。技术设计第 8 节是阶段计划、第 11 节是当前证据，第 9/10 节是历史快照，不覆盖现状。技术设计第 12–16 节是未实现的详细方案，默认 Pi bash 通过普通 CLI 调用领域 API，不能误写为已可运行命令。不得把提醒渠道、自动记忆策略、自托管交付日期或数据桥接方案写成用户已确认选择。
 
 成熟组件路线见技术设计第 17 节：Supabase 官方身份操作配合现有 HttpOnly 应用会话；首期 Runs/PostgreSQL 为唯一业务任务状态，暂不叠 pg-boss/Redis；Docker 是首个 worker 后端，worker 不再启动 startHost；Caddy/Compose 和 restic 为待接入方案。保留启动/停止互斥及文件写入协调，不用队列超时或一次容器不存在检查代替真实停止确认。不得把来源核验写成实际集成通过，也不得擅自开通套餐或发送邮件。
+
+修改 worker/控制器时，另以可丢弃 PostgreSQL 和实际 Docker 镜像运行 `npm run test:worker`；见 app/cloud/worker/README.md。无网络工具测试不替代真实模型出口和完整隔离验收。

@@ -35,7 +35,7 @@ flowchart TD
 | 元数据 | PostgreSQL；可与 Supabase 同用，用于身份映射、库归属、任务、事件和额度 |
 | 正文 | 每用户持久 POSIX 目录；不将 Supabase Storage/R2 直接当 Pi 工作目录 |
 | 版本与备份 | 每库 Git 历史；选用 restic + S3 兼容独立存储，R2 为优先候选，备份恢复未实现 |
-| 执行 | 首个后端采用 Docker Engine，按 run 创建受限 Pi worker；gVisor 后续验证，均未接入 |
+| 执行 | 首个后端采用 Docker Engine，按 run 创建受限 Pi worker；内部 Docker worker 已接入，gVisor 后续验证 |
 | 模型 | 首期 DeepSeek；沿用 Pi provider/settings，平台凭据保留在模型出口服务 |
 | 域名与部署 | 已有域名，可继续 Cloudflare DNS；选用 Caddy + Compose，同源 HTTPS，部署待实现 |
 
@@ -45,7 +45,7 @@ flowchart TD
 
 网关验证登录会话、账号有效性、资源归属和 CSRF/Origin；使用 HttpOnly、Secure、SameSite 会话 cookie，不沿用本机 URL fragment token 做云端账户。当前实现采用服务端验证邮箱/密码，没有 OAuth 回调。未来若增加 OAuth/授权码登录，其回调必须核验 state/PKCE；密钥不进入网页或知识库。浏览器不使用数据库 service-role key。
 
-邀请兑换和建库需要数据库事务及唯一约束。当前 schema 包含 accounts、invitations、vaults、sessions，以及新增的 conversations、runs、run_events；usage 仍未实现。任务表与内部持久任务服务已加入迁移，但网关尚不开放任务 API，未连接实际 worker。个人待办另用 todos 概念，与 runs 分开；记忆、日程、提醒的目标结构见第 13–15 节，尚无对应迁移。邀请只存不可直接复用的摘要、接收身份、期限及兑换记录。userId 从已验证会话解析；vaultId/conversationId/runId 查询均带所有者条件。
+邀请兑换和建库需要数据库事务及唯一约束。当前 schema 包含 accounts、invitations、vaults、sessions，以及新增的 conversations、runs、run_events；usage 仍未实现。任务表与内部持久任务服务已加入迁移，但网关尚不开放任务 API，内部控制器已连接 Docker worker，模型出口尚未接入。个人待办另用 todos 概念，与 runs 分开；记忆、日程、提醒的目标结构见第 13–15 节，尚无对应迁移。邀请只存不可直接复用的摘要、接收身份、期限及兑换记录。userId 从已验证会话解析；vaultId/conversationId/runId 查询均带所有者条件。
 
 服务端布局示意（与当前 gateway 目录参数对齐；cloud-files 不启动 Pi，sessions 为后续预留）：
 
@@ -108,7 +108,7 @@ Git 继续提供每库历史和 Agent 前后保存点，配置与秘密不入库
 |---|---|
 | 0 方向切换（已完成） | 正式设计、开发约束和 README 区分当前与目标；Android CI 仅手动保留 |
 | 1 邀请与文件基础（部分实现） | 真实身份联调、独立建库、两账号访问隔离；跨设备保存/删除/移动冲突保护与重启恢复 |
-| 2 服务端 Agent（持久任务基础已实现） | 受限 worker、持久 run 和幂等、停止/中断、模型出口额度；真实 DeepSeek 文件链路 |
+| 2 服务端 Agent（内部执行基础已实现） | 受限 worker、持久 run 和幂等、停止/中断、模型出口额度；真实 DeepSeek 文件链路 |
 | 3 个人记忆与行动（设计细化，未实现） | 来源与纠正、todos/events/reminders 分离；确定渠道后实现一次性提醒、修改取消和送达失败反馈，对应 N17/N18 |
 | 4 资料自主与完整体验（部分基础） | 对话与事项引用的完整账号导出/导入恢复、历史恢复、独立备份；移动端对话与事项操作，对应 N13/N14/N16/N19 |
 | 5 邀请版验收与上线（未完成） | 按 N01–N19 核对目标个人助手；明确待定产品策略、部署与运营参数，不能以文件开发版替代 |
@@ -161,7 +161,15 @@ Linux 宿主通过短暂 `flock` 子进程对继承的文件描述符加内核�
 
 真实 PostgreSQL 测试覆盖双提交、错用幂等键、跨用户读/停止拒绝、容量竞争、停止与完成竞争、过期续期拒绝、停止失败保留占用、服务/连接池重建后读取记录、超时与账号停用、不自动重放，以及数据库跨账号外键拒绝。停止确认回调为测试替身，没有执行真实 worker；不算 N10/N11 隔离执行验收。
 
-尚缺执行控制器及其“启动/终止”互斥、文件宿主写入协调、容器隔离与资源额度、模型出口及 AI 用量预算、Pi 会话关联、完整消息事件和前端重连。现有网关继续返回 Agent 503；没有增加开发绕过开关，不能调用内部 `claim` 就宣称已可运行云端 Pi。下一条纵向链路须连接上述边界并实测实际进程停止。
+此处为持久任务基础提交时的缺口；后续 Docker 进展见下。仍缺模型出口及 AI 用量预算、持久磁盘额度、完整消息事件和前端重连。现有网关继续返回 Agent 503；没有增加开发绕过开关，不能调用内部 `claim` 就宣称已可运行云端 Pi。下一条纵向链路须连接上述边界并实测实际进程停止。
+
+### 内部 Docker 执行基础（2026-10-21）
+
+`docker-workers.mjs`、`execution-controller.mjs` 和 `worker/main.mjs` 已加入。可信单机控制器通过 flock 单占用、持久启动日志及按 run 串行操作协调容器；创建结果未知时保留数据库名额与文件占用。确认整个容器删除后再保存 Git 历史并结束 run。文件宿主将占用持久化，重启不自动放行；终态已提交但占用未释放也可恢复，不重放 prompt。
+
+worker 仅挂载当前知识库、会话状态、只读 Pi 配置和请求；Git 元数据/宿主锁嵌套只读。采用固定镜像、非 root、只读根、cap-drop、禁止提权、CPU/内存/PID/tmpfs 限制、无网络及禁止重启。复用 Pi 默认工具，没有新增工具审批框架。持久卷尚无硬磁盘额度；无网络测试不代表模型出口已验证。
+
+真实 Docker/PostgreSQL 测试覆盖默认 Pi read/write/edit/bash、后台 shell 停止、只读挂载、无网络与 tmpfs 上限、停止/创建竞争、创建响应丢失后的延迟创建、文件宿主重启、终态后占用释放；正式 entrypoint 无模型凭据应失败。控制器重建测试不是进程 SIGKILL 或断电验证。独立控制器服务传输、模型出口、执行预算、持久磁盘额度、完整会话 UI 和公网部署仍未交付，Agent API 仍返回 503。详见 [运行说明](../app/cloud/worker/README.md)。
 
 ## 12. 四项设计的共同边界
 
@@ -278,9 +286,9 @@ manifest 含 format/version、exportId、UTC 创建时间、snapshotRevision、�
 | 身份 | Supabase Auth；接注册/恢复时采用官方 SDK 的服务端身份操作 | 保留邀请、内部账号、资料归属；当前仍是直接 password grant 适配器，未接 SDK 或完整注册流程 |
 | 应用会话 | 首期保留不透明 HttpOnly Cookie 与服务端会话摘要 | 已实现退出/停用检查；不同时新增另一套浏览器 Supabase 登录态 |
 | 任务 | 保留 PostgreSQL Runs 为唯一业务状态来源 | 已有幂等、容量和恢复状态；首期不叠加 pg-boss/Redis，不扩展成通用队列产品 |
-| 沙箱 | 首个 worker 后端选择 Docker Engine；随后评估 gVisor runtime | 新接执行控制器、挂载/网络/额度、停止协调；尚无实际隔离验收 |
+| 沙箱 | 首个 worker 后端选择 Docker Engine；随后评估 gVisor runtime | 内部执行控制器与无网络容器检查已实现；模型出口、持久磁盘额度与完整隔离验收未完成 |
 | HTTPS 与部署 | Caddy + Docker Compose；网页/API 同源 | 新增可复现部署与回退配置；不是将现有 loopback 入口直接公布到公网 |
-| 构建发布 | GitHub Actions + OCI 镜像，GHCR 为优先仓库 | 已有测试 CI；构建、推送镜像及部署流程未实现，不自动修改仓库可见性 |
+| 构建发布 | GitHub Actions + OCI 镜像，GHCR 为优先仓库 | 已有测试 CI 与 worker 测试镜像构建；发布镜像及部署流程未实现，不自动修改仓库可见性 |
 | 版本与备份 | Git + restic，备份目标采用 S3 兼容存储，优先评估 R2 | Git 基础已存在；一致快照、独立备份、恢复演练尚未实现 |
 | 邮件 | Supabase 的邮件流程接正式 SMTP；Resend 为候选 | 尚未开通或选择套餐；认证邮件与用户提醒渠道分别决策 |
 | 排障与监测 | 结构化脱敏日志、单个外部健康监测；需要时接 Sentry | 不先部署一整套指标集群，初期不启用会话录屏或正文采集 |
@@ -350,7 +358,7 @@ restic 负责备份归档、加密、保留与还原，不负责跨 PostgreSQL/�
 
 ### 17.7 来源与验证范围
 
-本轮检查日期为 2026-10-21（Asia/Taipei）。已核对仓库代码和以下可访问的官方源码/文档；没有安装候选依赖、执行真实 worker、发送邮件或进行部署/恢复演练。选型不构成当前套餐价格或免费额度承诺。
+选型检查日期为 2026-10-21（Asia/Taipei）；以下描述当时的来源核验，后续代码与真实 worker 证据见第 11 节。已核对仓库代码和以下可访问的官方源码/文档；没有安装候选依赖、执行真实 worker、发送邮件或进行部署/恢复演练。选型不构成当前套餐价格或免费额度承诺。
 
 | 已读取来源 | 对应判断 |
 |---|---|

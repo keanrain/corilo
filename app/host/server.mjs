@@ -23,7 +23,7 @@ const send = (res, status, data) => { res.writeHead(status, { 'Content-Type': 'a
 export async function startHost({ mode = 'local', vault: root, configDir, port = 0, piAgentDir = getAgentDir(), agentFactory = (v, dir, piDir) => new PiAgent(v, dir, piDir), syncFactory = (v, dir) => new GitSync(v, dir) }) {
   if (!['local', 'cloud-files'].includes(mode)) throw new Error('Unknown host mode');
   const cloud = mode === 'cloud-files';
-  const vault = new Vault(root);
+  const vault = new Vault(root, { isolatedHistory: cloud });
   // Do this before initialization so an invalid config never lands in the knowledge library.
   await fs.mkdir(root, { recursive: true });
   await fs.mkdir(configDir, { recursive: true, mode: 0o700 });
@@ -33,6 +33,9 @@ export async function startHost({ mode = 'local', vault: root, configDir, port =
   await fs.mkdir(piAgentDir, { recursive: true, mode: 0o700 });
   const realPiDir = await fs.realpath(piAgentDir);
   if (inside(realRoot, realPiDir) || inside(realPiDir, realRoot)) throw fault(400, 'Pi 配置目录与知识库必须相互独立');
+  const runMarker = path.join(realConfig, 'cloud-run.json');
+  let cloudRun = cloud ? await fs.readFile(runMarker, 'utf8').then(JSON.parse).catch(e => { if (e.code === 'ENOENT') return null; throw e; }) : null;
+  if (cloudRun && (!/^[a-f0-9-]{36}$/.test(cloudRun.id) || !/^[a-f0-9]{40,64}$/.test(cloudRun.before))) throw fault(409, '任务占用记录异常，需恢复检查');
   const lock = await acquireHostLock(realRoot, { recoverFileHost: cloud });
   // Lock lives in the library for single-writer enforcement, but never enters history.
   let agent, sync;
@@ -40,21 +43,24 @@ export async function startHost({ mode = 'local', vault: root, configDir, port =
     const gitDir = path.join(realRoot, '.git');
     const existing = await fs.lstat(gitDir).catch(e => { if (e.code !== 'ENOENT') throw e; });
     if (existing && !existing.isDirectory()) throw fault(409, '不支持 Git 链接工作树');
-    if (!existing) await vault.git(['init', '--initial-branch=main']);
-    await fs.mkdir(path.join(gitDir, 'info'), { recursive: true });
-    const exclude = path.join(gitDir, 'info/exclude');
-    const prior = await fs.readFile(exclude, 'utf8').catch(e => { if (e.code !== 'ENOENT') throw e; return ''; });
-    for (const entry of ['/.corilo-host.lock', '/.corilo-host.flock', '.corilo-*.tmp']) {
-      if (!prior.split('\n').includes(entry)) await fs.appendFile(exclude, `\n${entry}\n`);
-    }
-    await vault.init();
+    if (cloudRun && !existing) throw fault(409, '任务恢复需要已有知识库历史');
+    if (!cloudRun) {
+      if (!existing) await vault.git(['init', '--initial-branch=main']);
+      await fs.mkdir(path.join(gitDir, 'info'), { recursive: true });
+      const exclude = path.join(gitDir, 'info/exclude');
+      const prior = await fs.readFile(exclude, 'utf8').catch(e => { if (e.code !== 'ENOENT') throw e; return ''; });
+      for (const entry of ['/.corilo-host.lock', '/.corilo-host.flock', '.corilo-*.tmp']) {
+        if (!prior.split('\n').includes(entry)) await fs.appendFile(exclude, `\n${entry}\n`);
+      }
+      await vault.init();
+    } // Do not touch Git while an external worker may still be alive after restart.
     agent = cloud ? { init: async () => {}, stop: async () => {}, close: async () => {}, messages: () => [], activity: '' } : agentFactory(vault, realConfig, realPiDir);
     await agent.init();
     sync = cloud ? { init: async () => {}, state: () => ({ phase: 'disabled' }) } : syncFactory(vault, realConfig); await sync.init();
   } catch (e) { await lock.close(); throw e; }
   const token = randomBytes(32).toString('hex');
   let syncing = false;
-  let queue = Promise.resolve(), busy = false, runTask = Promise.resolve(), runId = 0;
+  let queue = Promise.resolve(), busy = !!cloudRun, runTask = Promise.resolve(), runId = 0;
   let outcome = 'idle', runError = '', stopped = false, changed = [], revision = 0, shuttingDown = false;
   const exclusive = task => { const next = queue.then(task); queue = next.catch(() => {}); return next; };
   const mutate = task => {
@@ -222,7 +228,40 @@ export async function startHost({ mode = 'local', vault: root, configDir, port =
   try { await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); }); }
   catch (e) { await agent.close(); await lock.close(); throw e; }
   const origin = `http://127.0.0.1:${server.address().port}`;
-  return { origin, token, vault, agent, url: `${origin}/#token=${token}`, async close() {
+  // Trusted controller-only methods: never expose release to browser/worker APIs.
+  const requireRun = id => { if (!cloud || !cloudRun || cloudRun.id !== id) throw fault(409, '任务占用不匹配'); };
+  return { origin, token, vault, agent, url: `${origin}/#token=${token}`,
+    activeRunId() { return cloudRun?.id ?? null; },
+    async beginRun(id) {
+      if (!cloud || !/^[a-f0-9-]{36}$/.test(id)) throw fault(400, '云端任务无效');
+      return exclusive(async () => {
+        if (cloudRun?.id === id) return;
+        if (busy || shuttingDown) throw fault(409, '知识库正在使用');
+        const before = await vault.checkpoint('Corilo: before cloud agent');
+        // Keep the gate closed even if persistence fails partway through.
+        busy = true;
+        const handle = await fs.open(runMarker, 'wx', 0o600);
+        try { await handle.writeFile(JSON.stringify({ id, before })); await handle.sync(); }
+        finally { await handle.close(); }
+        const directory = await fs.open(realConfig, 'r');
+        try { await directory.sync(); } finally { await directory.close(); }
+        cloudRun = { id, before };
+      });
+    },
+    async checkpointRun(id) {
+      return exclusive(async () => {
+        requireRun(id);
+        await vault.checkpoint('Corilo: after cloud agent');
+        changed = (await vault.git(['diff', '--name-only', '-z', cloudRun.before, 'HEAD'])).split('\0').filter(Boolean);
+        return changed;
+      });
+    },
+    async releaseRun(id) {
+      return exclusive(async () => {
+        requireRun(id); await fs.unlink(runMarker); cloudRun = null; busy = false; revision++;
+      });
+    },
+    async close() {
     shuttingDown = true; await agent.stop(); await runTask; await queue;
     await agent.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
     await lock.close();

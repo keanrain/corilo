@@ -1,0 +1,10 @@
+**
+!package.json
+!package-lock.json
+!app/
+!app/host/
+!app/host/agent.mjs
+!app/host/vault.mjs
+!app/cloud/
+!app/cloud/worker/
+!app/cloud/worker/main.mjs
