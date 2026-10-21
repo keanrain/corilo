@@ -11,7 +11,7 @@
     "test": "node --test app/tests/*.test.mjs",
     "start:cloud": "node app/cloud/cli.mjs",
     "test:worker": "node --test app/tests/cloud-worker.mjs",
-    "test:cloud": "node --test --test-concurrency=1 app/tests/cloud-integration.mjs app/tests/cloud-runs.mjs"
+    "test:cloud": "node --test --test-concurrency=1 app/tests/cloud-integration.mjs app/tests/cloud-runs.mjs app/tests/cloud-model-grants.mjs app/tests/pi-model-relay.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "1.1.0",

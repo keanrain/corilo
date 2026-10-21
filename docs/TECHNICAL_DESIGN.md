@@ -45,7 +45,7 @@ flowchart TD
 
 网关验证登录会话、账号有效性、资源归属和 CSRF/Origin；使用 HttpOnly、Secure、SameSite 会话 cookie，不沿用本机 URL fragment token 做云端账户。当前实现采用服务端验证邮箱/密码，没有 OAuth 回调。未来若增加 OAuth/授权码登录，其回调必须核验 state/PKCE；密钥不进入网页或知识库。浏览器不使用数据库 service-role key。
 
-邀请兑换和建库需要数据库事务及唯一约束。当前 schema 包含 accounts、invitations、vaults、sessions，以及新增的 conversations、runs、run_events；usage 仍未实现。任务表与内部持久任务服务已加入迁移，但网关尚不开放任务 API，内部控制器已连接 Docker worker，模型出口尚未接入。个人待办另用 todos 概念，与 runs 分开；记忆、日程、提醒的目标结构见第 13–15 节，尚无对应迁移。邀请只存不可直接复用的摘要、接收身份、期限及兑换记录。userId 从已验证会话解析；vaultId/conversationId/runId 查询均带所有者条件。
+邀请兑换和建库需要数据库事务及唯一约束。当前 schema 包含 accounts、invitations、vaults、sessions，以及新增的 conversations、runs、run_events；model_grants/model_reservations 已保存调用准入预留；实际 usage/费用核对仍未实现。任务表与内部持久任务服务已加入迁移，但网关尚不开放任务 API，内部控制器已连接 Docker worker，模型出口已有内部实现，尚未接入 worker。个人待办另用 todos 概念，与 runs 分开；记忆、日程、提醒的目标结构见第 13–15 节，尚无对应迁移。邀请只存不可直接复用的摘要、接收身份、期限及兑换记录。userId 从已验证会话解析；vaultId/conversationId/runId 查询均带所有者条件。
 
 服务端布局示意（与当前 gateway 目录参数对齐；cloud-files 不启动 Pi，sessions 为后续预留）：
 
@@ -171,6 +171,16 @@ worker 仅挂载当前知识库、会话状态、只读 Pi 配置和请求；Git
 
 真实 Docker/PostgreSQL 测试覆盖默认 Pi read/write/edit/bash、后台 shell 停止、只读挂载、无网络与 tmpfs 上限、停止/创建竞争、创建响应丢失后的延迟创建、文件宿主重启、终态后占用释放；正式 entrypoint 无模型凭据应失败。控制器重建测试不是进程 SIGKILL 或断电验证。独立控制器服务传输、模型出口、执行预算、持久磁盘额度、完整会话 UI 和公网部署仍未交付，Agent API 仍返回 503。详见 [运行说明](../app/cloud/worker/README.md)。
 
+### 内部模型出口与调用额度（2026-10-21）
+
+`ModelGrants` 与 Runs 共用短事务协调锁，核验领取身份、账号/知识库/会话归属、运行状态与时限；每 run 只签发一次模型身份，数据库保存摘要。请求次数、单次输出 token 和累计预留输出 token 在访问上游前原子扣减，失败或未知响应不返还，不通过重签身份重置额度。停止、终态、停用、撤销或过期后拒绝新调用；流式请求定期重查并取消上游连接，不承诺供应商立即停止计算或退款。
+
+`startModelRelay` 为内部 loopback HTTP 服务，仅允许固定 completion 路径、配置的模型及 Pi/DeepSeek 协议字段；限制请求/响应字节、时长和并发，拒绝跳转，不自行重试。平台长期密钥只用于可信上游请求，客户端任务身份不转发给供应商，错误响应不透传供应商诊断。保留 Pi 原生配置和默认工具，没有增加模型管理 UI 或新依赖。
+
+真实 PostgreSQL 检查覆盖竞争预留、独立请求次数、重复签发、伪造归属、重建连接池与停止/失效；真实 Pi SDK 使用原生配置，通过合成 SSE 上游完成分片工具参数、默认 write 写文件、工具结果回传和最终回答。此证据是本机协议联调，不是真实 DeepSeek 或容器出口验收。
+
+Docker worker 保持无网络，出口尚未连接执行控制器/worker。预留输出 token 不是实际账单，输入/缓存/推理费用与用户每日预算仍需计量策略。单任务网络路径、身份装配/撤销、持久磁盘硬额度、实际模型和完整公网链路未完成。详见 [模型出口说明](../app/cloud/MODEL-OUTLET.md)。
+
 ## 12. 四项设计的共同边界
 
 以下是 v0.16 实现方案，不是已可运行功能；第 11 节仍是当前代码证据。业务行为与待定策略统一见 [业务规格第 6–8 节](PRODUCT-SPEC.md#6-简单使用与资料自主)。沿用一个 Node 网关、PostgreSQL、每用户文件目录与隔离 Pi，不新增 MCP 框架、向量服务、Redis 或工作流平台。
@@ -286,7 +296,7 @@ manifest 含 format/version、exportId、UTC 创建时间、snapshotRevision、�
 | 身份 | Supabase Auth；接注册/恢复时采用官方 SDK 的服务端身份操作 | 保留邀请、内部账号、资料归属；当前仍是直接 password grant 适配器，未接 SDK 或完整注册流程 |
 | 应用会话 | 首期保留不透明 HttpOnly Cookie 与服务端会话摘要 | 已实现退出/停用检查；不同时新增另一套浏览器 Supabase 登录态 |
 | 任务 | 保留 PostgreSQL Runs 为唯一业务状态来源 | 已有幂等、容量和恢复状态；首期不叠加 pg-boss/Redis，不扩展成通用队列产品 |
-| 沙箱 | 首个 worker 后端选择 Docker Engine；随后评估 gVisor runtime | 内部执行控制器与无网络容器检查已实现；模型出口、持久磁盘额度与完整隔离验收未完成 |
+| 沙箱 | 首个 worker 后端选择 Docker Engine；随后评估 gVisor runtime | 内部执行控制器与无网络容器检查已实现；出口与 worker 连接、持久磁盘额度与完整隔离验收未完成 |
 | HTTPS 与部署 | Caddy + Docker Compose；网页/API 同源 | 新增可复现部署与回退配置；不是将现有 loopback 入口直接公布到公网 |
 | 构建发布 | GitHub Actions + OCI 镜像，GHCR 为优先仓库 | 已有测试 CI 与 worker 测试镜像构建；发布镜像及部署流程未实现，不自动修改仓库可见性 |
 | 版本与备份 | Git + restic，备份目标采用 S3 兼容存储，优先评估 R2 | Git 基础已存在；一致快照、独立备份、恢复演练尚未实现 |

@@ -15,6 +15,7 @@ export class Accounts {
       await client.query('BEGIN');
       await client.query("SELECT pg_advisory_xact_lock(174923, 1)");
       await client.query(await readFile(new URL('./schema.sql', import.meta.url), 'utf8'));
+      await client.query(await readFile(new URL('./model-grants.sql', import.meta.url), 'utf8'));
       await client.query('COMMIT');
     } catch (e) { await client.query('ROLLBACK'); throw e; }
     finally { client.release(); }
