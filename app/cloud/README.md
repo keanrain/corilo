@@ -59,3 +59,9 @@ CI 使用独立 PostgreSQL 容器，见 `.github/workflows/cloud.yml`。工作�
 `--migrate` 同时创建 conversations、runs、run_events。`runs.mjs` 提供控制面内部的会话、幂等提交、状态/事件读取、领取、心跳、停止及恢复状态管理；要求显式配置队列、并发、租约和时长，测试覆盖真实 PostgreSQL。`npm run test:cloud` 顺序运行文件/身份和任务集成测试，共用可丢弃数据库。
 
 当前网关不开放这些任务接口，CLI 不启动调度器，也没有启用云端 AI 的参数。任务服务尚未与文件宿主协调、隔离 worker、模型出口/预算或 Pi 会话连接。恢复测试的 worker 停止确认使用替身，不是容器隔离证据；任务状态不能作为真实进程已终止的证明。
+
+## 后续组件接入
+
+成熟组件选型见 [技术设计第 17 节](../../docs/TECHNICAL_DESIGN.md#17-成熟组件选型与接入边界2026-10-21)。首期保留内部应用会话和 Runs；接 Supabase 官方身份操作、Docker worker、Caddy/Compose 与 restic 备份。当前没有 SDK 迁移、生产镜像、部署配置或备份交付，不能直接按目标拓扑启动。
+
+特别注意：Supabase 管理台停用身份或重置密码不会自动删除当前 Corilo 应用会话；目前停用须落实到 Corilo 账号状态，后续恢复密码流程需要接应用会话撤销。网关仍固定 loopback，Caddy 与网关分容器前需实现受控 bind 配置，不能通过放宽 Host/Origin 检查解决连接问题。

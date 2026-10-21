@@ -1,6 +1,6 @@
 # Corilo 可里技术设计
 
-v0.15 · 2026-10-21。用户已决定转为云端个人助手、邀请制小范围使用。以下区分目标架构与阶段实现；现已增加云端邀请/文件服务开发入口，未部署，真实身份联调与隔离 Agent 未完成。
+v0.16 · 2026-10-21。用户已决定转为云端个人助手、邀请制小范围使用。以下区分目标架构与阶段实现；现已增加云端邀请/文件服务开发入口，未部署，真实身份联调与隔离 Agent 未完成。
 
 ## 1. 架构
 
@@ -34,10 +34,10 @@ flowchart TD
 | 账号 | 已选用 Supabase Auth 适配器，真实项目尚未联调；应用自己核验邀请与成员状态，不信任客户端 userId |
 | 元数据 | PostgreSQL；可与 Supabase 同用，用于身份映射、库归属、任务、事件和额度 |
 | 正文 | 每用户持久 POSIX 目录；不将 Supabase Storage/R2 直接当 Pi 工作目录 |
-| 版本与备份 | 每库 Git 历史，加独立对象存储备份；R2/S3 兼容存储可选 |
-| 执行 | 按用户隔离的 Linux worker，默认 Pi 工具；限制资源和网络出口 |
+| 版本与备份 | 每库 Git 历史；选用 restic + S3 兼容独立存储，R2 为优先候选，备份恢复未实现 |
+| 执行 | 首个后端采用 Docker Engine，按 run 创建受限 Pi worker；gVisor 后续验证，均未接入 |
 | 模型 | 首期 DeepSeek；沿用 Pi provider/settings，平台凭据保留在模型出口服务 |
-| 域名 | 已有域名，可继续 Cloudflare DNS；HTTPS 网关提供同源页面与 API |
+| 域名与部署 | 已有域名，可继续 Cloudflare DNS；选用 Caddy + Compose，同源 HTTPS，部署待实现 |
 
 代码已选择 Supabase Auth 的适配方式，当前环境未配置真实项目，本次未开通资源或产生服务费用。身份提供商可替换，已验证主体到内部账号的映射保持稳定。Pages 可后续分发静态页面；Workers、普通 Vercel 函数不承载默认 Pi shell 和持久工作树。首期同源服务避免不必要的跨域认证配置。
 
@@ -165,7 +165,7 @@ Linux 宿主通过短暂 `flock` 子进程对继承的文件描述符加内核�
 
 ## 12. 四项设计的共同边界
 
-以下是 v0.15 实现方案，不是已可运行功能；第 11 节仍是当前代码证据。业务行为与待定策略统一见 [业务规格第 6–8 节](PRODUCT-SPEC.md#6-简单使用与资料自主)。沿用一个 Node 网关、PostgreSQL、每用户文件目录与隔离 Pi，不新增 MCP 框架、向量服务、Redis 或工作流平台。
+以下是 v0.16 实现方案，不是已可运行功能；第 11 节仍是当前代码证据。业务行为与待定策略统一见 [业务规格第 6–8 节](PRODUCT-SPEC.md#6-简单使用与资料自主)。沿用一个 Node 网关、PostgreSQL、每用户文件目录与隔离 Pi，不新增 MCP 框架、向量服务、Redis 或工作流平台。
 
 | 数据 | 权威来源 | 派生视图 |
 |---|---|---|
@@ -265,3 +265,99 @@ manifest 含 format/version、exportId、UTC 创建时间、snapshotRevision、�
 自托管最低交付是版本化镜像及 Compose 或同等部署配置、独立认证、PostgreSQL/持久卷、HTTPS、隔离 worker、通知配置、管理员初始化、备份恢复、升级/回退说明、资源要求和许可清单。当前 CLI 固定 SupabaseIdentity，需要可测试的自托管认证适配器，或完整说明自托管 Supabase 的额外资源，才能做到不依赖 Corilo 官方控制面；开源代码不等于已交付自托管。建议先完整包及空库恢复，再自托管，再用户指定备份，未承诺日期。
 
 验收映射 N14/N16/N19：带中文、附件、来源/历史与遗忘规则的往返样例；跨账号与恶意归档；导出时并发写入；导入各阶段崩溃；恢复后零工具执行、零通知；未知投递保留；禁用 Corilo 官方域名仍能独立使用自托管实例。
+
+## 17. 成熟组件选型与接入边界（2026-10-21）
+
+本节是针对邀请制、单台 Linux 主机的实现选型，尚未安装或部署这些组件。现有证据仍以第 11 节为准。目标是复用成熟基础设施，同时保留 Corilo 的用户授权、任务业务状态、资料协调及迁移语义；组件能力不能自动算作产品验收。
+
+### 17.1 首期组合与保留范围
+
+| 部分 | 首期决定 | 保留的 Corilo 职责与当前状态 |
+|---|---|---|
+| 编辑与 Agent | 继续使用 Files.md、Pi 默认 SDK/工具/配置 | 已接本机与云端文件模式；云端 Pi 尚未运行，不重写编辑器或 Agent 框架 |
+| 身份 | Supabase Auth；接注册/恢复时采用官方 SDK 的服务端身份操作 | 保留邀请、内部账号、资料归属；当前仍是直接 password grant 适配器，未接 SDK 或完整注册流程 |
+| 应用会话 | 首期保留不透明 HttpOnly Cookie 与服务端会话摘要 | 已实现退出/停用检查；不同时新增另一套浏览器 Supabase 登录态 |
+| 任务 | 保留 PostgreSQL Runs 为唯一业务状态来源 | 已有幂等、容量和恢复状态；首期不叠加 pg-boss/Redis，不扩展成通用队列产品 |
+| 沙箱 | 首个 worker 后端选择 Docker Engine；随后评估 gVisor runtime | 新接执行控制器、挂载/网络/额度、停止协调；尚无实际隔离验收 |
+| HTTPS 与部署 | Caddy + Docker Compose；网页/API 同源 | 新增可复现部署与回退配置；不是将现有 loopback 入口直接公布到公网 |
+| 构建发布 | GitHub Actions + OCI 镜像，GHCR 为优先仓库 | 已有测试 CI；构建、推送镜像及部署流程未实现，不自动修改仓库可见性 |
+| 版本与备份 | Git + restic，备份目标采用 S3 兼容存储，优先评估 R2 | Git 基础已存在；一致快照、独立备份、恢复演练尚未实现 |
+| 邮件 | Supabase 的邮件流程接正式 SMTP；Resend 为候选 | 尚未开通或选择套餐；认证邮件与用户提醒渠道分别决策 |
+| 排障与监测 | 结构化脱敏日志、单个外部健康监测；需要时接 Sentry | 不先部署一整套指标集群，初期不启用会话录屏或正文采集 |
+
+暂不引入 Kubernetes、Redis/BullMQ、Temporal、多套容器后端、独立向量数据库、通用插件平台、Coolify/Dokploy 管理面板。后续确有需求时单独评估，不预先写一套多供应商抽象层。模型初期仍只接 DeepSeek；模型出口只承担短期身份、受限转发、用量和撤销，不扩展成第二套模型管理系统。
+
+### 17.2 认证收敛
+
+Supabase 继续负责密码、邮箱验证与密码重置，Corilo 负责邀请准入、内部账号及资料授权。后续身份操作使用官方 SDK，避免继续手写更多认证协议；服务端客户端不持久化或跨请求共享用户登录状态，管理级凭据与普通登录客户端分开，只放可信控制面，不进入浏览器、worker、日志或知识库。
+
+首期保留当前应用会话，是为了延续业务规格中的当前设备退出与账号停用语义，并适配全部数据经同源服务器访问的结构。Supabase JWT 的本地签名/过期校验不能单独证明其对应会话刚刚未被撤销；典型浏览器 SSR 会话的 Cookie/刷新设计也不等同于现有 HttpOnly 不透明会话。官方 SDK 可以复用，不意味着应直接套用另一种会话架构。
+
+不将“Supabase 中有身份”当作 Corilo 准入。邀请兑换仍在 Corilo 数据库事务中完成；未来注册链接、邮箱确认和密码恢复必须校验可信回调及预期操作，防止开放重定向和重放。改密码/恢复密码后的应用会话撤销需显式衔接，不能假设身份提供商自动清掉 Corilo 的 sessions。建议密码重置成功后撤销该账号旧应用会话并要求重新登录，需同步到业务规格后实现。单独在 Supabase 管理台禁用身份不会自动撤销当前 Corilo 的 24 小时会话；停用以 Corilo 账号状态为权威入口，若允许外部管理台直接停用，必须补可靠状态同步或在线核验。
+
+邀请开通建议由管理员发起并使用官方邀请/邮箱验证能力，关闭公共 signup；这是下一步注册流程建议，尚未发送邮件或在真实项目验证。先持久化应用邀请，再请求身份提供商发送开通邮件；两者不是分布式事务，发信失败或结果未知需保留可重试状态。链接 GET 不直接兑换应用邀请，避免邮件扫描器提前消耗；验证本人后再原子兑换建库。只隐藏注册按钮不能约束直接调用 Auth 接口，正式配置必须实测。
+
+未来若改用官方会话作为唯一登录态，迁移前必须验证当前设备退出、多端会话、账号停用、并发刷新、过期草稿、CSRF/Origin 与邀请兑换；保持 provider subject 到内部账号/知识库的映射，不按邮箱猜测合并账号。一次性切换并撤销旧会话，不长期维护两套可互相绕过的登录凭证。
+
+### 17.3 队列收敛
+
+首期保留 `runs`/`run_events` 和简单 PostgreSQL 领取逻辑。当前主要缺口是执行控制器与文件写入协调，换成成熟队列不会替代这两项。全局短事务锁是小规模实现取舍，后续测量排队量及锁等待再判断是否调整；不因已有代码就宣称其适合任意规模。
+
+pg-boss 可作为以后定时、通知或维护任务的候选投递层，但不直接用它的自动重试包裹 `Pi.prompt`。数据库任务投递保障不代表文件修改、外部 API 或整个 Agent 的副作用只发生一次。若引入，只投递 run ID/唤醒信号，由 Runs 再决定能否执行；不得同时让两套心跳/过期逻辑分别决定释放知识库占用。生产版本须固定并验证 retry、heartbeat、expiration、stop 行为，不能只改一个 retry 参数就认为没有重复执行。
+
+采用条件是出现多个可安全重试的任务类型、需要成熟的定时/重试管理，或实测现有调度维护成本明显增加。新投递层需解决提交 run 与发送任务之间的原子性/补偿、重复投递和故障恢复；`runs` 继续是 UI 状态权威。未来提醒即使用队列，渠道接受后结果未知也不能直接重发。
+
+### 17.4 Docker 与控制器的接入顺序
+
+Docker 负责进程、挂载和资源限制；Corilo 控制器负责哪个 run 可以启动、属于谁、何时停止。首期只实现一个 Docker 后端，gVisor 的适配应优先复用同一 OCI 镜像并实测 Pi 默认 bash、Node、文件工具与网络代理。普通容器共享内核，不据此宣称可无条件公开运行不可信代码。Podman、Kata、Firecracker、托管沙箱后置，避免同时维护多套部署条件。
+
+只有可信执行控制器可访问容器引擎。网页网关、Pi 容器、模型出口不需要 Docker socket；挂载只读 Docker socket 也不能作为限制 API 权限的办法。控制器接受持久 run ID，从数据库和受控目录推导挂载、镜像及资源，不接受浏览器/Agent 提供任意宿主路径或 Docker 参数。
+
+worker 仅运行 Pi，不在容器内再启动现有文件宿主。`.corilo-host.lock/.flock` 仍归可信文件服务管理，不能跨不同 PID 命名空间复用其自动回收判定。为当前用户挂载知识库及独立会话状态；不挂载整个 tenant 根、运营者 Pi 认证目录、数据库/备份凭据。映射文件 UID/GID 需明确，不能靠全目录 chmod 777 解决写权限。
+
+容器使用 `restart=no`，记录具体 container ID 与服务端标签；不自动清理不属于本控制器的资源。固定镜像 digest、非 root、只读根文件系统、最小 capability、禁止提权、默认 seccomp，以及 CPU/内存/PID/运行时间/临时空间限制进入创建参数；持久知识库另落实可验证的磁盘额度，bind mount 不会自动获得容量限制。用户 `.git` 若可被默认工具访问，仍不是防篡改备份；独立备份不交给 worker。
+
+网络先按默认拒绝设计，按需放行模型出口和领域 API；普通 Docker bridge/`internal` 网络本身不等于完整租户隔离。不能让所有用户 worker 在同一可互访网络，不能放行宿主管理端口、数据库、元数据或任意互联网外发。具体网络规则与出口认证必须一起实测，包括 IPv4/IPv6、DNS、宿主网关和相邻容器；无网络的容器隔离测试也不等于已验证模型调用路径。
+
+首期单个执行控制器运行；进程内互斥不能冒充跨实例锁。控制器要先实现启动/终止互斥，再连接网关：获得库写入协调 → 核验 run 仍可启动 → 创建并确认容器身份 → 运行；停止则禁止后续创建/启动 → 撤销调用身份 → 终止完整容器并确认退出 → 保存结果/历史 → 释放占用。一次 `inspect` 返回不存在不能排除迟到的 create 请求；确认失联控制器已停止或被阻止创建之前保留占用。确定的容器名仅用于定位，不代替控制权和生命周期互斥。
+
+### 17.5 部署与备份收敛
+
+首期 Caddy 提供同源 HTTPS，Compose 管理长运行服务，控制器按需创建短生命周期 worker。当前 gateway 仅监听 127.0.0.1；如果 Caddy 与网关分容器，后续必须给云端网关增加受控监听配置，只连接私有网络且不公开映射宿主端口。内部文件宿主继续 loopback，Host/Origin、Cookie 和来源检查不随容器化放宽。仅提交 Compose 文件不算部署完成。
+
+Compose 重建网关/文件宿主容器也会更换 PID 命名空间，现有 `cloud-files:<pid>` 标记不能根据新容器里的同号 PID 判断旧进程。正式部署前需验证网关强杀和容器重建恢复，调整锁身份或采用已确认旧容器及全部挂载写入者退出后的受控恢复；不能在启动脚本中无条件删锁，也不能同时启动多个应用容器共享同一知识库。
+
+Actions 在测试后构建 OCI 镜像、记录版本并推送选定仓库；部署使用固定 digest，保留上一可运行镜像。数据库迁移显式执行，镜像回退不代表数据库自动回退；破坏性迁移前需要兼容窗口及可恢复备份。GHCR 权限、私有镜像存储和 Actions 额度需按实际账号核对，不承诺免费无限，也不因使用 GHCR 就发布私有代码或资料。
+
+restic 负责备份归档、加密、保留与还原，不负责跨 PostgreSQL/文件/正在运行 Pi 的一致性。首期在受控维护窗口停止新任务、等待/终止执行并阻止资料变更、协调提醒发送状态，再生成数据库逻辑备份和对应文件/会话副本，标记同一备份批次后恢复服务，最后上传副本。不能直接复制运行中的 PostgreSQL 数据目录或只备份当前 Markdown。数据库优先采用 pg_dump 等原生逻辑备份工具；备份频率、保留期和恢复目标须测量并在上线前确定。
+
+托管 Supabase 的 Auth 身份与 Corilo 私有业务表是不同恢复边界：需要明确身份提供商备份/恢复方式与 subject 映射验证，不能把一份业务库 dump 宣称为完整账号灾备。备份密钥与生产磁盘分开保管，备份账户权限和删除权限按需要分离；加密备份不改变运行中服务能读取资料的事实。
+
+恢复须到隔离目标核对清单/摘要和账号资料归属，撤销旧应用会话与执行身份，历史 run 不自动执行，待发提醒保持暂停；确认后再切流量。R2/S3 存储、密钥丢失、磁盘丢失、部分备份失败和版本不兼容都进入恢复演练。用户完整资料包与运营灾备仍分别验收。
+
+认证邮件先由 Supabase 接正式 SMTP，是否选 Resend 与预算另定；不顺带决定用户提醒渠道。健康接口只返回必要状态，不带正文、账号和秘密；Sentry 默认不采集 prompt、正文、凭据或会话回放。Tailscale 可供管理员维护，Turnstile 可在出现滥用后评估，不作为当前每个用户操作的前置步骤。
+
+### 17.6 下一步可验收交付
+
+| 顺序 | 交付与检查 | 仍不能据此宣称完成 |
+|---|---|---|
+| 1 | Docker worker 与控制器：真实 Pi 默认文件工具、跨用户卷/网络拒绝、资源上限、启动/停止竞争及控制器崩溃 | 只有容器启动成功不算模型与用户完整链路 |
+| 2 | 文件宿主协调、限任务模型出口、原生 Pi 配置及真实 DeepSeek；停止后无法继续调用 | 仅协议替身不算真实模型验证 |
+| 3 | Supabase 官方身份操作、邀请开通/邮箱验证/密码重置；保留应用会话的撤销语义 | 仅登录替身不算真实邀请注册验收 |
+| 4 | Caddy/Compose、镜像发布及隔离环境恢复演练；确认部署与运营参数 | 配置文件存在不代表已部署或可公开上线 |
+
+以上为实现顺序，不是授权开通付费资源、发送邀请或部署。N01–N19 继续作为唯一产品验收编号；业务行为见 PRODUCT-SPEC，组件自带测试不替代跨组件验证。
+
+### 17.7 来源与验证范围
+
+本轮检查日期为 2026-10-21（Asia/Taipei）。已核对仓库代码和以下可访问的官方源码/文档；没有安装候选依赖、执行真实 worker、发送邮件或进行部署/恢复演练。选型不构成当前套餐价格或免费额度承诺。
+
+| 已读取来源 | 对应判断 |
+|---|---|
+| [Supabase Sessions](https://github.com/supabase/supabase/blob/master/apps/docs/content/guides/auth/sessions.mdx)、[服务端认证说明](https://github.com/supabase/supabase/blob/master/apps/docs/content/guides/auth/server-side/advanced-guide.mdx)、[密码认证](https://github.com/supabase/supabase/blob/master/apps/docs/content/guides/auth/passwords.mdx) | 会话撤销、Cookie/刷新与密码恢复需要按实际架构衔接 |
+| [Supabase 管理 API](https://github.com/supabase/auth-js/blob/master/src/GoTrueAdminApi.ts)、[SSR 实现](https://github.com/supabase/ssr/blob/main/src/createServerClient.ts) | 可复用官方操作；不直接将客户端会话方案当当前应用会话替代 |
+| [pg-boss README](https://github.com/timgit/pg-boss/blob/d4400859eed280b58c346f5289a0312913d558bd/README.md)、[QueueOptions](https://github.com/timgit/pg-boss/blob/d4400859eed280b58c346f5289a0312913d558bd/src/types.ts) | 固定调查提交的 retryLimit 默认 2，过期/缺失心跳可进入失败重试；未安装或选定该版本 |
+| [Docker 安全](https://github.com/docker/docs/blob/main/content/manuals/engine/security/_index.md)、[bind mounts](https://github.com/docker/docs/blob/main/content/manuals/engine/storage/bind-mounts.md)、[资源限制](https://github.com/docker/docs/blob/main/content/manuals/engine/containers/resource_constraints.md)、[bridge 网络](https://github.com/docker/docs/blob/main/content/manuals/engine/network/drivers/bridge.md) | 容器、挂载、资源和网络策略须分别配置与验证 |
+| [gVisor](https://github.com/google/gvisor/blob/master/README.md)、[Podman](https://github.com/containers/podman/blob/main/README.md)、[Kata](https://github.com/kata-containers/kata-containers/blob/main/README.md)、[Firecracker](https://github.com/firecracker-microvm/firecracker/blob/main/README.md)、[E2B](https://github.com/e2b-dev/E2B/blob/main/README.md) | 沙箱能力比较；未核验当前 VPS 兼容性、托管套餐或 Pi 实测性能 |
+
+部分官方文档站点本轮访问被环境网络策略拒绝。以下是后续接入时的核验入口，未声称本轮已实时读取其内容：[Caddy HTTPS](https://caddyserver.com/docs/automatic-https)、[Compose secrets](https://docs.docker.com/compose/how-tos/use-secrets/)、[GHCR](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)、[restic 数据库示例](https://restic.readthedocs.io/en/stable/080_examples.html)、[pg_dump](https://www.postgresql.org/docs/current/app-pgdump.html)、[R2/restic](https://developers.cloudflare.com/r2/examples/restic/)、[Resend/Supabase](https://resend.com/docs/send-with-supabase-smtp)。正式接入须固定版本、检查许可及实际账户条件，再做端到端验证。
