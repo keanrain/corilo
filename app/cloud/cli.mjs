@@ -16,7 +16,10 @@ try {
     const identity = new SupabaseIdentity({ url: process.env.SUPABASE_URL, publishableKey: process.env.SUPABASE_PUBLISHABLE_KEY });
     const port = Number(process.env.PORT || 3000);
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid PORT');
-    const cloud = await startCloud({ accounts, identity, dataRoot: path.resolve(process.env.CORILO_CLOUD_DATA), publicOrigin: process.env.CORILO_PUBLIC_ORIGIN, port });
+    const socketPath = process.env.CORILO_HOST_CONTROL_SOCKET, token = process.env.CORILO_HOST_CONTROL_TOKEN;
+    if (!!socketPath !== !!token) throw new Error('Invalid host control configuration');
+    const cloud = await startCloud({ accounts, identity, dataRoot: path.resolve(process.env.CORILO_CLOUD_DATA), publicOrigin: process.env.CORILO_PUBLIC_ORIGIN, port,
+      hostControl: socketPath ? { socketPath, token } : null });
     console.log(`Corilo cloud file service listening on ${cloud.address}; AI is disabled`);
     let closing = false;
     const close = async () => { if (closing) return; closing = true; await cloud.close(); await accounts.close(); };

@@ -88,7 +88,7 @@ export class ExecutionController {
       if(!row)continue;
       if(await this.stopRun(id)!==true)throw new Error('Terminal worker termination unconfirmed');
       const host=await this.hostFor({id,ownerId:row.owner_id,vaultId:row.vault_id,conversationId:row.conversation_id});
-      if(host.activeRunId()!==id)continue;
+      if(await host.activeRunId()!==id)continue;
       await host.checkpointRun(id);await host.releaseRun(id);results.push({id,state:row.state});
     }
     return results;

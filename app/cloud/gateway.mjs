@@ -1,4 +1,6 @@
 import http from 'node:http';
+import path from 'node:path';
+import { startHostControl } from './host-control.mjs';
 import { readFile, mkdir, realpath } from 'node:fs/promises';
 import { CloudHosts } from './hosts.mjs';
 import { CloudConversations } from './conversations.mjs';
@@ -15,7 +17,7 @@ async function input(req) {
   for await (const part of req) { total += part.length; if (total > 8192) throw fault(413, '请求过大'); parts.push(part); }
   try { return JSON.parse(Buffer.concat(parts)); } catch { throw fault(400, '请求格式无效'); }
 }
-export async function startCloud({ accounts, identity, dataRoot, publicOrigin, port = 0, maxHosts = 20 }) {
+export async function startCloud({ accounts, identity, dataRoot, publicOrigin, port = 0, maxHosts = 20, hostControl = null }) {
   const origin = new URL(publicOrigin);
   if ((origin.protocol !== 'https:' && !(origin.protocol === 'http:' && origin.hostname === '127.0.0.1')) || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) throw new Error('Public origin must be HTTPS (loopback HTTP is development only)');
   await mkdir(dataRoot, { recursive: true, mode: 0o700 });
@@ -23,7 +25,10 @@ export async function startCloud({ accounts, identity, dataRoot, publicOrigin, p
   const hosts = new CloudHosts({ pool: accounts.pool, dataRoot, maxHosts }), limits = new Map();
   const conversations = new CloudConversations(accounts.pool, { dataRoot });
   const runs = new RunObservation(accounts.pool);
-  let closing = false;
+  if (hostControl && (!path.isAbsolute(hostControl.socketPath || '') ||
+      path.resolve(hostControl.socketPath) === dataRoot || path.resolve(hostControl.socketPath).startsWith(dataRoot + path.sep)))
+    throw new Error('Control socket must be outside tenant data');
+  let closing = false, closeTask, control;
   const cookie = (token, age) => `${cookieName}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${age}`;
   function rateLimit(req) {
     const now = Date.now();
@@ -104,10 +109,27 @@ export async function startCloud({ accounts, identity, dataRoot, publicOrigin, p
     } catch (e) { json(res, e.status || 500, { error: e.status ? e.message : '服务暂不可用，请稍后重试' }); }
   });
   server.requestTimeout = 30000; server.headersTimeout = 15000;
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
+  try {
+    if (hostControl) control = await startHostControl({ ...hostControl, pool: accounts.pool, hosts });
+    await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); });
+  } catch (error) {
+    await control?.close(); await hosts.close(); throw error;
+  }
   if (origin.protocol === 'http:' && origin.port === '0') origin.port = String(server.address().port);
-  return { address: `http://127.0.0.1:${server.address().port}`, async close() {
-    closing = true; server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
-    await hosts.close();
+  return { address: `http://127.0.0.1:${server.address().port}`, close() {
+    if (!closeTask) {
+      closing = true;
+      closeTask = (async () => {
+        server.closeAllConnections();
+        const results = await Promise.allSettled([
+          new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())),
+          control?.close(),
+        ]);
+        await hosts.close();
+        const failure = results.find(result => result.status === 'rejected');
+        if (failure) throw failure.reason;
+      })();
+    }
+    return closeTask;
   } };
 }
