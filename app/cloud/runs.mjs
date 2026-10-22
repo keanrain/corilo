@@ -64,9 +64,52 @@ export class RunObservation {
   }
 }
 
+// Recovery never submits work, claims a task, or renews an execution lease.
+export class RunRecovery extends RunObservation {
+  async end(client, runId, state, reason) {
+    if (!terminal.has(state)) throw new Error('Invalid terminal state');
+    const run = (await client.query(`UPDATE corilo_private.runs SET state=$2,reason=$3,finished_at=now(),
+      lease_digest=NULL,lease_until=NULL WHERE id=$1 RETURNING *`, [runId, state, reason])).rows[0];
+    return this.event(client, run);
+  }
+  // Returns candidates for reconciliation, never releases capacity or requeues them.
+  async recoveryCandidates() {
+    return (await this.pool.query(`SELECT r.id,r.worker_id AS "workerId",r.state FROM corilo_private.runs r
+      JOIN corilo_private.accounts a ON a.id=r.owner_id
+      WHERE r.state IN ('running','stopping') AND
+      (r.state='stopping' OR r.lease_until<=now() OR r.deadline_at<=now() OR a.disabled)
+      ORDER BY r.created_at LIMIT 100`)).rows;
+  }
+  async reconcile(runId, ensureWorkerStopped) {
+    if (!uuid(runId) || typeof ensureWorkerStopped !== 'function') throw new Error('Worker reconciliation required');
+    // Fence before performing external work, so an expired worker cannot renew or
+    // report completion between reconciliation selection and termination.
+    const pending = await this.transaction(async client => {
+      const run = (await client.query(`SELECT r.*,a.disabled,(r.lease_until>now() AND r.deadline_at>now()) AS live
+        FROM corilo_private.runs r JOIN corilo_private.accounts a ON a.id=r.owner_id WHERE r.id=$1`, [runId])).rows[0];
+      if (!run || !['running','stopping'].includes(run.state)) return null;
+      if (run.state === 'running' && run.live && !run.disabled) return null;
+      const reason = run.reason || (run.disabled ? 'account_disabled' : 'lease_expired');
+      const updated = (await client.query("UPDATE corilo_private.runs SET state='stopping',reason=$2 WHERE id=$1 RETURNING *", [runId, reason])).rows[0];
+      if (run.state !== updated.state) await this.event(client, updated);
+      return { workerId: run.worker_id, reason };
+    });
+    if (!pending) return null;
+    // Must stop/remove the complete worker and verify absence, including a worker
+    // that might still be launching. An exception or false leaves the vault held.
+    if (await ensureWorkerStopped(pending.workerId) !== true) throw fault(503, '尚未确认执行环境已停止');
+    return this.transaction(async client => {
+      const run = (await client.query('SELECT * FROM corilo_private.runs WHERE id=$1', [runId])).rows[0];
+      if (terminal.has(run.state)) return view(run);
+      if (run.state !== 'stopping') throw fault(409, '执行状态已变化');
+      return this.end(client, runId, pending.reason === 'user_stop' ? 'stopped' : 'interrupted', pending.reason);
+    });
+  }
+}
+
 // Internal control-plane service, not a browser or worker database API. All callers
 // share these deployment-wide limits. Worker execution and model budgets are separate.
-export class Runs extends RunObservation {
+export class Runs extends RunRecovery {
   constructor(pool, { maxRunning, maxQueued, leaseSeconds, maxRunSeconds } = {}) {
     super(pool);
     for (const [name, value, limit] of [['maxRunning', maxRunning, 1000], ['maxQueued', maxQueued, 10000],
@@ -162,45 +205,6 @@ export class Runs extends RunObservation {
       const state = run.state === 'stopping' ? (reason === 'user_stop' ? 'stopped' : 'interrupted')
         : run.disabled || !run.live ? 'interrupted' : outcome;
       return this.end(client, run.id, state, reason);
-    });
-  }
-  async end(client, runId, state, reason) {
-    if (!terminal.has(state)) throw new Error('Invalid terminal state');
-    const run = (await client.query(`UPDATE corilo_private.runs SET state=$2,reason=$3,finished_at=now(),
-      lease_digest=NULL,lease_until=NULL WHERE id=$1 RETURNING *`, [runId, state, reason])).rows[0];
-    return this.event(client, run);
-  }
-  // Returns candidates for reconciliation, never releases capacity or requeues them.
-  async recoveryCandidates() {
-    return (await this.pool.query(`SELECT r.id,r.worker_id AS "workerId",r.state FROM corilo_private.runs r
-      JOIN corilo_private.accounts a ON a.id=r.owner_id
-      WHERE r.state IN ('running','stopping') AND
-      (r.state='stopping' OR r.lease_until<=now() OR r.deadline_at<=now() OR a.disabled)
-      ORDER BY r.created_at LIMIT 100`)).rows;
-  }
-  async reconcile(runId, ensureWorkerStopped) {
-    if (!uuid(runId) || typeof ensureWorkerStopped !== 'function') throw new Error('Worker reconciliation required');
-    // Fence before performing external work, so an expired worker cannot renew or
-    // report completion between reconciliation selection and termination.
-    const pending = await this.transaction(async client => {
-      const run = (await client.query(`SELECT r.*,a.disabled,(r.lease_until>now() AND r.deadline_at>now()) AS live
-        FROM corilo_private.runs r JOIN corilo_private.accounts a ON a.id=r.owner_id WHERE r.id=$1`, [runId])).rows[0];
-      if (!run || !['running','stopping'].includes(run.state)) return null;
-      if (run.state === 'running' && run.live && !run.disabled) return null;
-      const reason = run.reason || (run.disabled ? 'account_disabled' : 'lease_expired');
-      const updated = (await client.query("UPDATE corilo_private.runs SET state='stopping',reason=$2 WHERE id=$1 RETURNING *", [runId, reason])).rows[0];
-      if (run.state !== updated.state) await this.event(client, updated);
-      return { workerId: run.worker_id, reason };
-    });
-    if (!pending) return null;
-    // Must stop/remove the complete worker and verify absence, including a worker
-    // that might still be launching. An exception or false leaves the vault held.
-    if (await ensureWorkerStopped(pending.workerId) !== true) throw fault(503, '尚未确认执行环境已停止');
-    return this.transaction(async client => {
-      const run = (await client.query('SELECT * FROM corilo_private.runs WHERE id=$1', [runId])).rows[0];
-      if (terminal.has(run.state)) return view(run);
-      if (run.state !== 'stopping') throw fault(409, '执行状态已变化');
-      return this.end(client, runId, pending.reason === 'user_stop' ? 'stopped' : 'interrupted', pending.reason);
     });
   }
 }

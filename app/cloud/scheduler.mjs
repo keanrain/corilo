@@ -1,7 +1,8 @@
 // Internal lifecycle only: callers supply the trusted controller and shared file
 // gate transport. This is not a public API or an independently deployable daemon.
-export async function startScheduler({ controller, concurrency = 1, pollMs = 250, retryMs = 1000, onError = () => {} }) {
-  if (!controller || ['init', 'recover', 'executeNext', 'close'].some(name => typeof controller[name] !== 'function'))
+export async function startScheduler({ controller, concurrency = 1, pollMs = 250, retryMs = 1000, recoveryOnly = false, onError = () => {} }) {
+  if (typeof recoveryOnly !== 'boolean') throw new Error('Invalid scheduler recovery mode');
+  if (!controller || ['init', 'recover', 'close', ...(recoveryOnly ? [] : ['executeNext'])].some(name => typeof controller[name] !== 'function'))
     throw new Error('Controller lifecycle required');
   for (const [name, value, min, max] of [['concurrency', concurrency, 1, 1000], ['pollMs', pollMs, 20, 5000], ['retryMs', retryMs, 100, 60000]]) {
     if (!Number.isInteger(value) || value < min || value > max) throw new Error(`Invalid scheduler ${name}`);
@@ -28,6 +29,7 @@ export async function startScheduler({ controller, concurrency = 1, pollMs = 250
       }
       finally { recoveryTask = undefined; }
       if (closing) break;
+      if (recoveryOnly) { phase = 'idle'; await pause(pollMs); continue; }
       phase = 'executing';
       // Conservative batches keep recovery strictly idle. A slow task delays the
       // next admission batch; the database remains the global capacity authority.
@@ -46,7 +48,7 @@ export async function startScheduler({ controller, concurrency = 1, pollMs = 250
     }
   })();
   return {
-    status() { return { phase, active, closing }; },
+    status() { return { phase, active, closing, recoveryOnly }; },
     close() {
       if (closeTask) return closeTask;
       closing = true; phase = 'closing'; wake?.();

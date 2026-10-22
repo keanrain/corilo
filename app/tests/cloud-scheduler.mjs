@@ -183,3 +183,12 @@ test('scheduler reports shutdown failure when in-flight recovery fails while clo
   assert.equal(closed, true); assert.equal(scheduler.status().phase, 'failed');
   assert.deepEqual(errors, [{ code: 'recovery_failed' }, { code: 'shutdown_failed' }]);
 });
+
+test('recovery-only scheduler never calls execution admission', async () => {
+  let recovered=0,closed=false;
+  const controller={async init(){},async recover(){recovered++;},async executeNext(){throw new Error('must never claim');},async close(){closed=true;}};
+  const errors=[];
+  const scheduler=await startScheduler({controller,recoveryOnly:true,pollMs:20,retryMs:100,onError:error=>errors.push(error)});
+  await waitFor(()=>recovered>=2);await scheduler.close();
+  assert.equal(scheduler.status().recoveryOnly,true);assert.equal(closed,true);assert.deepEqual(errors,[]);
+});

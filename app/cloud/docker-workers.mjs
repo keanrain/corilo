@@ -4,6 +4,7 @@ import * as fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 
 const uuid = value => typeof value === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(value);
+const journalPhases = new Set(['prepared','creating','created','starting','running','stopped','removing','removed']);
 const number = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
 
 export class DockerEngine {
@@ -29,15 +30,13 @@ export class DockerEngine {
   }
 }
 
-// Control-plane only. One instance owns this private journal root. There is no
-// arbitrary-command/network/mount API; requests originate in the trusted run store.
-export class DockerWorkers {
-  constructor({ engine = new DockerEngine(), image, dataRoot, journalRoot, uid, gid, memoryMiB, cpuMillis, pids, tmpMiB }) {
-    if (!/^(sha256:[a-f0-9]{64}|[^\s]+@sha256:[a-f0-9]{64})$/.test(image || '')) throw new Error('Immutable worker image required');
-    for (const [value,min,max] of [[uid,1,2147483647],[gid,1,2147483647],[memoryMiB,128,65536],[cpuMillis,100,64000],[pids,8,4096],[tmpMiB,1,1024]])
-      if (!number(value,min,max)) throw new Error('Explicit worker resource limits required');
-    Object.assign(this,{engine,image,dataRoot:path.resolve(dataRoot),journalRoot:path.resolve(journalRoot),uid,gid,memoryMiB,cpuMillis,pids,tmpMiB});
-    this.queues = new Map();
+// Stop/recovery capability requires only the existing controller journal and
+// Docker transport. It cannot create or start a worker.
+export class DockerWorkerRecovery {
+  constructor({ engine = new DockerEngine(), journalRoot } = {}) {
+    if (typeof engine?.request !== 'function' || typeof journalRoot !== 'string' ||
+        !path.isAbsolute(journalRoot) || journalRoot.includes('\0')) throw new Error('Explicit worker recovery configuration required');
+    this.engine = engine; this.journalRoot = path.resolve(journalRoot); this.queues = new Map();
   }
   serial(id, fn) {
     if (!uuid(id)) throw new Error('Invalid run ID');
@@ -47,14 +46,13 @@ export class DockerWorkers {
     void settled.then(() => { if (this.queues.get(id) === settled) this.queues.delete(id); });
     return next;
   }
-  async directory(...parts) {
-    const target = path.join(this.dataRoot, ...parts);
-    // Root must be canonical, and no descendant supplied by a user may be a link.
-    if (await fs.realpath(this.dataRoot) !== this.dataRoot || await fs.realpath(target) !== target || !(await fs.lstat(target)).isDirectory())
-      throw new Error('Unsafe worker mount');
-    return target;
+  async journal(id) {
+    if (!uuid(id)) throw new Error('Invalid run ID');
+    const journal=JSON.parse(await fs.readFile(path.join(this.journalRoot,id,'journal.json'),'utf8'));
+    if (!journal || journal.runId!==id || journal.controller!==this.journalRoot || journal.name!=='corilo-run-'+id || !journalPhases.has(journal.phase))
+      throw new Error('Worker journal ownership mismatch');
+    return journal;
   }
-  async journal(id) { return JSON.parse(await fs.readFile(path.join(this.journalRoot,id,'journal.json'),'utf8')); }
   async save(id, value) {
     const dir = path.join(this.journalRoot,id), temp = path.join(dir,randomUUID()+'.tmp');
     const handle = await fs.open(temp,'wx',0o600);
@@ -69,6 +67,65 @@ export class DockerWorkers {
         throw new Error('Worker ownership mismatch');
       return result;
     } catch (e) { if (e.status === 404) return null; throw e; }
+  }
+  async status(id) {
+    return this.serial(id,async()=> {
+      const journal=await this.journal(id), container=await this.inspect(journal);
+      return { phase:journal.phase, present:!!container, running:container?.State.Running === true,
+        exitCode:container?.State.ExitCode, oomKilled:container?.State.OOMKilled === true };
+    });
+  }
+  async missingJournal() {
+    // A recovery process cannot prove that it owns the journal root of the old
+    // controller. Absence here says nothing about a worker or delayed create.
+    throw new Error('Worker recovery journal missing; termination unconfirmed');
+  }
+  async stop(id) {
+    return this.serial(id,async()=> {
+      let journal;
+      try { journal=await this.journal(id); } catch(e) {
+        if(e.code!=='ENOENT')throw e;
+        return this.missingJournal(id);
+      }
+      const container=await this.inspect(journal);
+      if (!container) {
+        if (!['prepared','stopped','removed'].includes(journal.phase) && !journal.containerId) return false;
+        // A known deleted ID cannot later be started; an unknown create may still arrive.
+        await this.save(id,{...journal,phase:'removed'});
+        await fs.rm(path.join(this.journalRoot,id,'request.json'),{force:true}); return true;
+      }
+      await this.save(id,{...journal,containerId:container.Id,phase:'removing'});
+      await this.engine.request('DELETE','/containers/'+container.Id+'?force=1');
+      if (await this.inspect({...journal,containerId:container.Id})) return false;
+      await this.save(id,{...journal,containerId:container.Id,phase:'removed'});
+      await fs.rm(path.join(this.journalRoot,id,'request.json'),{force:true}); return true;
+    });
+  }
+}
+
+// Control-plane only. One instance owns this private journal root. There is no
+// arbitrary-command/network/mount API; requests originate in the trusted run store.
+export class DockerWorkers extends DockerWorkerRecovery {
+  constructor({ engine = new DockerEngine(), image, dataRoot, journalRoot, uid, gid, memoryMiB, cpuMillis, pids, tmpMiB }) {
+    super({ engine, journalRoot: path.resolve(journalRoot) });
+    if (!/^(sha256:[a-f0-9]{64}|[^\s]+@sha256:[a-f0-9]{64})$/.test(image || '')) throw new Error('Immutable worker image required');
+    for (const [value,min,max] of [[uid,1,2147483647],[gid,1,2147483647],[memoryMiB,128,65536],[cpuMillis,100,64000],[pids,8,4096],[tmpMiB,1,1024]])
+      if (!number(value,min,max)) throw new Error('Explicit worker resource limits required');
+    Object.assign(this,{engine,image,dataRoot:path.resolve(dataRoot),journalRoot:path.resolve(journalRoot),uid,gid,memoryMiB,cpuMillis,pids,tmpMiB});
+  }
+  async missingJournal(id) {
+    // The execution owner can stop before it issues any create (for example when
+    // model preparation fails). Persist that local outcome for terminal recovery.
+    await fs.mkdir(path.join(this.journalRoot,id),{recursive:true,mode:0o700});
+    await this.save(id,{runId:id,controller:this.journalRoot,name:'corilo-run-'+id,phase:'removed'});
+    return true;
+  }
+  async directory(...parts) {
+    const target = path.join(this.dataRoot, ...parts);
+    // Root must be canonical, and no descendant supplied by a user may be a link.
+    if (await fs.realpath(this.dataRoot) !== this.dataRoot || await fs.realpath(target) !== target || !(await fs.lstat(target)).isDirectory())
+      throw new Error('Unsafe worker mount');
+    return target;
   }
   async start(claim, mayStart, modelBinding) {
     return this.serial(claim.id, async () => {
@@ -144,38 +201,6 @@ export class DockerWorkers {
       await this.engine.request('POST','/containers/'+created.Id+'/start');
       await this.save(claim.id,{...known,phase:'running'});
       return created.Id;
-    });
-  }
-  async status(id) {
-    return this.serial(id,async()=> {
-      const journal=await this.journal(id), container=await this.inspect(journal);
-      return { phase:journal.phase, present:!!container, running:container?.State.Running === true,
-        exitCode:container?.State.ExitCode, oomKilled:container?.State.OOMKilled === true };
-    });
-  }
-  async stop(id) {
-    return this.serial(id,async()=> {
-      let journal;
-      try { journal=await this.journal(id); } catch(e) {
-        if(e.code!=='ENOENT')throw e;
-        // Even runs stopped before create need a journal: a terminal DB commit
-        // can precede a crash before the host gate is released.
-        await fs.mkdir(path.join(this.journalRoot,id),{recursive:true,mode:0o700});
-        await this.save(id,{runId:id,controller:this.journalRoot,name:'corilo-run-'+id,phase:'removed'});
-        return true;
-      }
-      const container=await this.inspect(journal);
-      if (!container) {
-        if (!['prepared','stopped','removed'].includes(journal.phase) && !journal.containerId) return false;
-        // A known deleted ID cannot later be started; an unknown create may still arrive.
-        await this.save(id,{...journal,phase:'removed'});
-        await fs.rm(path.join(this.journalRoot,id,'request.json'),{force:true}); return true;
-      }
-      await this.save(id,{...journal,containerId:container.Id,phase:'removing'});
-      await this.engine.request('DELETE','/containers/'+container.Id+'?force=1');
-      if (await this.inspect({...journal,containerId:container.Id})) return false;
-      await this.save(id,{...journal,containerId:container.Id,phase:'removed'});
-      await fs.rm(path.join(this.journalRoot,id,'request.json'),{force:true}); return true;
     });
   }
 }

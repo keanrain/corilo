@@ -86,10 +86,14 @@ CI 使用独立 PostgreSQL 容器，见 `.github/workflows/cloud.yml`。工作�
 
 `scheduler.mjs` 的 `startScheduler({controller, concurrency, pollMs, retryMs, onError})` 返回 `status()` 和幂等的 `close()`，先获取控制器锁并执行恢复，再领取有界批次。失败退避，关闭不再领取；等待恢复操作结束及活跃执行停止，失败明确报错，不自动重放任务或清除占用。错误回调只有阶段码，不含正文/异常诊断。并发受 Runs 全局额度再次限制；当前每批等待最慢任务，不保证满负载吞吐。`status().active` 是本批执行调用数，不等于数据库中的活跃 worker 总数。
 
-该模块尚无生产 CLI。生产网关不得得到 Docker socket；独立控制器现可通过私有 Unix 通道操作原宿主，不能同时打开第二个宿主。真实容器测试已使用独立网关进程；完整调度部署与生产权限尚未验收。
+该模块现有独立恢复 CLI，跳过新任务领取。生产网关不得得到 Docker socket；独立控制器现可通过私有 Unix 通道操作原宿主，不能同时打开第二个宿主。真实容器测试已使用独立网关进程；完整执行入口、调度部署与生产权限尚未验收。
 
 持久硬额度仍未实现；[只读存储诊断与实施条件](storage-quota.md) 可用于核实部署准备，不能据诊断结果开放 AI。
 
 ## 私有文件宿主控制通道
 
 网关可选同时配置 `CORILO_HOST_CONTROL_SOCKET` 与 `CORILO_HOST_CONTROL_TOKEN`，供独立可信控制器请求文件占用/检查点/释放；默认关闭。不启用 AI 提交，也不给网关 Docker 权限。目录、凭据、固定协议、正常关闭与强杀遗留路径的处理见 [HOST-CONTROL.md](HOST-CONTROL.md)。
+
+## 恢复控制器入口
+
+`npm run start:controller` 运行独立恢复循环；`npm run start:controller -- --once` 只检查一轮符合恢复条件的任务。不领取排队任务，不启动容器，不需要模型凭据。须使用原控制器 journal 目录，缺失或归属错误的记录不能作为已停止证据。[配置、输出与限制](CONTROLLER.md)。

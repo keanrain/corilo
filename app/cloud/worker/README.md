@@ -19,7 +19,7 @@ npm run test:worker
 
 ## 控制边界
 
-- `ExecutionController` 通过 Linux flock 保证同一 journalRoot 单实例；可信 `hostFor` 必须用数据库归属解析宿主。内部 `startScheduler` 已支持有界批次、空闲恢复与关闭，正式 CLI 仍未接入；已提供私有 Unix 鉴权文件宿主通信，完整独立控制器部署入口仍未实现。
+- `ExecutionController` 通过 Linux flock 保证同一 journalRoot 单实例；可信 `hostFor` 必须用数据库归属解析宿主。内部 `startScheduler` 已支持有界批次、空闲恢复与关闭，已提供私有 Unix 鉴权文件宿主通信与独立恢复 CLI；完整新任务执行入口仍未开放。
 - `DockerWorkers` 只接受不可变镜像与显式 CPU、内存、PID、临时空间额度。每次 run 挂载该库正文、该会话状态和单个请求；模型模式另挂载单任务 socket 及只读行为设置，其他模式保留 Pi 配置挂载，不挂载整个用户根目录、Docker socket 或平台密钥。
 - 非 root、只读根、cap-drop、禁止提权、默认 seccomp、无网络、禁止重启、关闭 Docker 日志；Git 元数据和宿主锁用嵌套只读挂载保护。云端 Git 禁用全局配置和 hooks。
 - 启动意图先持久化；启动/停止串行。创建结果未知且尚未发现容器时保留占用，不把不存在当作已停止。确认整个容器删除后才提交文件历史、结束任务、释放文件占用。请求文件随后清理，恢复不重放 prompt。
@@ -36,3 +36,5 @@ npm run test:worker
 [存储诊断说明](../storage-quota.md) 记录当前 overlay 条件和项目配额的所有者绕过风险；诊断输出始终未验证，不是配额实现或验收。
 
 [文件宿主控制通道](../HOST-CONTROL.md) 不进入 worker。控制器先确认容器删除，才能要求远端宿主 checkpoint/release；连接失败保留占用，不自动重试或重放任务。
+
+[恢复 CLI](../CONTROLLER.md) 使用不含 start 能力的 DockerWorkerRecovery；缺失 journal 或其任务/控制器/容器身份不匹配时拒绝确认停止。实际进程检查覆盖错误空状态目录保留运行中的 worker 和文件占用、正确目录清理、授权撤销、queued 不被领取、单实例及 SIGTERM。
