@@ -8,6 +8,8 @@ This package supplies Markdown storage, model-facing tools and a **笔记** page
 
 On phones, the editor and save action come first; **查找笔记** reveals browsing/search and returns to the editor after opening a note. History/trash live under **更多操作**, while failures/conflicts remain visible. For both plugins together from a source checkout, use the [root setup/init/start flow](https://github.com/keanrain/corilo/blob/feat/cloud-notes/README.md#一起使用笔记和待办); the independent package commands below remain supported.
 
+视觉使用 [Astryx Neutral](https://github.com/meta/astryx) 0.7.11 的 62 个静态设计 token，局部适配原生控件；浅深色与字体继承 Harness，主次按钮、焦点、列表与反馈保持一致。每包 token 子集约 3.6 KB，不载全局 reset 或网络字体。固定 Harness 的 React 实测为 18.3.1，Astryx React 组件要求 >=19，因此本包**没有接入其 React 组件**或另带 React。MIT 与来源哈希随代码记录，原功能和保存保护不变。
+
 ## Install and run
 
 Requires Node.js >=24.9.0 and system Git >=2.36 (available as `git` on PATH). Install Git using your OS package manager. The package includes the exact supported Harness runtime as an npm dependency; a global `dsh` installation is neither required nor used. The supported Host release is **0.2.2-rc.1**; future Harness versions require compatibility testing first.
@@ -47,7 +49,7 @@ npm pack --pack-destination /absolute/existing/output-directory
 mkdir corilo-install
 cd corilo-install
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.3.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.4.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -67,7 +69,7 @@ and recovery-state formats.
 1. Save any browser drafts to files, stop this instance, and take a verified
    backup of its notes and state. A browser draft is not part of that backup.
 2. In a new installation directory, run `npm init -y` and
-   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.3.tgz`.
+   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.4.tgz`.
 3. From that **new** directory, generate a new overlay referring to the new
    installed package while keeping the original data paths:
 

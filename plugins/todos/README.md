@@ -1,10 +1,12 @@
 # Corilo 个人待办 for DeepSeek Harness
 
-独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.2.0，目前没有发布到 npm。
+独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.2.1，目前没有发布到 npm。
 
 页面直接创建、查看、编辑、完成、取消或重新打开待办，不需要模型密钥；Agent 工具使用同一持久化服务。个人待办与 Harness 的 Agent 执行计划分开。首版不包含日期、日历、提醒调度或通知，创建待办不代表安排通知。
 
 当前主流程收敛为快速新增、未完成列表、直接完成/撤销；编辑详情和辅助功能按需打开。
+
+视觉使用 [Astryx Neutral](https://github.com/meta/astryx) 0.7.11 的 62 个静态设计 token，局部适配原生控件；浅深色与字体继承 Harness，主次按钮、焦点、列表与反馈保持一致。每包 token 子集约 3.6 KB，不载全局 reset 或网络字体。固定 Harness 的 React 实测为 18.3.1，Astryx React 组件要求 >=19，因此本包**没有接入其 React 组件**或另带 React。MIT 与来源哈希随代码记录，原功能和保存保护不变。
 
 ## 安装与启动
 
@@ -82,7 +84,7 @@ cd plugins/todos
 npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.2.0.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
+收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.2.1.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
 
 源码验证：
 

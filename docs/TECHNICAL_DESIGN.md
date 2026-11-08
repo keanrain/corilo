@@ -1,6 +1,6 @@
 # Corilo 可里技术设计
 
-v0.23 · 2026-11-08。用户决定以 DeepSeek Harness 为主体，Corilo 开发笔记、事项/日程插件，优先个人自部署。产品规则唯一来源为 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)。本文后半的 1–17 节是旧云端历史记录，不再定义当前路线。
+v0.24 · 2026-11-08。用户决定以 DeepSeek Harness 为主体，Corilo 开发笔记、事项/日程插件，优先个人自部署。产品规则唯一来源为 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)。本文后半的 1–17 节是旧云端历史记录，不再定义当前路线。
 
 ## 当前架构
 
@@ -162,6 +162,19 @@ CI 安装 restic 并设置 CORILO_REQUIRE_RESTIC=1，工具缺失必须失败，
 真实验收：notes 37 项 Node、todos 12 项 Node 与统一启动 2 项检查通过，分别保留独立包生产安装/真实 Cordis 管线/原生宿主证据。notes 完整 8 套浏览器检查通过，手机追加断言验证首屏正文/保存、查找收起及辅助入口仍可操作；todos 3 套浏览器检查通过，含实际 IndexedDB 模块的 CAS/事务失败/库隔离和真实 Harness 的快速连续新增、行撤销/冲突/其他编辑输入保留、编辑原版本恢复、quick/row 已提交丢响应跨刷新同 UUID 重试、不同 SQLite 身份切换和 IDB 失败直接保存。旧应用 59 项 Node 与三套浏览器回归通过。统一原生鉴权下的两个插件 API 均实测正常且匿名 401；SIGTERM 退出与端口释放通过。替换临时路径的组合 systemd unit verify 通过；未验证真实用户 manager、自启或设备重启。独立 review 发现的预检配置不一致已修复并回归。
 
 以上均为合成资料、零模型/外部通知；物理手机/原生输入法、远程部署、NAS 及完整实例备份仍未验收。远端 Actions 需另行确认。
+
+## v0.24 Astryx Neutral 视觉适配（notes v0.2.4 / todos v0.2.1，2026-11-08）
+
+此前为 Harness 主题变量、原生控件和局部自写 CSS 的工具式界面。本轮按用户要求核实并复用 meta/astryx 的 Neutral 设计资产，收敛按钮层级、列表分隔、间距/圆角、焦点与反馈，未改变核心业务流程。
+
+- **实际兼容边界**：通过真实宿主外部客户端 probe 核实 React=18.3.1、ReactDOM=18.3.1-next-f1338f8080-20240426；Astryx npm 0.7.11 的 peer 要求 React>=19。没有升级固定 Harness、另带 React19、强制忽略 peer，或宣称已接入 Astryx React 组件。仅复用公开 MIT 静态 CSS token，现有原生控件与宿主 React/Store 保留。
+- **来源与隔离**：从精确 npm @astryxdesign/core@0.7.11 的 dist/astryx.css 和 @astryxdesign/theme-neutral@0.7.11 的 dist/theme.css 选取 62 个闭合 token，每独立包约 3.6 KB，值仅加 --ax- 前缀；scripts/vendor-astryx.mjs 校验原始 CSS SHA-256 并可重复生成。各包 client/astryx-tokens.css 只声明自身根的变量，不复制原主题全局 :root/html color-scheme、reset、字体或组件规则；没有新运行依赖。完整 MIT notice 随包附带。
+- **界面结果**：黑白主操作、低强调次操作、轻列表选中/完成态、统一蓝色焦点；编辑区保持中文可读行距、手机正文/快捷待办优先、44px/16px底线不变。保存/失败/冲突/未知结果用文本和语义色同时表达，减少视觉噪音。浅深色由 Harness 原生 system preference 投影继承，插件不自行写宿主根主题。
+- **视觉复核**：浅/深色占位文字取消额外透明度；待办未勾选框提高边界可见性。新增两份 visual_browser.py 在真实发布 Harness 下检查 1280/390 视口、原生主题、焦点/按钮/错误状态、输入保留、宿主及另一插件样式不污染，零模型/外部字体请求。待办实测 secondary 文本对比约 9.29（浅）/5.65（深），蓝色焦点约 5.48/8.94，三类状态文本样本均 >=4.5；仅针对所测样本，不构成全量无障碍认证。首屏截图在原生侧栏关闭且实际可命中控件后采集，避免把动画半帧当验收。
+
+实际验证：笔记 37 项、待办 12 项 Node 检查和统一启动 2 项通过，独立 tarball 生产安装/启动链路仍通过；原 8 套笔记及 3 套待办浏览器检查通过，再新增 2 套视觉检查。旧应用 59 项 Node 与三套浏览器回归通过。独立只读 review 未发现剩余阻塞项。没有真实模型、物理手机、WebKit、远程部署或 NAS 验收；远端 Actions 尚未确认。
+
+复现设计资产抽取：用 npm pack 下载上述两个精确 0.7.11 tarball，提取各 dist CSS，执行 `node scripts/vendor-astryx.mjs /absolute/core.css /absolute/theme.css`。不需要安装 Astryx CLI/React 包或运行其 init，避免改写本项目开发约束。源码与包内第三方声明保留精确来源及许可。
 
 ## 历史实现与证据
 

@@ -4,6 +4,7 @@ import { createDraftRecovery, hasUnsavedDraft } from './drafts.mjs';
 import { RecoveryPanel } from './recovery.jsx';
 import { LibraryPanel } from './library.jsx';
 import styles from './notes.css';
+import tokens from './astryx-tokens.css';
 
 const fresh = () => ({ path: '', text: '', original: '', expected: null, status: 'clean', error: '', latest: null, notice: '' });
 const dirty = hasUnsavedDraft;
@@ -100,7 +101,7 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
     } catch (error) { if (alive.current) setNavigationError(`草稿尚未恢复：${error.message}`); }
     finally { if (alive.current) setLoading(false); }
   }
-  return <section ref={page} className="corilo-notes" aria-label="Corilo 笔记">
+  return <section ref={page} className="corilo-notes" data-ui="astryx-neutral" data-note-state={d.status} aria-label="Corilo 笔记">
     <header><h1>笔记</h1><div className="corilo-notes-primary-actions">
       <button className="corilo-notes-find" aria-controls="corilo-notes-library" aria-expanded={libraryOpen} onClick={() => setLibraryOpen(value => !value)}>{libraryOpen ? '返回正文' : '查找笔记'}</button>
       <button disabled={busy} onClick={newNote}>{dirty(d) ? '保留草稿并新建' : '新笔记'}</button>
@@ -126,15 +127,15 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
       <div className="corilo-notes-editor">
         <label className="corilo-notes-body">正文<textarea aria-label="笔记正文" disabled={busy} value={d.text} spellCheck={false} placeholder="此刻想留下什么？"
           onChange={e => actions.setDraft({ ...d, text: e.target.value, status: d.status === 'conflict' ? 'conflict' : 'dirty' })} /></label>
-        <div className="corilo-notes-save"><span role="status">{loading ? '读取中…' : labels[d.status]}</span>
-          <button disabled={busy || emptyCapture || d.status === 'conflict'} onClick={() => save()}>{d.expected === null && !d.path ? '仅保存原话' : '保存笔记'}</button>
+        <div className="corilo-notes-save"><span role="status" data-state={loading ? 'loading' : d.status}>{loading ? '读取中…' : labels[d.status]}</span>
+          <button className="corilo-notes-primary" disabled={busy || emptyCapture || d.status === 'conflict'} onClick={() => save()}>{d.expected === null && !d.path ? '仅保存原话' : '保存笔记'}</button>
         </div>
         <label className="corilo-notes-filename">文件名<input aria-label="笔记文件名" disabled={busy || d.expected !== null} placeholder="留空自动命名，或输入 文件名.md" value={d.path}
           onChange={e => actions.setDraft({ ...d, path: e.target.value, status: 'dirty' })} /></label>
 
-        <p className="corilo-notes-hint" aria-live="polite" data-testid="draft-persistence">{persistence.status === 'loading' ? '正在读取浏览器草稿…' : persistence.status === 'pending' ? '正在保护草稿…' : persistence.status === 'stored' ? '草稿已保存在此浏览器，尚未保存到文件。' : persistence.status === 'failed' ? (persistence.ready ? '草稿保护失败，请保存文件后再关闭。' : '知识库身份未确认，操作已暂停。') : '浏览器草稿保护已就绪。'}</p>
-        {d.error && <p role="alert">{d.error}</p>}
-        {d.notice && <p aria-live="polite">{d.notice}</p>}
+        <p className="corilo-notes-hint corilo-notes-persistence" data-state={persistence.status} aria-live="polite" data-testid="draft-persistence">{persistence.status === 'loading' ? '正在读取浏览器草稿…' : persistence.status === 'pending' ? '正在保护草稿…' : persistence.status === 'stored' ? '草稿已保存在此浏览器，尚未保存到文件。' : persistence.status === 'failed' ? (persistence.ready ? '草稿保护失败，请保存文件后再关闭。' : '知识库身份未确认，操作已暂停。') : '浏览器草稿保护已就绪。'}</p>
+        {d.error && <p className="corilo-notes-error" role="alert">{d.error}</p>}
+        {d.notice && <p className="corilo-notes-notice" aria-live="polite">{d.notice}</p>}
         {d.status === 'conflict' && <div className="corilo-notes-conflict">
           <p>文件已有更新，当前草稿尚未写入。可查看最新内容，或将草稿另存为新笔记。</p>
           <button disabled={busy} onClick={compare}>查看最新内容</button>
@@ -168,7 +169,7 @@ export const inject = ['slots', 'connection'];
 export function apply(ctx) {
   ctx.effect(() => {
     const sheet = document.createElement('style');
-    sheet.textContent = styles;
+    sheet.textContent = tokens + styles;
     document.head.append(sheet);
     return () => sheet.remove();
   });

@@ -3,6 +3,7 @@ import { defineStore } from '@deepseek-ai/dsh-client-store';
 import { v4 as uuidv4 } from 'uuid';
 import { createTodoDraftRecovery, hasUnsavedTodoDraft, snapshotTodoDraft } from './drafts.mjs';
 import styles from './todos.css';
+import tokens from './astryx-tokens.css';
 
 const labels = { open: '未完成', done: '已完成', cancelled: '已取消' };
 const fresh = () => ({ title: '', body: '', notePath: '' });
@@ -190,7 +191,7 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
     finally { set({ loading: false }); }
   }
   const edit = (key, value) => set({ draft: { ...getState().draft, [key]: value }, saveState: 'dirty', notice: '' });
-  return <section className="corilo-todos" aria-label="Corilo 待办">
+  return <section className="corilo-todos" data-ui="astryx-neutral" aria-label="Corilo 待办">
     <header><h1>待办</h1><details className="corilo-todos-more"><summary>更多操作</summary>
       <button disabled={busy} onClick={newTodo}>新待办</button><button disabled={busy} onClick={exportTodos}>导出待办 JSON</button>
     </details></header>
@@ -200,10 +201,10 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
         onCompositionStart={() => { quickComposing.current = true; }} onCompositionEnd={() => { quickComposing.current = false; }}
         onKeyDown={event => { if (event.key === 'Enter' && (quickComposing.current || event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault(); }}
         onChange={event => set({ quickTitle: event.target.value, quickSaveState: 'dirty', quickError: '', notice: '' })} /></label>
-      <button disabled={busy || !model.quickTitle.trim()}>{model.quickSaveState === 'saving' ? '添加中…' : '添加'}</button>
+      <button className="corilo-todos-primary" disabled={busy || !model.quickTitle.trim()}>{model.quickSaveState === 'saving' ? '添加中…' : '添加'}</button>
     </form>
     {model.quickError && <p role="alert">{model.quickError}</p>}
-    {model.quickPending && model.quickSaveState === 'unknown' && <div className="corilo-todos-resolution"><p>新增结果待确认，输入已保留。</p>
+    {model.quickPending && model.quickSaveState === 'unknown' && <div className="corilo-todos-resolution" data-tone="warning"><p>新增结果待确认，输入已保留。</p>
       <button disabled={model.changed} onClick={() => submitQuick(model.quickPending)}>重试新增</button></div>}
     {model.changed && <p role="alert">待办库已切换，写入已暂停。当前内容仍在编辑器中，请重新加载页面。</p>}
     {!model.ready && !model.changed && <button disabled={model.loading} onClick={connect}>重新连接</button>}
@@ -217,11 +218,11 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
     </details>}
     {persistence.error && <p role="alert">{persistence.error} {!persistence.rootChanged && <button onClick={() => drafts.start()}>重试草稿保护</button>}</p>}
     <p className="corilo-todos-persistence" data-testid="todo-draft-persistence" aria-live="polite">{persistence.status === 'pending' ? '正在保护输入…' : persistence.status === 'stored' ? '草稿已保存在此浏览器，尚未保存到主机。' : persistence.status === 'failed' ? '草稿保护未完成，请保存后再关闭。' : ''}</p>
-    {model.rowPending && model.rowSaveState === 'unknown' && <div className="corilo-todos-resolution"><p>这次完成或撤销的结果待确认，未自动重发。</p>
+    {model.rowPending && model.rowSaveState === 'unknown' && <div className="corilo-todos-resolution" data-tone="warning"><p>这次完成或撤销的结果待确认，未自动重发。</p>
       <button disabled={model.changed} onClick={() => submitRow(model.rowPending)}>重试列表操作</button></div>}
     {model.rowError && <p role="alert">{model.rowError}</p>}
     {model.lastRow && <p className="corilo-todos-undo">已完成：{model.lastRow.title} <button disabled={busy} onClick={() => toggleRow(model.lastRow)}>撤销完成</button></p>}
-    {model.notice && <p aria-live="polite">{model.notice}</p>}
+    {model.notice && <p className="corilo-todos-notice" aria-live="polite">{model.notice}</p>}
     <div className={`corilo-todos-grid ${model.editorOpen ? 'has-editor' : ''}`}>
       <aside aria-label="待办列表">
         <div className="corilo-todos-list-tools"><label><span className="corilo-todos-sr-only">状态</span><select aria-label="待办状态筛选" value={model.filter} disabled={unavailable || model.listing}
@@ -232,7 +233,7 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
           <button disabled={unavailable || model.listing}>搜索</button></form></details>
         {model.listError && <p role="alert">{model.listError}</p>}{model.listing && <p aria-live="polite">正在读取待办…</p>}
         {!model.listing && model.ready && !model.items.length && <p>暂无匹配的待办。</p>}
-        <ul className="corilo-todos-items">{model.items.map(item => <li key={item.id}>
+        <ul className="corilo-todos-items">{model.items.map(item => <li key={item.id} data-status={item.status} data-selected={model.item?.id === item.id || undefined}>
           <button role="checkbox" aria-checked={item.status === 'done'} aria-label={`${item.status === 'cancelled' ? '重新打开' : '完成'}：${item.title}`}
             className="corilo-todos-check" disabled={busy || (model.item?.id === item.id && dirty)} onClick={() => toggleRow(item)}>{item.status === 'done' ? '✓' : '○'}</button>
           <button className="corilo-todos-item-title" aria-label={item.title} aria-current={model.item?.id === item.id ? 'page' : undefined}
@@ -245,11 +246,11 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
         {model.item && <p data-testid="todo-record-state">{labels[model.item.status]}</p>}
         <label>标题<input aria-label="待办标题" maxLength={200} disabled={busy} value={model.draft.title} placeholder="要做什么？" onChange={event => edit('title', event.target.value)} /></label>
         <label>说明<textarea aria-label="待办说明" maxLength={20000} disabled={busy} value={model.draft.body} placeholder="补充一点背景（可选）" onChange={event => edit('body', event.target.value)} /></label>
-        <div className="corilo-todos-save"><span role="status">{model.loading ? '读取中…' : model.saveState === 'saving' ? '保存中…' : model.saveState === 'unknown' ? '保存结果待确认' : model.conflict ? '版本冲突' : model.saveState === 'saved' ? '已保存' : model.saveState === 'failed' ? '保存失败' : dirty ? '未保存' : model.item ? '已保存' : '未保存'}</span>
-          <button disabled={busy || model.conflict || !model.draft.title.trim()} onClick={save}>{model.item ? '保存待办' : '创建待办'}</button></div>
+        <div className="corilo-todos-save"><span role="status" data-state={model.conflict ? 'conflict' : model.saveState}>{model.loading ? '读取中…' : model.saveState === 'saving' ? '保存中…' : model.saveState === 'unknown' ? '保存结果待确认' : model.conflict ? '版本冲突' : model.saveState === 'saved' ? '已保存' : model.saveState === 'failed' ? '保存失败' : dirty ? '未保存' : model.item ? '已保存' : '未保存'}</span>
+          <button className="corilo-todos-primary" disabled={busy || model.conflict || !model.draft.title.trim()} onClick={save}>{model.item ? '保存待办' : '创建待办'}</button></div>
         {model.error && <p role="alert">{model.error}</p>}
-        {model.pending && model.saveState === 'unknown' && <div className="corilo-todos-resolution"><p>保存结果待确认。输入和原请求已保留。</p><button disabled={model.changed} onClick={() => submit(model.pending)}>重试同一请求</button></div>}
-        {model.conflict && <div className="corilo-todos-resolution"><p>待办已有更新，当前输入尚未写入。先核对最新内容。</p><button disabled={busy} onClick={compare}>查看最新待办</button></div>}
+        {model.pending && model.saveState === 'unknown' && <div className="corilo-todos-resolution" data-tone="warning"><p>保存结果待确认。输入和原请求已保留。</p><button disabled={model.changed} onClick={() => submit(model.pending)}>重试同一请求</button></div>}
+        {model.conflict && <div className="corilo-todos-resolution" data-tone="warning"><p>待办已有更新，当前输入尚未写入。先核对最新内容。</p><button disabled={busy} onClick={compare}>查看最新待办</button></div>}
         {model.latest && <section className="corilo-todos-resolution" aria-label="最新待办"><p>最新标题：{model.latest.title}</p><p>最新状态：{labels[model.latest.status]}</p>
           <label>最新说明<textarea aria-label="最新待办说明" readOnly value={model.latest.body} /></label><p>最新关联笔记：{model.latest.notePath || '无'}</p>
           <div className="corilo-todos-actions"><button disabled={busy} onClick={() => { if (window.confirm('保留当前输入，改用刚刚读取的最新版本编辑？')) set({ item: model.latest, latest: null, conflict: false, error: '', saveState: 'dirty' }); }}>保留输入，按最新版本编辑</button>
@@ -290,7 +291,7 @@ export function apply(ctx) {
   };
   drafts = createTodoDraftRecovery(() => call('identity', {}));
   ctx.effect(() => {
-    const sheet = document.createElement('style'); sheet.textContent = styles; document.head.append(sheet);
+    const sheet = document.createElement('style'); sheet.textContent = tokens + styles; document.head.append(sheet);
     const guard = event => { if (drafts.needsLeaveWarning()) { event.preventDefault(); event.returnValue = ''; } };
     window.addEventListener('beforeunload', guard);
     return () => { sheet.remove(); window.removeEventListener('beforeunload', guard); drafts.dispose(); };

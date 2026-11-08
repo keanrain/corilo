@@ -22,11 +22,11 @@ node plugins/notes/cli.mjs start --config /absolute/path/to/corilo-instance/note
 
 ## 收到独立安装包后启动
 
-收到 `corilo-dsh-notes-0.2.3.tgz` 后，在你选定的安装目录执行：
+收到 `corilo-dsh-notes-0.2.4.tgz` 后，在你选定的安装目录执行：
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.3.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.4.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json

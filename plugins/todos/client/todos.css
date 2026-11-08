@@ -1,50 +1,104 @@
-.corilo-todos { color: var(--dsw-alias-label-primary, inherit); background: var(--dsw-alias-bg-base, transparent); height: 100%; min-width: 0; overflow: auto; padding: 24px; padding-inline-start: max(24px, var(--dsh-frame-leading-clearance, 0px)); box-sizing: border-box; font: inherit; }
+/* Astryx Neutral tokens, adapted to native controls on Harness React 18.
+   Every rule is scoped to this plugin; host fonts and color-scheme are inherited. */
+.corilo-todos { color: var(--ax-color-text-primary); background: var(--ax-color-background-surface); height: 100%; min-width: 0; overflow: auto; padding: var(--ax-spacing-8); padding-inline-start: max(var(--ax-spacing-8), var(--dsh-frame-leading-clearance, 0px)); box-sizing: border-box; font: inherit; line-height: 1.5; }
 .corilo-todos * { box-sizing: border-box; }
-.corilo-todos header, .corilo-todos-actions, .corilo-todos-save, .corilo-todos-editor-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.corilo-todos h1 { font-size: 24px; margin: 0; font-weight: 600; }
-.corilo-todos h2 { font-size: 18px; margin: 0; }
-.corilo-todos p { margin: 10px 0; line-height: 1.6; overflow-wrap: anywhere; }
-.corilo-todos button, .corilo-todos input, .corilo-todos textarea, .corilo-todos select { font: inherit; color: inherit; border: 1px solid var(--dsw-alias-border-l2, currentColor); border-radius: 8px; background: var(--dsw-alias-bg-base, transparent); padding: 9px 12px; }
-.corilo-todos button { cursor: pointer; min-height: 44px; }
-.corilo-todos button:disabled { opacity: .45; cursor: default; }
-.corilo-todos button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover, transparent); }
-.corilo-todos :focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.corilo-todos > * { max-width: 1080px; margin-inline: auto; }
+.corilo-todos header, .corilo-todos-actions, .corilo-todos-save, .corilo-todos-editor-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--ax-spacing-3); flex-wrap: wrap; }
+.corilo-todos h1 { font-size: var(--ax-text-heading-1-size); line-height: var(--ax-text-heading-1-leading); margin: 0; font-weight: var(--ax-text-heading-1-weight); letter-spacing: -.025em; }
+.corilo-todos h2 { font-size: 18px; line-height: 1.5; margin: 0; font-weight: var(--ax-font-weight-semibold); letter-spacing: -.015em; }
+.corilo-todos p { margin-block: var(--ax-spacing-3); line-height: 1.7; overflow-wrap: anywhere; }
+.corilo-todos button, .corilo-todos input, .corilo-todos textarea, .corilo-todos select { font: inherit; color: var(--ax-color-text-primary); border: 1px solid var(--ax-color-border-emphasized); border-radius: var(--ax-radius-element); background: var(--ax-color-background-surface); padding: 10px 14px; transition: background-color var(--ax-duration-fast), border-color var(--ax-duration-fast), box-shadow var(--ax-duration-fast); }
+.corilo-todos button { cursor: pointer; min-height: 44px; font-weight: var(--ax-font-weight-medium); line-height: 1.4; }
+.corilo-todos button:hover:not(:disabled) { background: var(--ax-color-background-muted); border-color: var(--ax-color-text-secondary); }
+.corilo-todos button:active:not(:disabled) { background: color-mix(in srgb, var(--ax-color-text-primary) 9%, var(--ax-color-background-surface)); }
+.corilo-todos button:disabled { opacity: .5; cursor: default; }
+.corilo-todos :focus-visible { outline: 2px solid var(--ax-color-text-info); outline-offset: 3px; }
 .corilo-todos input, .corilo-todos textarea, .corilo-todos select { width: 100%; min-width: 0; }
-.corilo-todos label { display: flex; flex-direction: column; gap: 8px; }
-.corilo-todos summary { cursor: pointer; padding: 10px 0; }
+.corilo-todos input, .corilo-todos select { min-height: 44px; }
+.corilo-todos input::placeholder, .corilo-todos textarea::placeholder { color: var(--ax-color-text-secondary); opacity: 1; }
+.corilo-todos input:focus, .corilo-todos textarea:focus, .corilo-todos select:focus { border-color: var(--ax-color-text-info); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ax-color-text-info) 12%, transparent); }
+.corilo-todos label { display: flex; flex-direction: column; gap: var(--ax-spacing-2); font-size: 14px; font-weight: var(--ax-font-weight-medium); }
+.corilo-todos textarea { min-height: 164px; resize: vertical; line-height: 1.75; font-weight: var(--ax-font-weight-normal); }
+.corilo-todos summary { cursor: pointer; padding: 11px 0; min-height: 44px; color: var(--ax-color-text-secondary); font-size: 14px; font-weight: var(--ax-font-weight-medium); }
+.corilo-todos summary:hover { color: var(--ax-color-text-primary); }
+.corilo-todos-more { text-align: end; }
+.corilo-todos-more > summary { padding-inline: var(--ax-spacing-3); border-radius: var(--ax-radius-element); }
+.corilo-todos-more[open] > summary { background: var(--ax-color-background-muted); color: var(--ax-color-text-primary); margin-bottom: var(--ax-spacing-2); }
 .corilo-todos-more button { margin: 4px 0 4px 8px; }
-.corilo-todos-quick { display: flex; align-items: center; gap: 10px; margin: 20px 0 12px; }
+.corilo-todos-quick { display: flex; align-items: center; gap: var(--ax-spacing-3); margin-block: var(--ax-spacing-6) var(--ax-spacing-4); }
 .corilo-todos-quick label { flex: 1; min-width: 0; }
-.corilo-todos-quick input { min-height: 48px; }
-.corilo-todos-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 14px; }
+.corilo-todos-quick input { min-height: 48px; padding-inline: var(--ax-spacing-4); font-size: 16px; font-weight: var(--ax-font-weight-normal); }
+.corilo-todos button.corilo-todos-primary { color: var(--ax-color-on-accent); background: var(--ax-color-accent); border-color: var(--ax-color-accent); padding-inline: var(--ax-spacing-5); }
+.corilo-todos button.corilo-todos-primary:hover:not(:disabled) { color: var(--ax-color-on-accent); background: color-mix(in srgb, var(--ax-color-accent) 86%, var(--ax-color-background-surface)); border-color: transparent; }
+.corilo-todos button.corilo-todos-primary:active:not(:disabled) { background: color-mix(in srgb, var(--ax-color-accent) 76%, var(--ax-color-background-surface)); }
+.corilo-todos button.corilo-todos-primary:disabled { color: var(--ax-color-text-disabled); background: var(--ax-color-background-muted); border-color: var(--ax-color-border); opacity: 1; }
+.corilo-todos-quick > button { min-height: 48px; }
+.corilo-todos-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ax-spacing-8); margin-top: var(--ax-spacing-5); }
 .corilo-todos-grid.has-editor { grid-template-columns: minmax(220px, .8fr) minmax(0, 1.2fr); }
 .corilo-todos aside { min-width: 0; }
-.corilo-todos-list-tools { display: flex; gap: 10px; align-items: center; }
+.corilo-todos-list-tools { display: flex; gap: var(--ax-spacing-3); align-items: center; }
 .corilo-todos-list-tools label { flex: 1; }
-.corilo-todos-search form { display: flex; align-items: end; gap: 8px; }
+.corilo-todos-list-tools select { font-size: 14px; color: var(--ax-color-text-secondary); background-color: var(--ax-color-background-surface); }
+.corilo-todos-search { margin-top: var(--ax-spacing-2); }
+.corilo-todos-search form { display: flex; align-items: end; gap: var(--ax-spacing-2); padding-block: var(--ax-spacing-2) var(--ax-spacing-4); }
 .corilo-todos-search label { flex: 1; min-width: 0; }
 .corilo-todos ul { list-style: none; padding: 0; }
-.corilo-todos-items { max-height: 64vh; overflow: auto; }
-.corilo-todos-items > li { display: flex; align-items: center; gap: 8px; margin: 6px 0; border: 1px solid var(--dsw-alias-border-l2, currentColor); border-radius: 8px; padding: 4px; }
-.corilo-todos-items .corilo-todos-check { flex: 0 0 44px; width: 44px; min-width: 44px; padding: 0; border-color: transparent; font-size: 22px; }
-.corilo-todos-items .corilo-todos-item-title { flex: 1; min-width: 0; border-color: transparent; display: flex; flex-direction: column; gap: 5px; text-align: start; overflow-wrap: anywhere; }
-.corilo-todos-items small { opacity: .65; font-size: 12px; }
-.corilo-todos-items [aria-current="page"] { font-weight: 600; }
-.corilo-todos-editor { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.corilo-todos textarea { min-height: 150px; resize: vertical; line-height: 1.6; }
-.corilo-todos-persistence { opacity: .7; font-size: 13px; }
+.corilo-todos-items { max-height: 64vh; overflow: auto; margin-block: var(--ax-spacing-2) var(--ax-spacing-4); border-top: 1px solid var(--ax-color-border); }
+.corilo-todos-items > li { display: flex; align-items: center; gap: var(--ax-spacing-2); border-bottom: 1px solid var(--ax-color-border); padding: var(--ax-spacing-2) 4px; position: relative; }
+.corilo-todos-items > li:hover, .corilo-todos-items > li[data-selected] { background: var(--ax-color-background-muted); }
+.corilo-todos-items > li[data-selected]::before { content: ''; position: absolute; inset-inline-start: 0; top: 12px; bottom: 12px; width: 2px; border-radius: var(--ax-radius-full); background: var(--ax-color-accent); }
+.corilo-todos-items .corilo-todos-check { flex: 0 0 44px; width: 44px; min-width: 44px; padding: 0; border: 0; background: transparent; font-size: 0; position: relative; }
+.corilo-todos-items .corilo-todos-check::before { content: ''; position: absolute; width: 21px; height: 21px; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1.5px solid var(--ax-color-text-secondary); border-radius: var(--ax-radius-inner); background: var(--ax-color-background-surface); transition: border-color var(--ax-duration-fast), background-color var(--ax-duration-fast); }
+.corilo-todos-items .corilo-todos-check:hover:not(:disabled)::before { border-color: var(--ax-color-text-primary); background: var(--ax-color-background-muted); }
+.corilo-todos-items .corilo-todos-check[aria-checked="true"]::before { border-color: var(--ax-color-accent); background: var(--ax-color-accent); }
+.corilo-todos-items .corilo-todos-check[aria-checked="true"]:hover:not(:disabled)::before { border-color: var(--ax-color-accent); background: var(--ax-color-accent); }
+.corilo-todos-items .corilo-todos-check[aria-checked="true"]::after { content: '✓'; position: absolute; inset: 0; display: grid; place-items: center; color: var(--ax-color-on-accent); font-size: 15px; font-weight: var(--ax-font-weight-semibold); }
+.corilo-todos-items .corilo-todos-item-title { flex: 1; min-width: 0; border: 0; background: transparent; display: flex; flex-direction: column; align-items: start; gap: 3px; text-align: start; overflow-wrap: anywhere; padding: var(--ax-spacing-2) var(--ax-spacing-2) var(--ax-spacing-2) 0; font-weight: var(--ax-font-weight-normal); }
+.corilo-todos-items .corilo-todos-item-title:hover:not(:disabled) { background: transparent; }
+.corilo-todos-items small { color: var(--ax-color-text-secondary); font-size: 12px; line-height: 1.5; font-weight: var(--ax-font-weight-normal); }
+.corilo-todos-items [aria-current="page"] { font-weight: var(--ax-font-weight-semibold); }
+.corilo-todos-items > li[data-status="done"] .corilo-todos-item-title > span { color: var(--ax-color-text-secondary); text-decoration: line-through; text-decoration-color: var(--ax-color-border-emphasized); }
+.corilo-todos-editor { display: flex; flex-direction: column; gap: var(--ax-spacing-4); min-width: 0; border-inline-start: 1px solid var(--ax-color-border); padding-inline-start: var(--ax-spacing-6); }
+.corilo-todos-editor-heading { margin-bottom: var(--ax-spacing-1); }
+.corilo-todos-editor-heading > button { padding-inline: var(--ax-spacing-3); border-color: transparent; color: var(--ax-color-text-secondary); font-size: 13px; }
+.corilo-todos [data-testid="todo-record-state"] { color: var(--ax-color-text-secondary); font-size: 13px; margin: 0; }
+.corilo-todos-save { margin-top: var(--ax-spacing-1); padding-block: var(--ax-spacing-3); }
+.corilo-todos [role="status"] { color: var(--ax-color-text-secondary); font-size: 13px; font-weight: var(--ax-font-weight-medium); }
+.corilo-todos [role="status"][data-state="saved"] { color: var(--ax-color-text-success); }
+.corilo-todos [role="status"][data-state="failed"] { color: var(--ax-color-text-error); }
+.corilo-todos [role="status"][data-state="unknown"], .corilo-todos [role="status"][data-state="conflict"] { color: var(--ax-color-text-warning); }
+.corilo-todos-persistence, .corilo-todos-notice { color: var(--ax-color-text-secondary); font-size: 13px; }
 .corilo-todos-persistence:empty { display: none; }
-.corilo-todos-resolution, .corilo-todos-drafts { border: 1px solid var(--dsw-alias-border-l2, currentColor); border-radius: 8px; padding: 12px; }
-.corilo-todos-drafts li { margin: 8px 0; overflow-wrap: anywhere; }
-.corilo-todos-drafts button { margin-inline-end: 8px; }
+.corilo-todos [role="alert"] { border-inline-start: 2px solid var(--ax-color-text-error); background: color-mix(in srgb, var(--ax-color-text-error) 5%, var(--ax-color-background-surface)); color: var(--ax-color-text-error); padding: var(--ax-spacing-3) var(--ax-spacing-4); border-radius: 0 var(--ax-radius-inner) var(--ax-radius-inner) 0; font-size: 14px; }
+.corilo-todos-resolution, .corilo-todos-drafts { border: 1px solid var(--ax-color-border); border-radius: var(--ax-radius-container); padding: var(--ax-spacing-4); }
+.corilo-todos-resolution[data-tone="warning"] { border-color: color-mix(in srgb, var(--ax-color-text-warning) 32%, var(--ax-color-background-surface)); background: color-mix(in srgb, var(--ax-color-text-warning) 5%, var(--ax-color-background-surface)); }
+.corilo-todos-resolution p:first-child { margin-top: 0; }
+.corilo-todos-resolution p:last-child { margin-bottom: 0; }
+.corilo-todos-resolution button { margin-block: 3px; }
+.corilo-todos-drafts { background: var(--ax-color-background-muted); margin-block: var(--ax-spacing-4); padding-block: 0; }
+.corilo-todos-drafts > summary { color: var(--ax-color-text-primary); }
+.corilo-todos-drafts li { margin: var(--ax-spacing-3) 0; overflow-wrap: anywhere; }
+.corilo-todos-drafts button { margin-inline-end: var(--ax-spacing-2); }
 .corilo-todos-resolution textarea { min-height: 120px; }
-.corilo-todos code { overflow-wrap: anywhere; }
+.corilo-todos-undo { display: flex; align-items: center; gap: var(--ax-spacing-3); flex-wrap: wrap; color: var(--ax-color-text-secondary); font-size: 13px; }
+.corilo-todos-undo button { min-height: 36px; border-color: transparent; color: var(--ax-color-text-primary); padding: 6px 10px; text-decoration: underline; text-underline-offset: 3px; }
+.corilo-todos-extra { border-top: 1px solid var(--ax-color-border); margin-top: var(--ax-spacing-2); }
+.corilo-todos-extra[open] { padding-bottom: var(--ax-spacing-2); }
+.corilo-todos-extra label { margin-bottom: var(--ax-spacing-3); }
+.corilo-todos code { overflow-wrap: anywhere; background: var(--ax-color-background-muted); border-radius: var(--ax-radius-inner); padding: 2px 5px; }
 .corilo-todos-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 700px) {
   .corilo-todos { padding: 18px; padding-top: max(18px, var(--dsh-frame-top-clearance, 0px)); }
-  .corilo-todos-grid.has-editor { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .corilo-todos-quick { gap: var(--ax-spacing-2); margin-top: var(--ax-spacing-5); }
+  .corilo-todos-quick > button { padding-inline: var(--ax-spacing-4); }
+  .corilo-todos-grid.has-editor { grid-template-columns: minmax(0, 1fr); gap: var(--ax-spacing-6); }
   .corilo-todos-grid.has-editor .corilo-todos-items { max-height: 170px; }
   .corilo-todos-items { max-height: none; }
   .corilo-todos input, .corilo-todos textarea, .corilo-todos select { font-size: max(16px, 1em); }
-  .corilo-todos-save { position: sticky; bottom: 0; z-index: 1; background: var(--dsw-alias-bg-base, Canvas); padding-block: 8px; }
+  .corilo-todos-editor { padding: var(--ax-spacing-6) 0 0; border-inline-start: 0; border-top: 1px solid var(--ax-color-border); }
+  .corilo-todos-save { position: sticky; bottom: 0; z-index: 1; background: var(--ax-color-background-surface); padding-block: var(--ax-spacing-3); }
+  .corilo-todos-undo button { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .corilo-todos *, .corilo-todos *::before, .corilo-todos *::after { transition: none !important; }
 }
