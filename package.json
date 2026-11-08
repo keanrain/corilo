@@ -16,10 +16,10 @@
     "test:notes": "npm --prefix plugins/notes test",
     "test:todos": "npm --prefix plugins/todos test",
     "setup:corilo": "npm --prefix plugins/notes ci --ignore-scripts && npm --prefix plugins/todos ci --ignore-scripts && npm --prefix plugins/notes run build && npm --prefix plugins/todos run build",
-    "init:corilo": "node scripts/corilo.mjs init",
-    "check:corilo": "node scripts/corilo.mjs check",
-    "start:corilo": "node scripts/corilo.mjs start",
-    "test:startup": "node --test scripts/test/corilo.test.mjs"
+    "init:corilo": "node launcher/corilo.mjs init",
+    "check:corilo": "node launcher/corilo.mjs check",
+    "start:corilo": "node launcher/corilo.mjs start",
+    "test:startup": "node --test launcher/test/cli.test.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "1.1.0",

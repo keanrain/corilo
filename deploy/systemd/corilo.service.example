@@ -11,8 +11,8 @@ WorkingDirectory=/absolute/corilo-instance
 Environment="PATH=/usr/local/bin:/usr/bin:/bin"
 UMask=0077
 # The source launcher fixes DSH_HOME/DSH_AGENTS_HOME below instance/runtime.
-ExecStartPre="/absolute/node" "/absolute/corilo-checkout/scripts/corilo.mjs" check --directory "/absolute/corilo-instance"
-ExecStart="/absolute/node" "/absolute/corilo-checkout/scripts/corilo.mjs" start --directory "/absolute/corilo-instance" --port 3000
+ExecStartPre="/absolute/node" "/absolute/corilo-checkout/launcher/corilo.mjs" check --directory "/absolute/corilo-instance"
+ExecStart="/absolute/node" "/absolute/corilo-checkout/launcher/corilo.mjs" start --directory "/absolute/corilo-instance" --port 3000
 Restart=on-failure
 RestartSec=5s
 KillMode=mixed

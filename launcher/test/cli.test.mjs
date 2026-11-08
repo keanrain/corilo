@@ -7,9 +7,12 @@ import path from 'node:path';
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import * as launcher from '../corilo.mjs';
+import * as compatibility from '../../scripts/corilo.mjs';
 
 const exec = promisify(execFile);
 const cli = fileURLToPath(new URL('../corilo.mjs', import.meta.url));
+const legacyCli = fileURLToPath(new URL('../../scripts/corilo.mjs', import.meta.url));
 const checkout = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
 async function fixture(t, { cleanup = true } = {}) {
   const base = await mkdtemp(path.join(os.tmpdir(), 'corilo-startup-'));
@@ -20,6 +23,24 @@ async function fixture(t, { cleanup = true } = {}) {
   const run = (command, directory = instance) => exec(process.execPath, [cli, command, '--directory', directory], { cwd: base, env });
   return { base, instance, env, run };
 }
+
+test('legacy entry forwards exports, help, errors and existing instance configuration', async t => {
+  for (const name of ['initialize', 'inspect', 'start', 'main']) assert.equal(compatibility[name], launcher[name]);
+  const { base, instance, env, run } = await fixture(t);
+  const legacy = args => exec(process.execPath, [legacyCli, ...args], { cwd: base, env });
+  assert.equal((await legacy(['--help'])).stdout, (await exec(process.execPath, [cli, '--help'], { cwd: base, env })).stdout);
+  const invalid = async entry => {
+    try { await exec(process.execPath, [entry, 'invalid-command'], { cwd: base, env }); }
+    catch (error) { return { code: error.code, stderr: error.stderr }; }
+    assert.fail('Invalid commands must fail');
+  };
+  assert.deepEqual(await invalid(legacyCli), await invalid(cli));
+  await legacy(['init', '--directory', instance]);
+  const config = await readFile(path.join(instance, 'corilo.patch.json'));
+  assert.deepEqual(JSON.parse((await legacy(['check', '--directory', instance])).stdout), JSON.parse((await run('check')).stdout));
+  assert.deepEqual(await readFile(path.join(instance, 'corilo.patch.json')), config);
+  for (const location of ['notes', 'state', 'todos', 'runtime', 'workspace']) await assert.rejects(access(path.join(instance, location)), { code: 'ENOENT' });
+});
 
 test('one-directory setup and read-only preflight preserve data and reject altered configs or unsafe paths', async t => {
   const { base, instance, env, run } = await fixture(t);
@@ -63,7 +84,7 @@ test('one-directory setup and read-only preflight preserve data and reject alter
   await assert.rejects(access(path.join(separate, 'notes.patch.json')), { code: 'ENOENT' });
 });
 
-test('unified launcher boots both real plugin APIs, preserves home separation and forwards SIGTERM', { timeout: 60000 }, async t => {
+for (const entry of [cli, legacyCli]) test(`${entry === cli ? 'canonical' : 'legacy'} launcher boots both real plugin APIs, preserves home separation and forwards SIGTERM`, { timeout: 60000 }, async t => {
   const { base, instance, env, run } = await fixture(t, { cleanup: false });
   await run('init');
   let child;
@@ -75,7 +96,7 @@ test('unified launcher boots both real plugin APIs, preserves home separation an
     }
     await rm(base, { recursive: true, force: true });
   });
-  child = spawn(process.execPath, [cli, 'start', '--directory', instance, '--port', '0'], { cwd: checkout, env, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
+  child = spawn(process.execPath, [entry, 'start', '--directory', instance, '--port', '0'], { cwd: checkout, env, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   for (const stream of [child.stdout, child.stderr]) stream.on('data', part => { output += part; if (output.length > 262144) child.kill('SIGKILL'); });
   const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));

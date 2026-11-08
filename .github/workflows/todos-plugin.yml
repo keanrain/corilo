@@ -7,6 +7,8 @@ on:
       - 'requirements-dev.txt'
       - 'package.json'
       - 'scripts/**'
+      - 'launcher/**'
+      - 'deploy/**'
       - '.github/workflows/todos-plugin.yml'
   pull_request:
     paths:
@@ -15,6 +17,8 @@ on:
       - 'requirements-dev.txt'
       - 'package.json'
       - 'scripts/**'
+      - 'launcher/**'
+      - 'deploy/**'
       - '.github/workflows/todos-plugin.yml'
 permissions:
   contents: read

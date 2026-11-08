@@ -1,14 +1,12 @@
 # Corilo 可里
 
-基于 **DeepSeek Harness** 的个人笔记与行动插件，目标是简单使用、资料保存在自己的设备并可带走。首期个人自部署：常开主机运行 Harness，手机和电脑通过网页访问，NAS 作为备份方向。
+基于 **DeepSeek Harness** 的个人笔记与待办插件：简单记录、查找与完成事情，资料保存在自己的设备并可带走。首期面向 Linux 小主机／常开电脑，复用 Harness 的网页、会话、模型设置与默认工具。
 
-**2026-11-08 路线调整：** 直接复用 Harness 网页、会话、模型配置和默认 Agent/工具，Corilo 优先开发笔记插件，再做个人待办/日程、可靠提醒和记忆。旧 Pi/Files.md 云端代码保留，不继续作为主应用扩展，也不自动迁移用户资料或凭据。
-
-首个独立包见 [plugins/notes](plugins/notes/README.md)，提供 Markdown 文件服务、笔记工具及 Harness 内笔记页面：分页浏览、正文搜索、阅读编辑、零模型原话保存、冲突保护、浏览器草稿与本地历史/回收站。插件已支持并列安装升级/回退、restic 笔记恢复和移动触控布局回归；v0.2.4 沿用核心记录与查找流程，视觉采用 Astryx Neutral 静态设计 token，历史/回收站保留次级入口。真实手机、日程/提醒、远程部署、真实模型及 NAS 恢复仍待验收。
+当前专注核心笔记和待办。日期、日程、提醒、笔记联动与自动记忆暂缓；不要求 Supabase、Corilo 账号或 GitHub 绑定。
 
 ## 一起使用笔记和待办
 
-源码安装需要 Node.js ≥24.9.0、Git ≥2.36。在仓库根目录，选一个**仓库之外**的实例绝对路径：
+需要 Node.js ≥24.9.0、Git ≥2.36。在仓库根目录执行下面三步，实例目录选在**仓库之外**，使用绝对路径：
 
 ```sh
 npm run setup:corilo
@@ -16,136 +14,46 @@ npm run init:corilo -- --directory /absolute/corilo-instance
 npm run start:corilo -- --directory /absolute/corilo-instance
 ```
 
-`setup` 按两包锁文件安装依赖并构建，不启动服务；`init` 只需执行一次，生成两个插件的组合配置，不覆盖已有配置或迁移资料。以后只运行 `start`；需要排错时运行 `npm run check:corilo -- --directory /absolute/corilo-instance`。默认固定回环端口 `3000`，可给 start 加 `--port 其他端口`。
+`setup` 按两个插件各自的锁文件安装依赖并构建；`init` 只需一次，独占生成配置，不覆盖或迁移已有实例；以后只需 `start`。打开终端打印的鉴权地址，关闭 Harness 模型密钥引导即可直接记笔记与待办，核心操作不用模型。Ctrl+C 停止。
 
-打开终端打印的鉴权地址，关闭模型密钥引导即可直接记笔记和待办；不用先配模型。停止用 Ctrl+C。实例下的 `notes/` 是正文，`state/` 是笔记历史，`todos/` 是待办数据库，`runtime/{harness,agents}` 是固定原生配置/会话目录；它们分别管理，不把整个实例称作无凭据的资料导出。组合中的工作目录使用实例的 `workspace/`，避免无桌面 Linux 首次创建工作目录报错。
+默认监听回环地址、固定端口 `3000`，可为 `start` 添加 `--port 其他端口`。排错用 `npm run check:corilo -- --directory /absolute/corilo-instance`；检查不创建资料目录、原生 home 或待办数据库，数据库 schema 在实际启动时校验。旧独立实例继续按各插件指南管理，统一入口不自动接管；源码路径改变后需核对配置，详见[开发指南](docs/DEVELOPMENT.md)。
 
-统一 `check` 不创建资料根、原生 home 或待办数据库；待办 schema 完整校验在原生插件实际启动时执行。已有的独立笔记/待办实例继续按各插件指南管理，统一初始化不会自动接管或迁移它们。源码路径改变后组合配置不自动改写，需保留旧实例配置并按升级指南核对。
+## 当前功能
 
-此入口沿用 Harness 认证和默认工具权限，不配置远程监听或安装自启服务。若需 Linux 常驻，审阅 [统一用户服务示例](scripts/corilo.service.example)，替换绝对路径后按 [Linux 指南](plugins/notes/LINUX.zh-CN.md)的用户服务步骤管理，将其中服务名改为 `corilo.service`，使用本示例的统一入口；原生 home 由统一脚本固定，不另行更换。该示例未自动安装。原有 `npm start` 仍是下面保留的旧应用。
-
-个人待办独立包见 [plugins/todos](plugins/todos/README.md)：v0.2.1 保留快速连续新增、列表完成/撤销、刷新草稿恢复与版本/幂等保护，并统一为 Astryx Neutral 静态 token 视觉；详情/导出放入次级入口。当前只打磨核心笔记/待办，日期、联动、日程与通知暂缓。
-
-插件如何安装到固定 Harness 版本、配置资料目录以及测试边界，见各插件 README。当前产品规则、架构和验收统一见 [设计索引](docs/README.md)。
-
-以下是旧应用历史说明和可继续使用的开发命令，不能当作 Harness 插件的运行入口或当前路线。
-
----
-
-# 迁移前实现与运行记录
-
-帮助个人记忆、思考和安排事情的云端助手，强调简单使用与资料可带走。新方向为邀请制小范围使用：桌面、Android 和 iPhone 通过网页访问同一份云端知识库，目标是 Pi 在服务端隔离环境运行（当前云端 AI 禁用）；无需本地 Agent 或 APK。
-
-**当前正在从本机版迁移，云端邀请、会话与独立文件服务已开始实现；内部持久任务、Docker worker、文件写入协调和模型出口/任务调用额度已加入；出口已通过单任务 Unix socket 接入 worker，网页已有所属账号的对话记录、任务状态与停止操作，内部调度生命周期、私有文件宿主控制通道及只恢复不执行的控制器入口已加入；真实身份与模型联调、持久磁盘额度、公共 Agent 链路与部署尚未完成。** 本轮已更新 [v0.16 正式设计](docs/README.md)，云端开发入口和所需配置见 [云端文件服务](app/cloud/README.md)。下文明确区分云端入口和保留的本机模式；本机启动命令不能直接作为公网部署方案。
-
-## 当前入口与能力
-
-| 模式 | 入口 | 能力边界 |
+| 插件 | 核心体验 | 次级能力 |
 |---|---|---|
-| 云端文件开发版 | `npm run start:cloud`；[配置说明](app/cloud/README.md) | 邀请/会话、独立文件库、跨端刷新、原话保存与 ZIP；真实身份未联调，AI/同步禁用 |
-| 保留的本机开发版 | `npm start` | Files.md、Pi 默认工具、本机 Git 与 GitHub 同步；不是当前云端交付路径 |
+| [笔记](plugins/notes/README.md) v0.2.4 | Markdown 阅读编辑、分页查找与正文搜索、零模型原话保存、冲突保留草稿 | 浏览器持久草稿、Git 历史／回收站、restic 笔记备份恢复 |
+| [待办](plugins/todos/README.md) v0.2.1 | 快速连续新增、直接完成／撤销、刷新恢复草稿 | 编辑／取消、版本与幂等保护、JSON 导出 |
 
-记忆、待办、日程、提醒、完整账号导出恢复及自托管均未交付。目标范围与待定事项见 [业务规格](docs/PRODUCT-SPEC.md)，实现与证据见 [技术设计第 11 节](docs/TECHNICAL_DESIGN.md#11-邀请与云端文件首条链路2026-10-21)。
+页面与 Agent 工具共用各插件业务服务。视觉复用 Astryx Neutral 0.7.11 静态 token，使用宿主 React；不是 Astryx React 组件集成。
 
-## 保留的本机实现
+## 仓库与分发
 
-`app/` 已接入固定版本的完整 Files.md Web 页面和 CodeMirror/HyperMD 编辑器、本机 Node 文件宿主、Pi 1.1.0 默认工具及本地 Git 历史。页面、Pi 和 Git 使用同一个磁盘知识库，浏览器临时存储与原 Files.md 远程同步入口已停用。
-
-目前可用：真实文件编辑、文件树、原话保存、外部修改冲突提示及草稿另存、复用已有 Pi 配置、Agent 对话/停止、观察到的文件变更入口、最近本机会话恢复、GitHub 私有仓库绑定、Git 同步与冲突处理。对话流通过本机状态轮询增量显示。模型配置沿用 Pi 的 `auth.json`、`models.json` 和 `settings.json`。
-
-**这是正式应用的首条开发链路，尚不是可分发安装包。** 桌面安装器与 Android APK 已暂停，不再列入当前待交付；完整会话切换和历史恢复界面尚未实现。Windows/macOS 启动代码尚未在目标系统验收。不要把当前阶段当作已经通过全部首期验收。
-
-## 暂停的本地发行路线
-
-桌面启动器和 `android/` 集成 APK 暂停开发，已有代码、来源与构建脚本保留。当前分支的 Android Actions 改为仅手动运行，不再为每次云端改动自动消耗构建资源；此修改不取消其他分支已提交或运行中的任务。
-
-后续主路线为网页 + 云端文件服务 + 隔离 Pi worker，详见 [迁移顺序](docs/TECHNICAL_DESIGN.md#8-实施顺序)。下文 GitHub 同步也是旧本机功能，新版不要求绑定 GitHub。
-
-## 本机模式开发启动
-
-需要 Node.js >=22.19.0、Git；Pi 的默认 shell 工具需要 Bash（Windows 开发机需要 Git Bash）。首次安装依赖：
-
-```bash
-npm ci --ignore-scripts
-npm start
+```text
+plugins/notes/      独立笔记 npm 包、客户端、服务与测试
+plugins/todos/      独立待办 npm 包、客户端、服务与测试
+launcher/          源码组合启动器与启动验收
+deploy/systemd/   统一用户服务示例（不自动安装）
+scripts/          开发工具、历史脚本及旧入口兼容转发
+docs/             当前产品／架构／开发文档与历史档案
+app/              保留的旧本机／云端应用与 vendor
+android/ prototype/ p0/   保留的历史工程与证据
 ```
 
-启动时自动尝试打开 Chrome。当前开发入口仍依赖本机已安装的 Node/Git/Chrome（Linux 另需 util-linux 的 `flock`）；本地安装包路线已暂停。Linux 云环境或无 GUI 时使用：
+两个插件独立安装、构建、打包，不依赖根应用发布；安装与 tarball 分发入口见[插件导航](plugins/README.md)。当前 npm 包仍为 `private`，尚未公开发布 npm。本仓库统一启动器用于源码组合使用，不是第三个已发布包。
 
-```bash
-npm start -- --no-open --vault .local/app-notes --config .local/app-config
-```
+实例与源码分开：`notes/` 存正文，`state/` 存笔记历史，`todos/` 存 SQLite；`runtime/{harness,agents}` 存 Harness 原生配置／会话，`workspace/` 为默认工具工作目录。整个实例包含敏感状态，不能当作无凭据的资料导出。
 
-终端会打印带**本机访问凭证**的启动链接，仅供本机使用，不要分享。服务只监听 `127.0.0.1`，随机端口，页面去除 URL 中凭证后保存在当前标签页的 sessionStorage。Ctrl+C 正常退出。
+## 使用边界
 
-默认目录位于 Windows `%LOCALAPPDATA%/Corilo`、macOS `~/Library/Application Support/Corilo`、Linux `$XDG_DATA_HOME/corilo`（未设置时 `~/.local/share/corilo`）。`knowledge/` 存笔记，`config/sessions/` 保存由 Pi 管理的 Corilo 会话。模型认证和设置直接读取 Pi 标准目录，不在 Corilo 下复制一份。开发检查使用虚构资料。
+Harness 固定为开发者预览版 `0.2.2-rc.1`，升级须验证兼容性。插件版本保护只协调各自服务，默认文件／bash 工具及外部编辑器不受其队列约束，也不是多租户隔离边界。
 
-直接复用 Pi 的配置：默认 `~/.pi/agent/`，遵循 Pi 原生的 `PI_CODING_AGENT_DIR` 环境变量。使用已有 Pi 的 `/login`、`/model` 等功能配置认证和默认模型，Corilo 读取相同的 `auth.json`、`models.json` 和 `settings.json`；也遵循 Pi 支持的提供商环境变量。Corilo 不提供另一个密钥表单，不保存或改写模型选择，不强制选 DeepSeek。已有会话的模型恢复遵循 Pi 默认规则。
+真实发布版 Harness、Chromium 核心流程与独立包生产安装已有验收；物理手机／原生输入法／WebKit、真实 DeepSeek、远程部署、设备开机自启及 NAS 尚未验收。NAS 先作备份方向，未验证 SMB/NFS 或双向同步目录为工作目录。笔记级 restic 恢复不等于完整实例备份。
 
-更改 Pi 配置后重新启动当前 Corilo 宿主。此前开发版本的 `config/pi/` 不会自动迁移或覆盖标准 Pi 配置。未配置模型时仍能编辑和仅保存原话。在线模型会接收对话及工具读取的相关内容；Pi cwd 不是沙箱。
+Linux 常驻可审阅[统一 systemd 用户服务示例](deploy/systemd/corilo.service.example)，替换绝对路径后按[Linux 指南](plugins/notes/LINUX.zh-CN.md)管理，将服务名改为 `corilo.service` 并采用统一入口；原生 home 由启动器固定。示例不配置远程监听，也不自动安装或启用。
 
-## 本机模式文件与恢复边界
+## 文档入口
 
-编辑器保存会核对读取版本，冲突时保留草稿并提供另存入口。Agent 使用 Pi 默认文件工具，不附加逐文件审批或事务保存框架。本地 Git 在初始状态、编辑保存及 Agent 前后建立历史；尚无界面化历史恢复，可由开发者检查 Git 提交。
+[设计索引](docs/README.md) · [当前业务规则](docs/PRODUCT-SPEC.md) · [当前架构](docs/TECHNICAL_DESIGN.md) · [开发与检查](docs/DEVELOPMENT.md) · [开发脚本](scripts/README.md)
 
-当前文件 HTTP 接口单次最多 16 MiB，拒绝隐藏路径和符号链接；这仅约束文件页面接口，不限制 Pi 默认 shell 的访问能力。跨平台文件名检查覆盖页面创建、重命名和同步树；远端符号链接、子模块、Windows 非法名称及大小写/Unicode 冲突会暂停同步。
-
-一个知识库只允许一个宿主。正常退出清理 `.corilo-host.lock`；Linux 内核锁使用持久的 `.corilo-host.flock`，不要手动删除它。云端纯文件模式可回收已确认死亡进程的有效标记；本机 Pi、旧版或未知锁仍需确认旧进程及子进程停止后人工处理。本机安装器路线已暂停；此机制不等于 Agent 或 Git 写入中途的完整崩溃恢复。本机保存与 GitHub 上传分开显示；只有 push 成功才记录远端同步时间。
-
-## GitHub 同步（仅保留的本机模式）
-
-在页面右上角“GitHub 同步”填写已有私有仓库的 HTTPS 地址及分支。先通过本机 Git 凭据管理器登录 GitHub，并授予目标仓库读写权限；推荐限定仓库的 fine-grained PAT，通过凭据管理器保存，不填在 Corilo 页面或 remote URL 中。绑定会通过 GitHub API 核对仓库身份、私有属性及写入权限。本轮未使用真实 GitHub 知识库或凭据验证此连接。
-
-首次同步可使用空远端。第二台设备先把同一仓库 `git clone` 到新目录，再用 `--vault` 打开该目录并绑定相同分支；图形化克隆/选库入口尚未提供。已有但没有共同历史的两份知识库不能直接绑定合并。
-
-同步依次建立本地提交、拉取、隔离合并、应用、非强制推送。页面保持打开且处于前台时，空闲后尝试同步；正常重试间隔一分钟，回到前台可提前触发。Agent 执行、编辑和保存活动会延后自动同步；手动入口始终可用。当前同步期间编辑器暂时只读，失败后恢复编辑；长网络操作可能持续到超时，后续可缩短写入锁范围。关闭页面后不保证后台自动同步。
-
-冲突在库外临时目录处理，可查看文本双方，选择本机、远端、两份或手工合并；二进制/大文件只提供版本选择。冲突出现后本机又有修改，旧选择会被拒绝，应点“立即同步”重新计算。重启会重算未完成冲突，不保留未提交的手工合并草稿。解绑只删除本机连接信息，保留本机文件和远端仓库。
-
-连接信息和隔离合并目录在 `config/sync/<知识库路径摘要>/`，不进入知识库。Git 沿用已有凭据管理器，其安全性取决于本机 helper 配置；本版尚未打包平台凭据管理器。单个 Git 命令最长 60 秒；大附件/网络/权限错误保留本地提交并提示重试，尚未提供大附件的逐文件诊断和历史恢复 UI。
-
-## 检查与历史证据
-
-```bash
-npm test
-python3 -m pip install -r requirements-dev.txt
-python3 -m playwright install chromium
-python3 app/tests/browser_smoke.py
-python3 app/tests/browser_review.py
-python3 app/tests/browser_sync.py
-```
-
-2026-10-09 代码复核：10 项 Node 集成测试通过；真实 Chromium 检查覆盖完整编辑器、保存/重载、原话保存、外部文件刷新、冲突保留与草稿另存。额外的 4 组浏览器回归覆盖移动重名保护、分屏版本隔离、文件名按纯文本渲染、发送前保存最新草稿及防重复提交；前 3 组曾在修复前真实失败。浏览器脚本优先使用系统 `chromium`，否则使用 Playwright 安装的版本；Linux 缺少系统库时使用官方 `install --with-deps chromium`。
-
-Pi 默认 read/edit/write 工具已实际操作文件；完整 Pi 推理循环通过本机脚本化模型响应完成读取、修改及会话恢复测试。该模型响应是**协议测试替身**，不证明真实 DeepSeek 效果。未进行真实模型调用、Windows/macOS 实机或 Android 验证。浏览器结果和截图位于忽略的 `.local/`。
-
-接入同步后共 19 项 Node 测试通过。新增同步测试使用真实临时 bare Git 远端，覆盖双库合并、离线重试、文本/删除修改/二进制冲突、过期选择、非法名称、并发推送和解绑；浏览器同步检查走真实宿主与 Git，仅将仓库身份校验替换为临时路径校验。GitHub 身份校验用合成凭据和 API 响应测试，没有向真实 GitHub 知识库发请求。
-
-[应用 CI](.github/workflows/app.yml) 配置了 Node 测试和 Chromium 检查；已配置不等于远端运行通过。
-
-## 历史原型
-
-`prototype/` 是保留的 Python 单文件存储原型，不作为正式应用继续扩展：
-
-```bash
-python3 scripts/run_local.py --init
-python3 -m unittest discover -s prototype/tests -v
-```
-
-原型默认库 `.local/xuye-prototype/`、`.personalos` 等兼容标识保持不变。旧测试和 `p0/` 证据仅代表其各自阶段，不作为当前应用验收。
-
-## 设计与来源
-
-[设计索引](docs/README.md) · [产品](docs/PRODUCT.md) · [业务规格](docs/PRODUCT-SPEC.md) · [技术](docs/TECHNICAL_DESIGN.md) · [交互](docs/DESIGN.md)
-
-Files.md Web 源码与许可在 [app/vendor/filesmd](app/vendor/filesmd)，固定提交及文件 SHA-256 见 [SOURCE.json](app/vendor/filesmd/SOURCE.json)。上游文件保持原样，由宿主修改返回的 HTML、生命周期回调和文件名渲染，并加载 Corilo 适配层；Go 服务、Telegram Bot、Worker 未引入。Pi 的安装版本固定在 package-lock.json。Termux 尚未引入应用代码，Android 分发已暂停；如恢复，仍需核对组合发行许可与相应源码交付。
-
-代码仓库为 `keanrain/corilo`，知识库远端另行配置。只在开发分支提交推送，不自动合入 main、部署或修改仓库可见性。
-
-## 知识库导出（本机与云端文件模式）
-
-顶栏“导出知识库”保存当前草稿后下载普通 ZIP。`knowledge/` 包含已保存的可见笔记、原附件和空目录，保留路径与字节；`manifest.json` 提供版本、排除项与 SHA-256，`README.txt` 说明范围。解压即可使用，无需 Corilo。第一版最多 128 MiB / 10,000 项，Agent 或同步运行时需稍后重试，链接/特殊文件会被拒绝。
-
-这是知识库内容导出，不含隐藏项、Git 历史、配置密钥、对话、任务或日程，不是完整账号备份。账号级导入恢复、自托管、记忆与提醒尚未实现。最新阶段详见正式设计。
-
-云端文件服务新增 `npm run start:cloud`；这是独立入口，不改变原 `npm start` 的本机模式。真实数据库/浏览器检查通过，但身份服务使用测试替身，云端 AI 禁用。请先阅读云端 README 的前置配置、账号开通方式和未完成项。
+`npm start` 与 `npm test` 仍分别运行旧本机应用及旧测试；旧代码和资料保留，不自动迁移。迁移前完整运行说明见[旧应用档案](docs/history/LEGACY-APP.md)。

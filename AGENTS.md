@@ -1,6 +1,6 @@
 # Corilo 可里开发约束
 
-当前方向 v0.24（2026-11-08）：用户决定以 DeepSeek Harness 为主体，Corilo 提供笔记、待办/日程与后续记忆插件，首期个人自部署。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md。用户新决定优先于旧 Pi/Files.md 云端要求；产品规则只在 PRODUCT-SPEC.md 维护。
+当前方向 v0.25（2026-11-09）：用户决定以 DeepSeek Harness 为主体，Corilo 提供笔记、待办/日程与后续记忆插件，首期个人自部署。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，开发命令见 docs/DEVELOPMENT.md。用户新决定优先于旧 Pi/Files.md 云端要求；产品规则只在 PRODUCT-SPEC.md 维护。
 
 视觉采用 Astryx Neutral 0.7.11 静态 token 子集与插件局部 CSS 适配，MIT notice 随包；固定 Harness 实测 React 18.3.1，而 Astryx React 组件要求 >=19，不得擅自升级宿主、另带 React 或声称已接入其组件。
 
@@ -13,6 +13,8 @@
 当前独立包为 plugins/notes（Markdown）与 plugins/todos（个人待办 SQLite）；两者页面/工具共用各自业务服务。待办不含日期/调度/通知，不能当可靠提醒已交付。新代码位于 plugins/；旧 app/host、app/cloud、app/vendor、android、prototype 和既有配置/数据原样保留，作为迁移前实现，不默认删除或转换数据。旧 Pi 会话、PostgreSQL 任务和 Harness 会话不是同一格式，不自动重放历史工具。品牌与兼容标识（.personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/ 等）保留。旧版本文档标注历史，不继续作为当前路线扩展。
 
 使用现有 checkout，不擅自创建 worktree。保留其他改动；按已授权范围在开发分支提交推送，不 force-push。部署、公开可见性变更及破坏性操作需要对应授权。代码仓库与知识库分开。使用虚构资料和合成凭据测试，不提交或输出真实密钥和用户笔记。
+
+仓库分层：plugins/notes 与 plugins/todos 保持独立 npm 包和锁文件；launcher/ 是源码组合入口及启动测试，不是第三个发行包；deploy/ 是人工审阅的部署示例；scripts/ 放开发工具与历史兼容脚本。scripts/corilo.mjs 保留转发以兼容已有命令和服务。根依赖/锁文件及 npm start/test 服务旧应用，不改作插件安装入口。当前文档留在 docs/，阶段记录及旧路线归 docs/history/；历史实现保留原目录，避免破坏既有路径。不要为此引入 workspace、共享运行包或迁移用户实例。
 
 应用改动运行 npm test；新插件按其实际测试脚本执行，必须验证真实 Cordis/Harness 加载及工具调用，不能只用手写假 ctx 宣称接入通过。修改文件接口或 UI 时，另运行既有 python3 app/tests/browser_smoke.py、browser_review.py、browser_sync.py；它们仅保护旧 app，不替代新 Harness 插件页面的浏览器验收。保留 CSP，不改 vendor 掩盖失败。新插件的文件测试覆盖版本冲突、路径/链接拒绝及实际磁盘持久化。
 

@@ -117,9 +117,9 @@ export async function start(input, port = '3000') {
   } finally { process.off('SIGINT', interrupt); process.off('SIGTERM', terminate); }
 }
 const usage = `Corilo 笔记与待办（源码统一入口）
-node scripts/corilo.mjs init --directory /absolute/corilo-instance
-node scripts/corilo.mjs check --directory /absolute/corilo-instance
-node scripts/corilo.mjs start --directory /absolute/corilo-instance [--port 3000]
+node launcher/corilo.mjs init --directory /absolute/corilo-instance
+node launcher/corilo.mjs check --directory /absolute/corilo-instance
+node launcher/corilo.mjs start --directory /absolute/corilo-instance [--port 3000]
 
 初始化只创建配置，不覆盖旧实例或迁移凭据。直接记录无需模型密钥。
 `;

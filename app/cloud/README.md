@@ -66,7 +66,7 @@ CI 使用独立 PostgreSQL 容器，见 `.github/workflows/cloud.yml`。工作�
 
 ## 后续组件接入
 
-成熟组件选型见 [技术设计第 17 节](../../docs/TECHNICAL_DESIGN.md#17-成熟组件选型与接入边界2026-10-21)。首期保留内部应用会话和 Runs；接 Supabase 官方身份操作、Docker worker、Caddy/Compose 与 restic 备份。当前没有 SDK 迁移、生产镜像、部署配置或备份交付，不能直接按目标拓扑启动。
+成熟组件选型见 [技术设计第 17 节](../../docs/history/TECHNICAL-DESIGN-v0.16.md#17-成熟组件选型与接入边界2026-10-21)。首期保留内部应用会话和 Runs；接 Supabase 官方身份操作、Docker worker、Caddy/Compose 与 restic 备份。当前没有 SDK 迁移、生产镜像、部署配置或备份交付，不能直接按目标拓扑启动。
 
 特别注意：Supabase 管理台停用身份或重置密码不会自动删除当前 Corilo 应用会话；目前停用须落实到 Corilo 账号状态，后续恢复密码流程需要接应用会话撤销。网关仍固定 loopback，Caddy 与网关分容器前需实现受控 bind 配置，不能通过放宽 Host/Origin 检查解决连接问题。
 

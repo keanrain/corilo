@@ -44,7 +44,7 @@ cd plugins/todos
         notesRoot: /absolute/corilo-instance/notes
 ```
 
-使用固定 Harness 原生启动命令加载这份组合配置。源码统一入口 `scripts/corilo.mjs` 已负责生成组合，无需手写。笔记包的 `corilo-notes` CLI 只接受单笔记 overlay，不用于解析多插件组合。原 Linux 用户服务示例的单笔记启动命令也不会自动加载待办；不要悄悄替换已运行实例的配置。常驻时继续固定 `DSH_HOME`、`DSH_AGENTS_HOME`、工作目录与端口，参考笔记包的 Linux 指南。
+使用固定 Harness 原生启动命令加载这份组合配置。源码统一入口 `launcher/corilo.mjs`（原 `scripts/corilo.mjs` 保留兼容转发） 已负责生成组合，无需手写。笔记包的 `corilo-notes` CLI 只接受单笔记 overlay，不用于解析多插件组合。原 Linux 用户服务示例的单笔记启动命令也不会自动加载待办；不要悄悄替换已运行实例的配置。常驻时继续固定 `DSH_HOME`、`DSH_AGENTS_HOME`、工作目录与端口，参考笔记包的 Linux 指南。
 
 ## 页面与可靠性
 
