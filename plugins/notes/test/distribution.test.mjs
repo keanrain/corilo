@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -12,6 +12,21 @@ import { NotesStore } from '../storage.mjs';
 
 const exec = promisify(execFile);
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
+
+// CLI readiness now resolves native homes too. Keep these tests independent of
+// the developer's real Harness/shared-agent configuration, even before boot.
+const nativeHomes = await mkdtemp(path.join(os.tmpdir(), 'corilo-cli-homes-'));
+const previousHomes = { DSH_HOME: process.env.DSH_HOME, DSH_AGENTS_HOME: process.env.DSH_AGENTS_HOME };
+before(() => {
+  process.env.DSH_HOME = path.join(nativeHomes, 'harness');
+  process.env.DSH_AGENTS_HOME = path.join(nativeHomes, 'agents');
+});
+after(async () => {
+  for (const [key, value] of Object.entries(previousHomes)) {
+    if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  }
+  await rm(nativeHomes, { recursive: true, force: true });
+});
 
 test('CLI creates a private reviewable overlay without touching notes and rejects unsafe/rebound configuration', async t => {
   const base = await mkdtemp(path.join(os.tmpdir(), 'corilo-config-'));
@@ -105,7 +120,7 @@ test('npm tarball installs outside the checkout with production dependencies and
   const packed = await exec('npm', ['pack', '--json', '--pack-destination', base], { cwd: packageRoot, env, maxBuffer: 8 * 1024 * 1024 });
   const report = JSON.parse(packed.stdout)[0];
   const files = report.files.map(file => file.path);
-  for (const file of ['cli.mjs', 'index.mjs', 'api.mjs', 'storage.mjs', 'library.mjs', 'history.mjs', 'recovery-tools.mjs', 'lib/client.js', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'QUICKSTART.zh-CN.md', 'restore.mjs', 'BACKUP.zh-CN.md']) assert.ok(files.includes(file), `Missing runtime file: ${file}`);
+  for (const file of ['cli.mjs', 'index.mjs', 'api.mjs', 'storage.mjs', 'library.mjs', 'history.mjs', 'recovery-tools.mjs', 'lib/client.js', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'QUICKSTART.zh-CN.md', 'restore.mjs', 'BACKUP.zh-CN.md', 'LINUX.zh-CN.md', 'corilo-notes.service.example']) assert.ok(files.includes(file), `Missing runtime file: ${file}`);
   assert.ok(files.every(file => !/^(client\/|test\/|node_modules\/|\.env|.*\.patch\.json$)/.test(file)), 'Distribution excludes sources/tests/user configs');
   const installRoot = path.join(base, 'independent-install');
   await mkdir(installRoot);

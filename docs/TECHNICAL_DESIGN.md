@@ -1,6 +1,6 @@
 # Corilo 可里技术设计
 
-v0.20 · 2026-11-08。用户决定以 DeepSeek Harness 为主体，Corilo 开发笔记、事项/日程插件，优先个人自部署。产品规则唯一来源为 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)。本文后半的 1–17 节是旧云端历史记录，不再定义当前路线。
+v0.21 · 2026-11-08。用户决定以 DeepSeek Harness 为主体，Corilo 开发笔记、事项/日程插件，优先个人自部署。产品规则唯一来源为 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)。本文后半的 1–17 节是旧云端历史记录，不再定义当前路线。
 
 ## 当前架构
 
@@ -120,6 +120,19 @@ v0.20 · 2026-11-08。用户决定以 DeepSeek Harness 为主体，Corilo 开发
 最终验证：36 项插件 Node 检查通过，包含 3 项备份恢复检查和真实独立生产安装/新配置启动/原配置回退；分发探针的 node -e 参数错误修正后，其 4 项检查补跑通过。7 套插件 Chromium 检查通过（5 套真实 Harness 流程、2 套运行时/IndexedDB 检查），移动流程使用公开 documentsDirectory 配置解决隔离 Linux 环境缺少 xdg-user-dir 的默认工作区提示，重跑无该报错。旧应用 59 项 Node 和 3 套浏览器回归通过。npm pack 干跑确认 v0.2.1 仅含 16 个运行/指南/许可文件，不含测试、用户资料或依赖目录。独立复核未发现阻塞项。
 
 CI 安装 restic 并设置 CORILO_REQUIRE_RESTIC=1，工具缺失必须失败，不能把跳过演练计为通过。远端 Actions 尚未确认。运行指南见插件 README、QUICKSTART.zh-CN.md 与 BACKUP.zh-CN.md。
+
+## v0.21 Linux 运行准备（插件 v0.2.2，2026-11-08）
+
+用户选择 Linux 小主机/常开电脑作为首个部署目标；具体发行版、设备及远程访问方式仍待确定。本轮交付部署准备与隔离验收，没有在用户设备安装/启用服务。
+
+- **复用系统服务**：提供 systemd 用户服务示例和 LINUX.zh-CN.md；固定 Node/插件/配置绝对路径、原生 DSH_HOME/DSH_AGENTS_HOME、工作目录与端口。使用启动前 check、失败重启/限速、UMask=0077 和 KillMode=mixed，先由 CLI 转发 SIGTERM，再由 systemd 超时处理残留进程。没有另造守护进程、日志平台或 Agent 沙箱，也不自动配置 linger、电源策略或远程监听。
+- **原生目录预检**：直接依赖固定 @deepseek-ai/dsh-home-paths 0.2.2-rc.1，复用上游解析规则。check 显示 harnessHome、agentsHome 与 workingDirectory，不显示凭据值；初始化和启动前拒绝原生目录与 notes/state 互相嵌套，包括共享目录链接解析后指向笔记的情况。预检不创建原生 home。独立 home 不代表完全环境隔离，原生凭据仍可能来自继承环境、启动目录 .env 及 home .env。
+- **重启实际证据**：新的 restart_browser.py 通过 Corilo CLI 两次启动真实发布版 Harness，保持同 home、知识库、浏览器来源和固定回环端口。有效 cookie 继续工作，新进程轮换启动 token，旧 token 在匿名新客户端失效；每次匿名根/API 保持 401。真实页面保存笔记和历史，重启后浏览器草稿可预览/明确恢复而不自动覆写，最后保存落盘；捕获只执行一次，零模型/外部请求。公开 home overlay 只为隔离测试提供 synthetic Documents，不修改默认 Agent 机制。
+- **系统服务证据边界**：systemd-analyze 257 对替换为临时路径的示例 verify 通过。容器缺少用户 RuntimeDirectory，--user verify 无法初始化用户 manager；尚无 systemd 实际托管、机器重启、开机无人登录或休眠恢复证据。日志包含原生鉴权链接，只能在设备本地查看并在分享前去掉敏感值。
+
+最终验证：37 项插件 Node 检查通过，包含真实 restic 演练；原有 CLI 分发 fixture 改用独立临时原生 home 后，其 4 项和新的部署预检共 5 项复跑通过。8 套插件 Chromium 检查通过（6 套真实 Harness 流程与 2 套运行时/IndexedDB 检查），旧应用 59 项 Node 检查通过。独立包实际仅装生产依赖、启动/回退检查通过，包内包含 Linux 指南和用户服务示例。独立只读复核未发现阻塞项；远端 Actions 尚未确认。
+
+指南继续保持默认回环监听。Tailscale/远程 TLS、真实手机、NAS 及完整实例恢复没有由本轮交付自动验收；笔记级备份仍只覆盖 notes/state，不包含 runtime 会话/凭据及浏览器草稿。
 
 ## 历史实现与证据
 

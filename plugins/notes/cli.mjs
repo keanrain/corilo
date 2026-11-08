@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseDocument } from 'yaml';
 import { NotesStore } from './storage.mjs';
+import { resolveDshHome, resolveAgentsHome, canonicalizeWatchPath } from '@deepseek-ai/dsh-home-paths';
 
 const packageRoot = fileURLToPath(new URL('./', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -23,7 +24,7 @@ export function supportedNode(version) {
 
 // Check every existing component without following links. Missing directories are
 // allowed for initialization; checking never creates a knowledge/state directory.
-async function directory(input, label) {
+async function directory(input, label, { writable = true } = {}) {
   if (typeof input !== 'string' || !path.isAbsolute(input) || input.includes('\0')) fail(`${label} must be an absolute path.`);
   const normalized = path.resolve(input);
   if (normalized === path.parse(normalized).root) fail(`${label} cannot be the filesystem root.`);
@@ -36,7 +37,7 @@ async function directory(input, label) {
     if (!stat.isDirectory() || stat.isSymbolicLink() || await realpath(current) !== current) fail(`${label} cannot contain links or non-directory components.`);
     existing = current;
   }
-  await access(existing, constants.R_OK | constants.W_OK).catch(() => fail(`${label} is not readable/writable by this user.`));
+  await access(existing, constants.R_OK | (writable ? constants.W_OK : 0)).catch(() => fail(`${label} is not ${writable ? 'readable/writable' : 'readable'} by this user.`));
   return normalized;
 }
 
@@ -49,6 +50,19 @@ async function locations(root, stateRoot, configPath) {
   await directory(path.dirname(configPath), 'Config parent');
   if (within(root, configPath) || within(stateRoot, configPath)) fail('Keep the config outside the notes and state directories.');
   return { root, stateRoot, configPath };
+}
+
+// Reuse the host's own resolution rules. Checking never creates either home;
+// both can hold credentials/configuration outside the Markdown backup boundary.
+async function homes({ root, stateRoot }) {
+  const harnessHome = await directory(await canonicalizeWatchPath(resolveDshHome()), 'Harness home');
+  const agentsHome = await directory(await canonicalizeWatchPath(resolveAgentsHome()), 'Shared agents home', { writable: false });
+  for (const [label, home] of [['Harness home', harnessHome], ['Shared agents home', agentsHome]]) {
+    if ([root, stateRoot].some(data => within(data, home) || within(home, data))) {
+      fail(`${label} must be separate from notes and recovery data. Set DSH_HOME and DSH_AGENTS_HOME to separate private directories.`);
+    }
+  }
+  return { harnessHome, agentsHome };
 }
 
 async function runtime() {
@@ -122,6 +136,7 @@ async function gitVersion() {
 export async function initialize({ root, stateRoot, configPath }) {
   await runtime();
   const resolved = await locations(root, stateRoot, configPath);
+  await homes(resolved);
   await gitVersion();
   await stateBinding(resolved.root, resolved.stateRoot);
   const overlay = [{ insert: [{ id: 'corilo-notes', name: path.join(packageRoot, 'index.mjs'), config: { root: resolved.root, stateRoot: resolved.stateRoot } }] }];
@@ -151,9 +166,10 @@ export async function initializeDirectory(input) {
 export async function inspect(configPath) {
   const installed = await runtime();
   const resolved = await readConfig(configPath);
+  const resolvedHomes = await homes(resolved);
   const git = await gitVersion();
   const state = await stateBinding(resolved.root, resolved.stateRoot);
-  return { ...resolved, node: installed.node, harness: installed.harness, git, state, client: 'built', entry: installed.entry };
+  return { ...resolved, ...resolvedHomes, workingDirectory: process.cwd(), node: installed.node, harness: installed.harness, git, state, client: 'built', entry: installed.entry };
 }
 
 export async function maintain(configPath) {

@@ -20,11 +20,11 @@ node plugins/notes/cli.mjs start --config /absolute/path/to/corilo-instance/note
 
 ## 收到独立安装包后启动
 
-收到 `corilo-dsh-notes-0.2.1.tgz` 后，在你选定的安装目录执行：
+收到 `corilo-dsh-notes-0.2.2.tgz` 后，在你选定的安装目录执行：
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.1.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.2.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -69,6 +69,10 @@ corilo-instance/
 ```
 
 正文、恢复数据和配置要分开；`state` 不能放在 `notes` 里面，二者也不能互相包含。不要把 Harness 的凭据、会话或配置放进笔记目录。若已有知识库，可使用完整的 `--root /... --state-root /... --config /...` 参数，显式指定现有正文目录和新的独立恢复目录。
+
+## Linux 常开主机
+
+选定 Linux 小主机/常开电脑后，按[Linux 运行指南](LINUX.zh-CN.md)配置固定原生 home、工作目录与端口，并审阅 systemd 用户服务示例。先前台验证，再决定是否启用自启；手机远程访问另行验收。
 
 ## 整理本地历史
 

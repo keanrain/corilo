@@ -1,6 +1,6 @@
 # Corilo 可里交互设计
 
-v0.20 · 2026-11-08。DeepSeek Harness 为主体，业务规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)。以下为目标交互，插件工具注册不代表这些页面已完成。
+v0.21 · 2026-11-08。DeepSeek Harness 为主体，业务规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)。以下为目标交互，插件工具注册不代表这些页面已完成。
 
 保留 Harness 原有对话、会话、模型设置、工具进度和停止体验。Corilo 通过插件增加“笔记”和“事项”入口；不再把旧 Files.md/Pi 应用嵌套为另一套主界面。桌面与手机使用同一服务，手机无终端初始化流程。
 

@@ -28,6 +28,8 @@ Use the authenticated URL printed by Harness. Accept its preview notice and clos
 
 For an existing Harness composition, `notes.patch.example.yml` remains an advanced overlay example. Replace all three absolute paths, then launch the fixed-version `dsh web --patch /absolute/notes.patch.yml --no-open`. The Corilo CLI accepts a single notes overlay pointing at **this installed package**; it does not validate arbitrary multi-plugin Harness compositions. Existing configs lacking `stateRoot` can still load tools, but history/recovery requires adding an external state directory.
 
+For an always-on Linux host, follow [the Linux guide](LINUX.zh-CN.md) and review the systemd user-service example. It pins native homes, working directory and listener port; no service is installed by this package. `check` reports the resolved Harness/shared-agent homes and cwd and rejects homes overlapping notes or recovery data. It creates neither home and reveals no credential values. Native environment resolution is reused from the pinned Harness package.
+
 ## Share a standalone tarball
 
 The package remains `private` and has not been uploaded to npm. To create a distributable file from the source checkout:
@@ -43,7 +45,7 @@ npm pack --pack-destination /absolute/existing/output-directory
 mkdir corilo-install
 cd corilo-install
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.1.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.2.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -63,7 +65,7 @@ and recovery-state formats.
 1. Save any browser drafts to files, stop this instance, and take a verified
    backup of its notes and state. A browser draft is not part of that backup.
 2. In a new installation directory, run `npm init -y` and
-   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.1.tgz`.
+   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.2.tgz`.
 3. From that **new** directory, generate a new overlay referring to the new
    installed package while keeping the original data paths:
 
@@ -148,6 +150,8 @@ pip install -r requirements-dev.txt
 python3 -m playwright install chromium
 npm --prefix plugins/notes run test:browser
 ```
+
+The restart flow launches the real Corilo CLI twice on the same loopback port and native homes, verifying cookie continuity, anonymous/expired-launch-token rejection, notes/history and explicit browser-draft recovery without duplicate capture. This is process-restart evidence, not systemd or machine-reboot acceptance.
 
 The mobile flow uses Chromium Pixel/iPhone touch profiles with Chinese text, 320–700px layouts, landscape and reduced viewport space, plus failure/reload/draft recovery. This is not native keyboard or iOS WebKit evidence. Its isolated host uses Harness's public `documentsDirectory` setting to provide a synthetic workspace location.
 

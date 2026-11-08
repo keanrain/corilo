@@ -1,6 +1,6 @@
 {
   "name": "@corilo/dsh-notes",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -28,14 +28,16 @@
     "library.mjs",
     "QUICKSTART.zh-CN.md",
     "restore.mjs",
-    "BACKUP.zh-CN.md"
+    "BACKUP.zh-CN.md",
+    "LINUX.zh-CN.md",
+    "corilo-notes.service.example"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "build": "node build.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test:browser": "python3 test/browser_capabilities.py && python3 test/browser.py && python3 test/drafts_browser.py && python3 test/draft_stash_browser.py && python3 test/recovery_browser.py && python3 test/library_browser.py && python3 test/mobile_browser.py",
+    "test:browser": "python3 test/browser_capabilities.py && python3 test/browser.py && python3 test/drafts_browser.py && python3 test/draft_stash_browser.py && python3 test/recovery_browser.py && python3 test/library_browser.py && python3 test/mobile_browser.py && python3 test/restart_browser.py",
     "test:distribution": "node --test test/distribution.test.mjs",
     "benchmark": "node test/benchmark.mjs"
   },
@@ -45,7 +47,8 @@
     "@deepseek-ai/schemastery": "3.19.0",
     "@vscode/ripgrep": "1.18.0",
     "idb": "8.0.3",
-    "yaml": "2.9.1"
+    "yaml": "2.9.1",
+    "@deepseek-ai/dsh-home-paths": "0.2.2-rc.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
