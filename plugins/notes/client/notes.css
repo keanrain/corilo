@@ -42,5 +42,7 @@
   .corilo-notes-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .corilo-notes ul { max-height: 170px; }
   .corilo-notes-body textarea { min-height: 36vh; }
-  .corilo-notes button { min-height: 42px; }
+  .corilo-notes button { min-height: 44px; }
+  .corilo-notes input, .corilo-notes textarea { font-size: max(16px, 1em); }
+  .corilo-notes-save { position: sticky; bottom: 0; z-index: 1; padding: 8px 0; background: var(--dsw-alias-bg-base, Canvas); }
 }

@@ -20,17 +20,35 @@ node plugins/notes/cli.mjs start --config /absolute/path/to/corilo-instance/note
 
 ## 收到独立安装包后启动
 
-收到 `corilo-dsh-notes-0.2.0.tgz` 后，在你选定的安装目录执行：
+收到 `corilo-dsh-notes-0.2.1.tgz` 后，在你选定的安装目录执行：
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.0.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.1.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
 ```
 
 安装包不含全部依赖，npm 会下载固定版 Harness 及其他运行依赖。保留安装目录里的 `package-lock.json`；使用安装包不需要 Corilo 源码或 esbuild。包目前没有发布到 npm。
+
+## 升级与回退
+
+每个版本装到**新的安装目录**；实例里的 `notes/`、`state/` 保持原位置。保留旧安装目录、锁文件、安装包及原配置，先阅读版本的兼容说明，不单独升级 Harness。
+
+1. 将需要保留的浏览器草稿保存成文件，用 `Ctrl+C` 停止旧服务，并完成笔记与历史的备份。
+2. 在新安装目录执行上面的 `npm init -y` 和 `npm install ...tgz`。
+3. 在**新安装目录**生成新配置，接着检查并启动：
+
+```sh
+npx --no-install corilo-notes rebind --config /absolute/path/to/corilo-instance/notes.patch.json --output /absolute/path/to/corilo-instance/notes.next.patch.json
+npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.next.patch.json
+npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.next.patch.json
+```
+
+`rebind` 只将新配置指向当前安装包，正文和历史路径不变；不覆盖原配置、不迁移资料、不执行旧插件代码。新配置文件名应另选一个尚不存在的路径。检查已知笔记、历史与回收站，确认后再继续使用。
+
+本版未改资料格式。需要回退时，停止新服务，回到旧安装目录，使用**原来的配置和启动命令**即可；两版不能同时运行。保持相同的 Harness 用户目录和端口，避免切换会话、鉴权设置或浏览器草稿来源。未来跨资料格式的升级，必须按对应版本的迁移／恢复说明操作，不能仅靠切换程序回退。
 
 ## 打开后直接记笔记
 
@@ -67,10 +85,11 @@ node plugins/notes/cli.mjs maintain --config /absolute/path/to/corilo-instance/n
 
 | 现象 | 下一步 |
 |---|---|
+| Harness 提示无法创建默认工作目录 | 在其 Choose workspace 中选择一个已有目录；Linux 默认 Documents 检测依赖 xdg-user-dir（通常由 xdg-user-dirs 提供），笔记目录配置与该工作目录分别管理 |
 | 提示客户端未构建 | 源码安装执行 `npm --prefix plugins/notes run build`；独立安装包应自带构建文件 |
 | 提示配置已存在 | 不会覆盖；直接 `check` 后 `start`，或另选配置文件 |
 | 提示状态目录属于其他知识库 | 使用匹配的正文与状态目录，或选择新的空状态目录；不要改写绑定标记 |
 | 保存失败／版本冲突 | 当前草稿保留；核对磁盘最新内容，或将草稿另存，避免盲目重试 |
 | 浏览器草稿保护失败 | 先直接保存文件，确认落盘后再关页；不要依赖重载恢复 |
 
-历史与回收站是主机上的本地恢复能力，不是独立备份；完整 NAS 备份恢复尚未交付。详细边界、工具 API、打包与测试命令见 [README](README.md)。
+历史与回收站是主机上的本地恢复能力，不是独立备份。停服后用 restic 备份已落盘的笔记、附件和历史，并先恢复到新目录，参见[备份恢复指南](BACKUP.zh-CN.md)；本地合成演练已覆盖逐文件比对与历史/回收站恢复，实际 NAS 与完整 Harness 实例备份仍待验收。详细边界、工具 API、打包与测试命令见 [README](README.md)。

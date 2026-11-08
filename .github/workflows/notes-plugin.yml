@@ -15,9 +15,10 @@ permissions:
 jobs:
   notes:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       npm_config_cache: ${{ runner.temp }}/corilo-npm-cache
+      CORILO_REQUIRE_RESTIC: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,6 +28,8 @@ jobs:
           cache-dependency-path: plugins/notes/package-lock.json
       - run: npm ci --ignore-scripts
         working-directory: plugins/notes
+      - run: sudo apt-get update && sudo apt-get install -y restic
+      - run: restic version
       - run: npm run test:notes
       - uses: actions/setup-python@v5
         with:

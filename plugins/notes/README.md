@@ -43,13 +43,56 @@ npm pack --pack-destination /absolute/existing/output-directory
 mkdir corilo-install
 cd corilo-install
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.0.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.1.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
 ```
 
 npm installs the pinned Harness dependency; the tarball is not an offline all-dependencies installer. Keep the recipient's generated `package-lock.json` to reproduce that installation. Node.js, Git and an npm registry connection for the initial install are prerequisites. Building from a source checkout needs dev dependencies; using the tarball needs no esbuild, source checkout or repository access. The plugin's MIT license and bundled idb ISC / uuid MIT notices are included. Other installed dependencies retain their own licenses; system Git is not redistributed. Existing `app/` and Pi/cloud data are not changed.
+
+## Upgrade and roll back
+
+Keep the app installation separate from the instance data. Install each reviewed
+Corilo tarball in a **new npm directory**, retaining the previous directory,
+`package-lock.json`, tarball and original overlay. Do not run `npm update` on
+Harness or replace the running installation in place. Review the release's
+compatibility and migration notes first; this release keeps the existing notes
+and recovery-state formats.
+
+1. Save any browser drafts to files, stop this instance, and take a verified
+   backup of its notes and state. A browser draft is not part of that backup.
+2. In a new installation directory, run `npm init -y` and
+   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.1.tgz`.
+3. From that **new** directory, generate a new overlay referring to the new
+   installed package while keeping the original data paths:
+
+   ```sh
+   npx --no-install corilo-notes rebind --config /absolute/corilo-instance/notes.patch.json --output /absolute/corilo-instance/notes.next.patch.json
+   npx --no-install corilo-notes check --config /absolute/corilo-instance/notes.next.patch.json
+   npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.next.patch.json
+   ```
+
+4. Use the same Harness home/profile and listener port as before. Verify opening
+   a known note, its history and trash before making new changes. Keep the old
+   installation and overlay until the new version has been accepted.
+
+`rebind` reads only the strict declarative single-plugin overlay; it never loads
+code from the previous package. It checks the current runtime, paths and state
+binding, then creates a private new overlay exclusively. It never overwrites a
+config, changes root/state bindings, moves notes or starts a service. An arbitrary
+multi-plugin Harness overlay must be maintained using Harness's own composition
+workflow. Ordinary `check` and `start` still require an overlay for their own
+installed package.
+
+To roll back **this unchanged-format release**, stop the new process, return to
+the old npm directory, and run its original `start --config` command with its old
+overlay and the same Harness profile/port. Do not run both installations against
+the same data simultaneously. Returning to the same canonical notes path
+preserves the library identity; browser drafts also require the same browser
+origin. Rollback across future data-format or Harness upgrades is only supported
+when that release explicitly tests it; restoring a backup may then be necessary.
+`rebind` itself does not prove cross-version data compatibility.
 
 ## Tools and storage
 
@@ -90,6 +133,10 @@ The Host registers exact `/api/corilo-notes/*` POST routes for identity, paged b
 
 The editor shows unsaved/saving/saved/failed/conflict states. Failed saves preserve text and never retry automatically. A lost response can follow a committed write: inspect the file/list before retrying. Conflict preview preserves the draft; copying creates a separate note, while adopting the preview explicitly discards the draft and still uses that preview's version for the next save. Refreshing the list never replaces editor text. Drafts use IndexedDB through idb, partitioned by the Host's canonical knowledge-root identity and a separate per-page draft ID so tabs do not overwrite one another. After a reload, the page lists recoverable drafts and requires an explicit restore or discard. Restoring only populates the editor and preserves the original expected file version; it never silently writes over newer disk content. A successful file save clears that draft. Unsaved text and pending draft persistence trigger a browser leave warning even from another Harness panel. If browser storage fails, the page retains the in-memory text and shows a warning rather than claiming durable recovery. These are browser-local recovery copies, not independent backups: clearing site data, private browsing, losing a device, or a changed Host origin can make them unavailable. Search covers filenames and literal body text; it does not provide semantic search or a full-text index. The initial page copy is Chinese.
 
+## Independent notes backup
+
+Follow [the restic backup and restore guide](BACKUP.zh-CN.md) to stop writers, back up only `notes/` and `state/` into an encrypted independent repository, verify its data and restore into a new directory. `restore.mjs` validates the extracted library's original root binding and Git history before copying to a previously nonexistent target and rebinding only that new copy. It never restores configuration, runs tools or starts a model. The real local restic drill covers Markdown bytes, binary attachments, version history and trash. Harness conversations/configuration and browser drafts are outside this backup scope; physical NAS and full-instance recovery remain unverified.
+
 ## Verification
 
 `npm test` in this package builds the bundle and runs real disk tests, CLI/config safety checks, standalone npm-tarball installation/boot checks, a published Cordis/ToolsService + ToolExecutionPipeline integration, and a subprocess running the published `dsh web` profile with the external plugin overlay. The Web boot test uses a test-only observer inside the real host to call the registered tools through Harness's pipeline, checks the resulting Markdown, verifies the unauthenticated Web root remains protected, and terminates the host. It uses a fresh temporary `DSH_HOME` and fictional notes, and does not call a model.
@@ -102,8 +149,12 @@ python3 -m playwright install chromium
 npm --prefix plugins/notes run test:browser
 ```
 
+The mobile flow uses Chromium Pixel/iPhone touch profiles with Chinese text, 320–700px layouts, landscape and reduced viewport space, plus failure/reload/draft recovery. This is not native keyboard or iOS WebKit evidence. Its isolated host uses Harness's public `documentsDirectory` setting to provide a synthetic workspace location.
+
 The browser test command checks the actual insecure-origin runtime without crypto.randomUUID, then runs the existing page flow plus dedicated draft persistence/isolation/failure and history/trash recovery flows. Each Chromium test launches published `dsh web` with an external absolute-path overlay, accepts Harness's preview notice and closes its API-key onboarding without entering a key. It verifies the actual client bundle and real disk: list/search/read/edit, exact direct capture, pending state, conflict preview/copy, invalid-path and transport failures, draft retention across Plugins/notes navigation, two browser pages, reload, 390px viewport editing, authentication and Host/Origin rejection, and invalid payloads. It checks that no external/model requests occur. The existing old-app browser tests are separate regressions.
 
 These checks do not establish physical Android/iPhone behavior, real DeepSeek calls, NAS backup or production self-hosting acceptance.
+
+The notes backup tests include a real restic drill when the executable is available. Set `CORILO_REQUIRE_RESTIC=1` to require it (as CI does); `CORILO_TEST_RESTIC=/absolute/restic` optionally supplies its location. An absent tool otherwise skips only that drill, not the offline restore safety checks.
 
 From the source checkout, `npm --prefix plugins/notes run benchmark` measures real file/Git operations against temporary synthetic data, comparing packed and loose recovery refs. It prints timings and command/check counts, then removes the fixture. It is an optional diagnostic, not a CI timing threshold or a hardware performance guarantee.

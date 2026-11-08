@@ -64,7 +64,7 @@ async function runtime() {
   return { entry, node: process.versions.node, harness: harness.version };
 }
 
-async function readConfig(configPath) {
+async function readConfig(configPath, { allowPreviousPackage = false } = {}) {
   if (!path.isAbsolute(configPath)) fail('Config must be an absolute path.');
   await directory(path.dirname(path.resolve(configPath)), 'Config parent');
   const stat = await lstat(configPath).catch(() => fail('Config does not exist. Run corilo-notes init first.'));
@@ -74,11 +74,15 @@ async function readConfig(configPath) {
   let data;
   try { data = document.toJS({ maxAliasCount: 10 }); } catch { fail('Config YAML aliases exceed the supported limit.'); }
   const entry = data?.[0]?.insert?.[0];
+  const entryPath = entry?.name;
+  const supportedEntry = typeof entryPath === 'string' && (allowPreviousPackage
+    ? path.isAbsolute(entryPath) && !entryPath.includes('\0') && path.basename(entryPath) === 'index.mjs'
+    : entryPath === path.join(packageRoot, 'index.mjs'));
   if (!Array.isArray(data) || data.length !== 1 || !data[0] || typeof data[0] !== 'object' || Array.isArray(data[0]) || Object.keys(data[0]).join() !== 'insert' ||
       !Array.isArray(data[0].insert) || data[0].insert.length !== 1 || entry?.id !== 'corilo-notes' ||
-      entry.name !== path.join(packageRoot, 'index.mjs') || Object.keys(entry).some(key => !['id', 'name', 'config'].includes(key)) ||
+      !supportedEntry || Object.keys(entry).some(key => !['id', 'name', 'config'].includes(key)) ||
       !entry.config || Object.keys(entry.config).some(key => !['root', 'stateRoot'].includes(key))) {
-    fail('This command accepts a single Corilo notes overlay for this installed package. Regenerate it with corilo-notes init.');
+    fail('This command accepts a single Corilo notes overlay for this installed package. Use corilo-notes rebind to create a new overlay after moving installations.');
   }
   if (!entry.config.stateRoot) fail('Config needs an external stateRoot for history and recovery. Regenerate a new overlay with --state-root.');
   return locations(entry.config.root, entry.config.stateRoot, configPath);
@@ -128,6 +132,15 @@ export async function initialize({ root, stateRoot, configPath }) {
   return resolved;
 }
 
+// Read only the declarative paths from the old overlay. Never import or execute
+// its previous package entry, which may already have been removed. Exclusive
+// output creation leaves the original installation/config available for rollback.
+export async function rebind(configPath, outputPath) {
+  if (!outputPath) fail('rebind requires --output with a new absolute config path.');
+  const previous = await readConfig(configPath, { allowPreviousPackage: true });
+  return initialize({ root: previous.root, stateRoot: previous.stateRoot, configPath: outputPath });
+}
+
 export async function initializeDirectory(input) {
   await runtime(); await gitVersion();
   const instance = await directory(input, 'Instance directory');
@@ -175,12 +188,12 @@ async function start(configPath, port) {
   }
 }
 
-const usage = `Corilo 可里笔记 (Harness ${pinnedHarness})\n\n无需模型密钥即可直接记笔记。最短初始化：\ncorilo-notes init --directory /absolute/corilo-instance\ncorilo-notes check --config /absolute/corilo-instance/notes.patch.json\ncorilo-notes start --config /absolute/corilo-instance/notes.patch.json [--port 3000]\n\n已有目录可显式指定：\ncorilo-notes init --root /absolute/notes --state-root /absolute/state --config /absolute/notes.patch.json\n\n停止该实例服务后整理本机历史（保留所有版本）：\ncorilo-notes maintain --config /absolute/corilo-instance/notes.patch.json\n\n初始化不覆盖配置、不迁移笔记。启动后使用 Harness 打印的鉴权地址；首次提示中的 API Key 配置可关闭。\n`;
+const usage = `Corilo 可里笔记 (Harness ${pinnedHarness})\n\n无需模型密钥即可直接记笔记。最短初始化：\ncorilo-notes init --directory /absolute/corilo-instance\ncorilo-notes check --config /absolute/corilo-instance/notes.patch.json\ncorilo-notes start --config /absolute/corilo-instance/notes.patch.json [--port 3000]\n\n已有目录可显式指定：\ncorilo-notes init --root /absolute/notes --state-root /absolute/state --config /absolute/notes.patch.json\n\n安装到新目录后生成新配置（保留原配置以便回退）：\ncorilo-notes rebind --config /absolute/previous.patch.json --output /absolute/next.patch.json\n\n停止该实例服务后整理本机历史（保留所有版本）：\ncorilo-notes maintain --config /absolute/corilo-instance/notes.patch.json\n\n初始化不覆盖配置、不迁移笔记。启动后使用 Harness 打印的鉴权地址；首次提示中的 API Key 配置可关闭。\n`;
 
 export async function main(args) {
   if (!args.length || args.length === 1 && ['--help', '-h'].includes(args[0])) { process.stdout.write(usage); return; }
   const [command, ...rest] = args;
-  const allowed = command === 'init' ? ['--directory', '--root', '--state-root', '--config'] : command === 'start' ? ['--config', '--port'] : ['check', 'maintain'].includes(command) ? ['--config'] : [];
+  const allowed = command === 'init' ? ['--directory', '--root', '--state-root', '--config'] : command === 'start' ? ['--config', '--port'] : command === 'rebind' ? ['--config', '--output'] : ['check', 'maintain'].includes(command) ? ['--config'] : [];
   if (!allowed.length) fail('Unknown command. Use corilo-notes --help.');
   const options = {};
   for (let i = 0; i < rest.length; i += 2) {
@@ -200,6 +213,9 @@ export async function main(args) {
     if (!options['--root'] || !options['--state-root']) fail('init requires --root and --state-root absolute paths.');
     const result = await initialize({ root: options['--root'], stateRoot: options['--state-root'], configPath: options['--config'] });
     process.stdout.write(`Created notes overlay: ${result.configPath}\nRun corilo-notes check --config ${quoteArgument(result.configPath)} before starting.\n`);
+  } else if (command === 'rebind') {
+    const result = await rebind(options['--config'], options['--output']);
+    process.stdout.write(`已创建新安装配置：${result.configPath}\n原配置及资料保持不变。下一步：corilo-notes check --config ${quoteArgument(result.configPath)}\n`);
   } else if (command === 'check') {
     const { entry, ...report } = await inspect(options['--config']);
     process.stdout.write(JSON.stringify({ ok: true, ...report }, null, 2) + '\n');
