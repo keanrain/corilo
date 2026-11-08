@@ -141,6 +141,54 @@ test('state roots are bound to one knowledge root and reject nesting, links, har
   await assert.rejects(fs.stat(path.join(root, 'a.md')), error => error.code === 'ENOENT');
 });
 
+test('trash listing treats unsafe replacement paths as occupied without reading them or blocking recovery', async t => {
+  const { base, root, store } = await fixture(t, { maxBytes: 32 });
+  const outside = path.join(base, 'outside.md');
+  await fs.writeFile(outside, 'external target must remain unchanged');
+  const cases = [
+    ['oversized', async filename => fs.writeFile(filename, 'x'.repeat(64)), async filename => assert.equal((await fs.readFile(filename)).length, 64)],
+    ['invalid-utf8', async filename => fs.writeFile(filename, Buffer.from([0xff])), async filename => assert.deepEqual(await fs.readFile(filename), Buffer.from([0xff]))],
+    ['directory', async filename => fs.mkdir(filename), async filename => assert.equal((await fs.lstat(filename)).isDirectory(), true)],
+    ['symlink', async filename => fs.symlink(outside, filename), async filename => assert.equal(await fs.readlink(filename), outside)],
+  ];
+  for (const [kind, occupy, check] of cases) {
+    const input = `${kind}.md`, filename = path.join(root, input);
+    const first = await store.save({ path: input, text: `recover ${kind}`, expected: null });
+    const deleted = await store.trash({ path: input, expected: first.version });
+    await occupy(filename);
+    const page = await store.listTrash();
+    assert.equal(page.items.find(item => item.id === deleted.id)?.originalPresent, true, kind);
+    await assert.rejects(store.restoreTrash({ id: deleted.id, path: input, expected: null }), error => [400, 409, 413].includes(error.status), kind);
+    await check(filename);
+    const restored = await store.restoreTrash({ id: deleted.id, path: `restored-${input}`, expected: null });
+    assert.equal((await store.read(restored.path)).text, `recover ${kind}`);
+    await check(filename);
+  }
+  assert.equal(await fs.readFile(outside, 'utf8'), 'external target must remain unchanged');
+  // A linked ancestor must be reported as blocked without traversing it.
+  const original = await store.save({ path: 'parent/child.md', text: 'nested recovery', expected: null });
+  const deleted = await store.trash({ path: original.path, expected: original.version });
+  await fs.rmdir(path.join(root, 'parent'));
+  const outsideDirectory = path.join(base, 'outside-directory'); await fs.mkdir(outsideDirectory);
+  await fs.symlink(outsideDirectory, path.join(root, 'parent'));
+  assert.equal((await store.listTrash()).items.find(item => item.id === deleted.id)?.originalPresent, true);
+  await assert.rejects(store.restoreTrash({ id: deleted.id, path: original.path, expected: null }), status(400));
+  await assert.rejects(fs.lstat(path.join(outsideDirectory, 'child.md')), error => error.code === 'ENOENT');
+  await store.restoreTrash({ id: deleted.id, path: 'restored-nested.md', expected: null });
+  assert.equal((await store.read('restored-nested.md')).text, 'nested recovery');
+  if (process.getuid?.() !== 0) {
+    const protectedNote = await store.save({ path: 'private/child.md', text: 'permission recovery', expected: null });
+    const protectedTrash = await store.trash({ path: protectedNote.path, expected: protectedNote.version });
+    const privateDirectory = path.join(root, 'private');
+    await fs.chmod(privateDirectory, 0);
+    try {
+      assert.equal((await store.listTrash()).items.find(item => item.id === protectedTrash.id)?.originalPresent, true);
+      await store.restoreTrash({ id: protectedTrash.id, path: 'restored-permission.md', expected: null });
+      assert.equal((await store.read('restored-permission.md')).text, 'permission recovery');
+    } finally { await fs.chmod(privateDirectory, 0o700); }
+  }
+});
+
 test('reserved hook/global-config paths are rejected and repository hooks are never executed', async t => {
   const { base, stateRoot, store } = await fixture(t);
   const sentinel = path.join(base, 'hook-executed');

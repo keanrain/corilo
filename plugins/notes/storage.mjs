@@ -223,11 +223,7 @@ export class NotesStore {
       const page = await this.requireRecovery().trashItems(options);
       const { items } = page;
       for (const item of items) {
-        this.parts(item.path);
-        item.originalPresent = await Promise.resolve().then(async () => this.readFile(await this.location(item.path))).then(() => true).catch(error => {
-          if (error.status === 404 || missing(error)) return false;
-          throw error;
-        });
+        item.originalPresent = await pathOccupied(this.root, this.parts(item.path));
       }
       return page;
     });
@@ -244,4 +240,29 @@ export class NotesStore {
       return result;
     });
   }
+}
+
+// Occupancy is metadata only. A replacement directory, invalid text, oversized
+// file or link must not prevent browsing recovery records. Stop before entering
+// linked/non-directory components; writes retain their own stricter validation.
+async function pathOccupied(root, parts) {
+  let filename = root;
+  for (let index = -1; index < parts.length; index++) {
+    if (index >= 0) filename = path.join(filename, parts[index]);
+    let stat;
+    try { stat = await fs.lstat(filename); }
+    catch (error) {
+      if (missing(error)) return false;
+      if (['EACCES', 'EPERM', 'ENOTDIR', 'ELOOP'].includes(error.code)) return true;
+      throw error;
+    }
+    if (!stat) return false;
+    if (index === parts.length - 1 || !stat.isDirectory() || stat.isSymbolicLink()) return true;
+    try { if (await fs.realpath(filename) !== filename) return true; }
+    catch (error) {
+      if (['EACCES', 'EPERM', 'ENOTDIR', 'ELOOP'].includes(error.code)) return true;
+      throw error;
+    }
+  }
+  return true;
 }

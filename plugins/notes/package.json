@@ -32,7 +32,8 @@
     "prepack": "npm run build",
     "pretest": "npm run build",
     "test:browser": "python3 test/browser_capabilities.py && python3 test/browser.py && python3 test/drafts_browser.py && python3 test/recovery_browser.py",
-    "test:distribution": "node --test test/distribution.test.mjs"
+    "test:distribution": "node --test test/distribution.test.mjs",
+    "benchmark": "node test/benchmark.mjs"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.1",
