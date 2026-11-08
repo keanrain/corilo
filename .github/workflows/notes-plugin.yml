@@ -17,9 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      npm_config_cache: ${{ runner.temp }}/corilo-npm-cache
       CORILO_REQUIRE_RESTIC: '1'
     steps:
+      - name: Configure npm cache
+        run: echo "npm_config_cache=$RUNNER_TEMP/corilo-npm-cache" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:

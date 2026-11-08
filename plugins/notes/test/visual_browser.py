@@ -37,7 +37,7 @@ def main():
                     return match[1] if match else None
                 url = wait_for(address)
                 origin = url.split('/?')[0]
-                artifact_dir = pathlib.Path(os.environ.get('CORILO_BROWSER_ARTIFACT_DIR', '/workspace/work/astryx/notes'))
+                artifact_dir = pathlib.Path(os.environ['CORILO_BROWSER_ARTIFACT_DIR']) if os.environ.get('CORILO_BROWSER_ARTIFACT_DIR') else base / 'screenshots'
                 artifact_dir.mkdir(parents=True, exist_ok=True)
                 with sync_playwright() as p:
                     browser = p.chromium.launch(headless=True, executable_path=shutil.which('chromium') or None)

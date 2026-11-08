@@ -70,8 +70,9 @@ def main():
                         quick.fill(title)
                         panel.get_by_role('button', name='添加', exact=True).click()
                         expect(quick).to_have_value('')
-                    panel.get_by_role('checkbox').first.click()
-                    expect(panel.get_by_role('checkbox').first).to_have_attribute('aria-checked', 'true')
+                    completed = panel.get_by_role('checkbox', name='完成：给植物浇水', exact=True)
+                    completed.click()
+                    expect(completed).to_have_attribute('aria-checked', 'true')
                     artifacts = os.environ.get('CORILO_BROWSER_ARTIFACT_DIR')
                     destination = pathlib.Path(artifacts) if artifacts else None
                     if destination:
@@ -96,15 +97,18 @@ def main():
                             check = panel.get_by_role('checkbox').first
                             assert check.bounding_box()['height'] >= 44
                             checked = panel.get_by_role('checkbox', checked=True).first
+                            unchecked = panel.get_by_role('checkbox', checked=False).first
                             expect(checked).to_be_visible()
+                            expect(unchecked).to_be_visible()
                             checked.hover()
                             quick.focus()
                             expect(quick).to_be_focused()
                             page.wait_for_function("() => { const el=document.querySelector('.corilo-todos-quick input'); const r=el.getBoundingClientRect(); return document.elementFromPoint(r.x+5,r.y+r.height/2)===el && document.getAnimations().every(animation => animation.playState !== 'running'); }")
-                            colors = panel.evaluate('''(el) => {
+                            measure_colors = '''(el) => {
                                 const styles = getComputedStyle(el);
                                 const q = el.querySelector('[aria-label="快速新增待办"] input');
                                 const check = el.querySelector('[role="checkbox"][aria-checked="true"]');
+                                const unchecked = el.querySelector('[role="checkbox"][aria-checked="false"]');
                                 const resolve = value => {
                                   const span = document.createElement('span'); span.style.color = value;
                                   el.append(span); const color = getComputedStyle(span).color; span.remove(); return color;
@@ -124,18 +128,27 @@ def main():
                                 for (const name of ['success', 'error', 'warning']) state[name] = ratio(resolve('var(--ax-color-text-' + name + ')'), surface);
                                 return { surface, secondary, focus: info, secondaryRatio: ratio(secondary,surface), focusRatio: ratio(info,surface),
                                   placeholderOpacity: getComputedStyle(q,'::placeholder').opacity,
-                                  checkRatio: ratio(getComputedStyle(check,'::before').borderTopColor,surface),
+                                  checkedBorderRatio: ratio(getComputedStyle(check,'::before').borderTopColor,surface),
+                                  uncheckedBorderRatio: ratio(getComputedStyle(unchecked,'::before').borderTopColor,getComputedStyle(unchecked,'::before').backgroundColor),
                                   checkMarkRatio: ratio(getComputedStyle(check,'::after').color,getComputedStyle(check,'::before').backgroundColor), state,
                                   outline: getComputedStyle(q).outlineStyle };
-                            }''')
+                            }'''
+                            colors = panel.evaluate(measure_colors)
                             assert colors['secondaryRatio'] >= 4.5, colors
-                            assert colors['checkRatio'] >= 3, colors
+                            assert colors['checkedBorderRatio'] >= 3, colors
+                            assert colors['uncheckedBorderRatio'] >= 3, colors
                             assert colors['checkMarkRatio'] >= 4.5, colors
                             assert colors['focusRatio'] >= 3, colors
                             assert colors['placeholderOpacity'] == '1', colors
                             assert colors['outline'] != 'none', colors
                             assert all(value >= 4.5 for value in colors['state'].values()), colors
-                            contrast.append({'scheme': scheme, 'viewport': label, **colors})
+                            unchecked.hover()
+                            page.wait_for_function("() => document.getAnimations().every(animation => animation.playState !== 'running')")
+                            hover_colors = panel.evaluate(measure_colors)
+                            assert hover_colors['uncheckedBorderRatio'] >= 3, hover_colors
+                            assert hover_colors['checkMarkRatio'] >= 4.5, hover_colors
+                            contrast.append({'scheme': scheme, 'viewport': label, **colors,
+                                             'uncheckedHoverBorderRatio': hover_colors['uncheckedBorderRatio']})
                             if destination:
                                 page.screenshot(path=str(destination / f'todos-astryx-{scheme}-{label}.png'), animations='disabled')
 
