@@ -2,6 +2,7 @@ import path from 'node:path';
 import * as fs from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
+import { NoteHistory } from './history.mjs';
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -14,12 +15,14 @@ const defaults = { maxBytes: 1024 * 1024, maxEntries: 2000, maxTotalBytes: 8 * 1
 // Version checks coordinate this store's operations; independent editors must
 // still be reconciled. No claim of atomic compare-and-swap against arbitrary writers.
 export class NotesStore {
-  static async open(root, limits = {}) {
+  static async open(root, limits = {}, { stateRoot } = {}) {
     if (typeof root !== 'string' || !path.isAbsolute(root) || root.includes('\0')) throw fail(400, '笔记目录需为绝对路径');
     root = path.resolve(root);
     await fs.mkdir(root, { recursive: true, mode: 0o700 });
     if (await fs.realpath(root) !== root || !(await fs.lstat(root)).isDirectory()) throw fail(400, '笔记目录不支持链接');
-    return new NotesStore(root, limits);
+    const store = new NotesStore(root, limits);
+    if (stateRoot !== undefined) store.recovery = await NoteHistory.open(root, stateRoot, store.limits.maxBytes);
+    return store;
   }
   constructor(root, limits = {}) {
     this.root = root;
@@ -30,6 +33,7 @@ export class NotesStore {
   serial(task) {
     const next = this.queue.then(task).catch(error => {
       if ([400, 404, 409, 413].includes(error.status)) throw error;
+      if (error.committed === true) throw error;
       throw fail(503, '笔记暂不可用');
     });
     this.queue = next.catch(() => {});
@@ -121,7 +125,7 @@ export class NotesStore {
   save({ path: input, text, expected, signal } = {}) {
     return this.serial(() => this.write(input, text, expected, signal));
   }
-  async write(input, text, expected, signal) {
+  async write(input, text, expected, signal, operation = 'save') {
     checkSignal(signal);
     this.parts(input);
     if (typeof text !== 'string' || Buffer.byteLength(text) > this.limits.maxBytes) throw fail(413, '笔记超过大小限制或正文无效');
@@ -130,24 +134,36 @@ export class NotesStore {
     const filename = await this.location(input, true), bytes = Buffer.from(text);
     const current = await this.readFile(filename).catch(error => { if (error.status === 404) return null; throw error; });
     if ((current?.version ?? null) !== expected) throw changed();
+    if (this.recovery) await this.recovery.check();
+    if (current && this.recovery) await this.recovery.snapshot(input, current.text, 'before');
+    checkSignal(signal);
     const temp = path.join(path.dirname(filename), `.corilo-${randomUUID()}.tmp`);
-    let handle;
+    let handle, committed = false;
     try {
       handle = await fs.open(temp, 'wx', 0o600); await handle.writeFile(bytes); await handle.sync(); await handle.close(); handle = null;
       checkSignal(signal);
       if (expected === null) {
         // Hard-link creation is exclusive and cannot overwrite a concurrent create.
         try { await fs.link(temp, filename); } catch (error) { if (error.code === 'EEXIST') throw changed(); throw error; }
+        committed = true;
         await fs.unlink(temp);
       } else {
         const latest = await this.readFile(filename).catch(error => { if (error.status === 404) throw changed(); throw error; });
         if (latest.version !== expected) throw changed();
         checkSignal(signal);
         await fs.rename(temp, filename);
+        committed = true;
       }
       const directory = await fs.open(path.dirname(filename), constants.O_RDONLY);
       try { await directory.sync(); } finally { await directory.close(); }
+      if (this.recovery) {
+        try { await this.recovery.snapshot(input, text, operation); }
+        catch { throw Object.assign(fail(503, '笔记已写入，但历史记录未完成；请重新读取确认'), { committed: true }); }
+      }
       return { path: input, version: hash(bytes) };
+    } catch (error) {
+      if (committed && !error.committed) throw Object.assign(fail(503, '笔记已写入，但保存确认未完成；请重新读取确认'), { committed: true });
+      throw error;
     } finally { await handle?.close(); await fs.rm(temp, { force: true }); }
   }
   capture(text, { signal } = {}) {
@@ -156,6 +172,74 @@ export class NotesStore {
       if (typeof text !== 'string' || !text.trim()) throw fail(400, '原话不能为空');
       const filename = `收集/${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}.md`;
       return this.write(filename, text, null, signal);
+    });
+  }
+  requireRecovery() {
+    if (!this.recovery) throw fail(400, '历史与回收站尚未配置');
+    return this.recovery;
+  }
+  history(input) {
+    return this.serial(async () => { this.parts(input); return this.requireRecovery().history(input); });
+  }
+  readRevision(input, revision) {
+    return this.serial(async () => { this.parts(input); return this.requireRecovery().read(input, revision); });
+  }
+  restore({ path: input, revision, expected, signal } = {}) {
+    return this.serial(async () => {
+      checkSignal(signal); this.parts(input);
+      const note = await this.requireRecovery().read(input, revision);
+      return this.write(input, note.text, expected, signal, 'restore');
+    });
+  }
+  trash({ path: input, expected, signal } = {}) {
+    return this.serial(async () => {
+      checkSignal(signal); this.parts(input);
+      const history = this.requireRecovery();
+      if (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected)) throw changed();
+      const filename = await this.location(input);
+      const current = await this.readFile(filename);
+      if (current.version !== expected) throw changed();
+      const id = await history.snapshot(input, current.text, 'trash');
+      await history.putTrash(id);
+      let removed = false;
+      try {
+        checkSignal(signal);
+        const latest = await this.readFile(filename);
+        if (latest.version !== expected) throw changed();
+        checkSignal(signal);
+        await fs.unlink(filename); removed = true;
+        const directory = await fs.open(path.dirname(filename), constants.O_RDONLY);
+        try { await directory.sync(); } finally { await directory.close(); }
+        return { id, path: input, version: current.version };
+      } catch (error) {
+        if (removed) throw Object.assign(fail(503, '笔记已移入回收站，但目录同步未完成；请重新读取确认'), { committed: true });
+        await history.removeTrash(id).catch(() => {});
+        throw error;
+      }
+    });
+  }
+  listTrash() {
+    return this.serial(async () => {
+      const items = await this.requireRecovery().trashItems();
+      for (const item of items) {
+        this.parts(item.path);
+        item.originalPresent = await Promise.resolve().then(async () => this.readFile(await this.location(item.path))).then(() => true).catch(error => {
+          if (error.status === 404 || missing(error)) return false;
+          throw error;
+        });
+      }
+      return { items };
+    });
+  }
+  restoreTrash({ id, path: input, expected, signal } = {}) {
+    return this.serial(async () => {
+      checkSignal(signal); this.parts(input);
+      if (expected !== null) throw fail(409, '回收站恢复只能新建，请使用 expected=null');
+      const history = this.requireRecovery(), note = await history.readTrash(id);
+      const result = await this.write(input, note.text, null, signal, 'restore');
+      try { await history.removeTrash(id); }
+      catch { throw Object.assign(fail(503, '笔记已恢复，但回收站标记未更新；请重新读取确认'), { committed: true }); }
+      return result;
     });
   }
 }

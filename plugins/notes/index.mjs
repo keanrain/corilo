@@ -2,11 +2,13 @@ import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { NotesStore } from './storage.mjs';
 import { registerNotesApi } from './api.mjs';
+import { recoveryTools } from './recovery-tools.mjs';
 
 export const name = 'corilo-notes';
 export const inject = ['tools'];
 export const Config = z.object({
   root: z.string().required().description('Absolute directory containing the personal Markdown knowledge base.'),
+  stateRoot: z.string().description('Optional absolute private recovery directory outside the Markdown root. Requires system Git.'),
 });
 
 const string = { type: 'string', required: true };
@@ -56,8 +58,9 @@ export function noteTools(store) {
 }
 
 export async function apply(ctx, config) {
-  const store = await NotesStore.open(config.root);
+  const store = await NotesStore.open(config.root, {}, { stateRoot: config.stateRoot });
   for (const tool of noteTools(store)) ctx.tools.register(tool);
+  if (config.stateRoot) for (const tool of recoveryTools(store)) ctx.tools.register(tool);
   await ctx.inject(['connection'], scope => { registerNotesApi(scope, store); });
   ctx.logger('corilo-notes').info('Corilo notes tools registered');
 }

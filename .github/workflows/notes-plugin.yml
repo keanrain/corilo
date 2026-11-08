@@ -16,6 +16,8 @@ jobs:
   notes:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      npm_config_cache: ${{ runner.temp }}/corilo-npm-cache
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

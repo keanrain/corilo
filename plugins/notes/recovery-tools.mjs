@@ -1,0 +1,24 @@
+import { defineTool } from '@deepseek-ai/dsh-tools';
+
+const string = { type: 'string', required: true };
+const expected = { oneOf: [{ type: 'string' }, { type: 'null' }], required: true };
+const output = {
+  schema: { type: 'object', additionalProperties: true },
+  render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }],
+};
+
+// These operations share the UI's Git-backed service and the same version queue.
+export function recoveryTools(store) {
+  const definitions = [
+    ['history', 'List saved recovery checkpoints for a Markdown note.', { path: string }, args => store.history(args.path)],
+    ['read_revision', 'Read one recovery checkpoint before choosing a restore.', { path: string, revision: string }, args => store.readRevision(args.path, args.revision)],
+    ['restore_revision', 'Restore a selected checkpoint only after reading the current file. Pass its version; stale versions cannot overwrite newer text.', { path: string, revision: string, expected }, (args, signal) => store.restore({ ...args, signal })],
+    ['trash', 'Move a note to recoverable trash only when the user requests deletion. Requires the version returned by read.', { path: string, expected: string }, (args, signal) => store.trash({ ...args, signal })],
+    ['list_trash', 'List recoverable deleted notes.', {}, () => store.listTrash()],
+    ['restore_trash', 'Restore a deleted note to an absent Markdown path. Pass expected=null; never overwrite an existing note.', { id: string, path: string, expected: { type: 'null', required: true } }, (args, signal) => store.restoreTrash({ ...args, signal })],
+  ];
+  return definitions.map(([suffix, description, parameters, execute]) => defineTool({
+    name: `corilo_notes_${suffix}`, description, parameters, output,
+    async execute(args, execution) { execution.signal?.throwIfAborted(); return execute(args, execution.signal); },
+  }));
+}

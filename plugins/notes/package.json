@@ -19,22 +19,30 @@
     "api.mjs",
     "lib/client.js",
     "README.md",
-    "notes.patch.example.yml"
+    "notes.patch.example.yml",
+    "cli.mjs",
+    "history.mjs",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "recovery-tools.mjs"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "build": "node build.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test:browser": "python3 test/browser.py"
+    "test:browser": "python3 test/browser.py && python3 test/drafts_browser.py && python3 test/recovery_browser.py",
+    "test:distribution": "node --test test/distribution.test.mjs"
   },
   "dependencies": {
+    "@deepseek-ai/dsh": "0.2.2-rc.1",
     "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
-    "@deepseek-ai/schemastery": "3.19.0"
+    "@deepseek-ai/schemastery": "3.19.0",
+    "idb": "8.0.3",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
-    "@deepseek-ai/dsh": "0.2.2-rc.1",
     "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1",
     "esbuild": "0.25.12"
   },
@@ -47,5 +55,8 @@
         "@deepseek-ai/dsh-client-connection"
       ]
     }
+  },
+  "bin": {
+    "corilo-notes": "./cli.mjs"
   }
 }

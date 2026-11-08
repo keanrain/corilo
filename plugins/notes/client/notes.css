@@ -21,6 +21,17 @@
 .corilo-notes-hint { opacity: .65; font-size: 13px; }
 .corilo-notes-conflict button { margin: 4px 8px 4px 0; }
 .corilo-notes-latest textarea { min-height: 160px; resize: vertical; }
+.corilo-notes-recovery { border-top: 1px solid var(--dsw-alias-border-l2); padding-top: 14px; }
+.corilo-notes-recovery h2 { font-size: 17px; margin: 14px 0; }
+.corilo-notes-recovery-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.corilo-notes-recovery textarea { min-height: 160px; resize: vertical; }
+.corilo-notes-trash-item { margin: 14px 0; padding: 12px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; }
+.corilo-notes-trash-item button { margin-top: 10px; }
+.corilo-notes-drafts { border: 1px solid var(--dsw-alias-border-l2, currentColor); border-radius: 8px; padding: 0 12px; margin-top: 16px; }
+.corilo-notes-drafts ul { max-height: 220px; }
+.corilo-notes-drafts li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+.corilo-notes-drafts li span { flex: 1 1 180px; overflow-wrap: anywhere; }
+.corilo-notes-drafts li button { width: auto; margin: 0; }
 @media (max-width: 700px) {
   .corilo-notes { padding: 18px; padding-top: 52px; }
   .corilo-notes-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
