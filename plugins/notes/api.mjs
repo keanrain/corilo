@@ -11,9 +11,11 @@ export function registerNotesApi(ctx, store) {
       history: ['path'], readRevision: ['path', 'revision'], restore: ['path', 'revision', 'expected'],
       trash: ['path', 'expected'], listTrash: [], restoreTrash: ['id', 'path', 'expected'],
     };
+    const optional = method === 'listTrash' ? ['cursor'] : [];
     if (!Object.hasOwn(fields, method)) return failure(404, '笔记操作不存在');
     if (!args || typeof args !== 'object' || Array.isArray(args) ||
-        Object.keys(args).length !== fields[method].length ||
+        Object.keys(args).some(key => !fields[method].includes(key) && !optional.includes(key)) ||
+        optional.some(key => Object.hasOwn(args, key) && args[key] !== null && typeof args[key] !== 'string') ||
         fields[method].some(key => !Object.hasOwn(args, key) ||
           (key === 'expected' ? args[key] !== null && (typeof args[key] !== 'string' || !/^[a-f0-9]{64}$/.test(args[key])) : typeof args[key] !== 'string'))) {
       return failure(400, '笔记请求格式无效');
@@ -28,7 +30,7 @@ export function registerNotesApi(ctx, store) {
         : method === 'capture' ? await store.capture(args.text, { signal })
         : method === 'history' ? await store.history(args.path)
         : method === 'readRevision' ? await store.readRevision(args.path, args.revision)
-        : method === 'listTrash' ? await store.listTrash()
+        : method === 'listTrash' ? await store.listTrash(args)
         : method === 'restoreTrash' ? await store.restoreTrash({ ...args, signal })
         : method === 'trash' ? await store.trash({ ...args, signal })
         : await store.restore({ ...args, signal });

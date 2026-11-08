@@ -9,6 +9,8 @@ const digest = text => createHash('sha256').update(text).digest('hex');
 const oid = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
 const config = '[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare = true\n';
 const MAX_HISTORY = 100;
+const MAX_TRASH_PAGE = 100;
+const TRASH_REF = 'refs/corilo/trash/';
 
 // A separate bare repository holds immutable blobs/checkpoints. No user worktree,
 // index, Git configuration, remotes or hooks are used or modified.
@@ -97,10 +99,13 @@ export class NoteHistory {
   async metadata(revision, input) {
     if (!oid(revision)) throw fail(400, '历史版本无效');
     const raw = (await this.run(['cat-file', 'commit', revision], undefined, 8192)).toString();
+    return this.commitMetadata(raw, revision, input);
+  }
+  commitMetadata(raw, revision, input) {
     const split = raw.indexOf('\n\n');
     let data;
     try { data = JSON.parse(raw.slice(split + 2)); } catch { throw fail(400, '历史记录无效'); }
-    if (split < 0 || data.format !== 1 || data.path !== input || !/^[a-f0-9]{64}$/.test(data.version) || !['save', 'before', 'trash', 'restore'].includes(data.operation) || typeof data.time !== 'string') throw fail(400, '历史记录无效');
+    if (split < 0 || !data || data.format !== 1 || data.path !== input || !/^[a-f0-9]{64}$/.test(data.version) || !['save', 'before', 'trash', 'restore'].includes(data.operation) || typeof data.time !== 'string') throw fail(400, '历史记录无效');
     return { revision, path: data.path, version: data.version, time: data.time, operation: data.operation };
   }
   async snapshot(input, text, operation = 'save') {
@@ -143,27 +148,44 @@ export class NoteHistory {
   }
   async putTrash(revision) { await this.run(['update-ref', `refs/corilo/trash/${revision}`, revision, '0'.repeat(40)], undefined, 256); }
   async removeTrash(revision) { await this.run(['update-ref', '-d', `refs/corilo/trash/${revision}`, revision], undefined, 256); }
-  async trashItems() {
-    const refs = (await this.run(['for-each-ref', '--format=%(refname)', '--count=1001', 'refs/corilo/trash/'], undefined, 131072)).toString().trim();
-    if (!refs) return [];
-    const items = refs.split('\n');
-    if (items.length > 1000) throw fail(413, '回收站超过读取条目限制');
-    const result = [];
-    for (const ref of items) {
-      const id = ref.slice('refs/corilo/trash/'.length);
-      if (!oid(id)) throw fail(400, '回收站记录无效');
-      const raw = (await this.run(['cat-file', 'commit', id], undefined, 8192)).toString();
-      let data; try { data = JSON.parse(raw.slice(raw.indexOf('\n\n') + 2)); } catch { throw fail(400, '回收站记录无效'); }
-      const item = await this.metadata(id, data.path);
-      if (item.operation !== 'trash') throw fail(400, '回收站记录无效');
-      result.push({ id, path: item.path, version: item.version, time: item.time });
+  async trashMetadata(id) {
+    const raw = (await this.run(['cat-file', 'commit', id], undefined, 8192)).toString();
+    let data; try { data = JSON.parse(raw.slice(raw.indexOf('\n\n') + 2)); } catch { throw fail(400, '回收站记录无效'); }
+    if (!data || typeof data.path !== 'string') throw fail(400, '回收站记录无效');
+    const item = this.commitMetadata(raw, id, data.path);
+    if (item.operation !== 'trash') throw fail(400, '回收站记录无效');
+    return { id, path: item.path, version: item.version, time: item.time };
+  }
+  async trashItems({ cursor = null } = {}) {
+    if (cursor !== null && !oid(cursor)) throw fail(400, '回收站分页位置无效');
+    // Git 2.36 has no --start-after. Disjoint hex prefixes select exactly
+    // IDs greater than the cursor, including when that record was removed.
+    const patterns = cursor === null ? [TRASH_REF] : [];
+    if (cursor !== null) {
+      const hex = '0123456789abcdef';
+      for (let i = 0; i < cursor.length; i++) {
+        for (const digit of hex.slice(hex.indexOf(cursor[i]) + 1)) patterns.push(`${TRASH_REF}${cursor.slice(0, i)}${digit}*`);
+      }
     }
-    return result.sort((a, b) => b.time.localeCompare(a.time));
+    if (!patterns.length) return { items: [], hasMore: false, nextCursor: null };
+    const refs = (await this.run(['for-each-ref', '--sort=refname', '--format=%(refname) %(objectname)', `--count=${MAX_TRASH_PAGE + 1}`, ...patterns], undefined, 16384)).toString().trim();
+    const entries = refs ? refs.split('\n') : [];
+    const result = [];
+    for (const entry of entries.slice(0, MAX_TRASH_PAGE)) {
+      const [ref, target] = entry.split(' '), id = ref.slice(TRASH_REF.length);
+      if (!oid(id) || target !== id) throw fail(400, '回收站记录无效');
+      result.push(await this.trashMetadata(id));
+    }
+    const hasMore = entries.length > MAX_TRASH_PAGE;
+    return { items: result, hasMore, nextCursor: hasMore ? result.at(-1).id : null };
   }
   async readTrash(id) {
     if (!oid(id)) throw fail(400, '回收站记录无效');
-    const record = (await this.trashItems()).find(item => item.id === id);
-    if (!record) throw fail(404, '回收站记录不存在');
+    let target;
+    try { target = (await this.run(['rev-parse', '--verify', '--quiet', `${TRASH_REF}${id}`], undefined, 256)).toString().trim(); }
+    catch (error) { if (error.gitCode === 1) throw fail(404, '回收站记录不存在'); throw error; }
+    if (target !== id) throw fail(400, '回收站记录无效');
+    const record = await this.trashMetadata(id);
     return this.read(record.path, id);
   }
 }

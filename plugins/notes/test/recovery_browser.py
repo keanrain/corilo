@@ -107,13 +107,32 @@ def main():
                     mismatch = context.request.post(origin + '/api/corilo-notes/save', headers={'x-corilo-library-id': 'wrong-library'}, data={'path': '禁止跨库.md', 'text': 'wrong root', 'expected': None}).json()
                     assert mismatch['error']['code'] == 'notes/library-changed'
                     assert not (vault / '禁止跨库.md').exists()
+                    # Seed real Git records for the former >1000 lockout. The
+                    # real Host and browser still perform listing/restoration.
+                    seeded = subprocess.run(['node', '--input-type=module', '-e', '''
+                      import {pathToFileURL} from 'node:url';
+                      const {NotesStore}=await import(pathToFileURL(process.argv[1]+'/storage.mjs'));
+                      const {seedTrash}=await import(pathToFileURL(process.argv[1]+'/test/git-fixture.mjs'));
+                      const store=await NotesStore.open(process.argv[2],{}, {stateRoot:process.argv[3]});
+                      console.log(JSON.stringify(await seedTrash(store,1001)));
+                    ''', str(ROOT), str(vault), str(base / 'recovery')], capture_output=True, text=True, check=True)
+                    fixture = json.loads(seeded.stdout)
+                    panel.get_by_role('button', name='回收站', exact=True).click()
+                    expect(trash.get_by_role('button', name='恢复已删除笔记', exact=True)).to_have_count(100)
+                    trash.get_by_role('button', name='加载更多回收站条目', exact=True).click()
+                    expect(trash.get_by_role('button', name='恢复已删除笔记', exact=True)).to_have_count(200)
+                    restored = context.request.post(origin + '/api/corilo-notes/restoreTrash', data={'id': fixture['ids'][-1], 'path': '超过千条后恢复.md', 'expected': None}).json()
+                    assert restored['ok'], restored
+                    assert (vault / '超过千条后恢复.md').read_bytes().decode('utf-8') == fixture['text']
+                    invalid_cursor = context.request.post(origin + '/api/corilo-notes/listTrash', data={'cursor': 'invalid'}).json()
+                    assert invalid_cursor['error']['code'] == 'notes/400'
                     assert not any(x.name.startswith('.') for x in vault.iterdir()), 'Recovery state belongs outside the notes root'
                     assert not errors, errors
                     assert not external, external
                     browser.close()
                 process.terminate()
                 assert process.wait(timeout=10) == 0
-                print('Harness recovery Chromium passed: version preview/restore, stale restore/delete refusal, recoverable deletion, non-overwriting trash restore, root identity fence, no model calls.')
+                print('Harness recovery Chromium passed: version preview/restore, stale restore/delete refusal, non-overwriting trash restore, >1000 records pagination/direct restore, root identity fence, no model calls.')
             finally:
                 if process.poll() is None:
                     process.kill()

@@ -14,7 +14,7 @@ export function recoveryTools(store) {
     ['read_revision', 'Read one recovery checkpoint before choosing a restore.', { path: string, revision: string }, args => store.readRevision(args.path, args.revision)],
     ['restore_revision', 'Restore a selected checkpoint only after reading the current file. Pass its version; stale versions cannot overwrite newer text.', { path: string, revision: string, expected }, (args, signal) => store.restore({ ...args, signal })],
     ['trash', 'Move a note to recoverable trash only when the user requests deletion. Requires the version returned by read.', { path: string, expected: string }, (args, signal) => store.trash({ ...args, signal })],
-    ['list_trash', 'List recoverable deleted notes.', {}, () => store.listTrash()],
+    ['list_trash', 'List a bounded page of recoverable deleted notes in stable ID order. When hasMore is true, pass nextCursor as cursor to continue.', { cursor: { type: 'string', description: 'The nextCursor returned by the preceding page; omit for the first page.' } }, args => store.listTrash(args)],
     ['restore_trash', 'Restore a deleted note to an absent Markdown path. Pass expected=null; never overwrite an existing note.', { id: string, path: string, expected: { type: 'null', required: true } }, (args, signal) => store.restoreTrash({ ...args, signal })],
   ];
   return definitions.map(([suffix, description, parameters, execute]) => defineTool({

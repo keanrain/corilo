@@ -69,7 +69,15 @@ export function RecoveryPanel({ call, draft, onBegin, onRestored, onTrashed, onF
           setMessage(`已恢复为 ${result.path}`); setTrash(await call('listTrash', {})); void refreshList();
         })}>恢复已删除笔记</button>
       </div>)}
-      {trash.hasMore && <p>回收站超过显示上限，请先恢复所需条目。</p>}
+      {trash.hasMore && <div>
+        <p>回收站按稳定的记录顺序分页，当前只显示部分条目。</p>
+        <button disabled={locked} onClick={() => perform(async () => {
+          const page = await call('listTrash', { cursor: trash.nextCursor });
+          const items = new Map(trash.items.map(item => [item.id, item]));
+          for (const item of page.items) items.set(item.id, item);
+          setTrash({ ...page, items: [...items.values()] });
+        })}>加载更多回收站条目</button>
+      </div>}
     </section>}
   </div>;
 }

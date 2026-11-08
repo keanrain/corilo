@@ -62,6 +62,9 @@ def main():
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True, executable_path=shutil.which('chromium') or None)
                 context = browser.new_context(viewport={'width': 1280, 'height': 900})
+                # Exercise the real Harness plugin with the secure-context-only
+                # API absent, as on a plain HTTP LAN origin. No Host is mocked.
+                context.add_init_script("Object.defineProperty(Crypto.prototype, 'randomUUID', { value: undefined, configurable: true });")
                 errors, external = [], []
                 context.on('page', lambda page: page.on('pageerror', lambda error: errors.append(str(error))))
                 context.on('request', lambda req: external.append(req.url.split('?')[0]) if req.url.startswith('http') and not req.url.startswith(f'http://127.0.0.1:{port}/') else None)

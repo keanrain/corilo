@@ -218,9 +218,10 @@ export class NotesStore {
       }
     });
   }
-  listTrash() {
+  listTrash(options = {}) {
     return this.serial(async () => {
-      const items = await this.requireRecovery().trashItems();
+      const page = await this.requireRecovery().trashItems(options);
+      const { items } = page;
       for (const item of items) {
         this.parts(item.path);
         item.originalPresent = await Promise.resolve().then(async () => this.readFile(await this.location(item.path))).then(() => true).catch(error => {
@@ -228,7 +229,7 @@ export class NotesStore {
           throw error;
         });
       }
-      return { items };
+      return page;
     });
   }
   restoreTrash({ id, path: input, expected, signal } = {}) {
@@ -236,6 +237,7 @@ export class NotesStore {
       checkSignal(signal); this.parts(input);
       if (expected !== null) throw fail(409, '回收站恢复只能新建，请使用 expected=null');
       const history = this.requireRecovery(), note = await history.readTrash(id);
+      this.parts(note.path);
       const result = await this.write(input, note.text, null, signal, 'restore');
       try { await history.removeTrash(id); }
       catch { throw Object.assign(fail(503, '笔记已恢复，但回收站标记未更新；请重新读取确认'), { committed: true }); }

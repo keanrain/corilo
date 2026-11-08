@@ -6,6 +6,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { NotesStore } from '../storage.mjs';
+import { seedTrash } from './git-fixture.mjs';
 
 const exec = promisify(execFile);
 const status = code => error => error.status === code;
@@ -62,6 +63,58 @@ test('trash persists before removal, restores exact content without overwriting 
   assert.equal((await reopened.read(copy.path)).text, '\uFEFFtrash\r\n');
   assert.equal((await reopened.listTrash()).items.length, 0);
   await assert.rejects(reopened.restoreTrash({ id: deleted.id, path: 'again.md', expected: null }), status(404));
+});
+
+test('more than 1000 real trash records paginate without duplicates and direct recovery bypasses enumeration', async t => {
+  const { store } = await fixture(t);
+  const seeded = await seedTrash(store, 1001);
+  const first = await store.listTrash();
+  assert.equal(first.items.length, 100);
+  assert.equal(first.hasMore, true);
+  assert.equal(first.nextCursor, seeded.ids[99]);
+  assert.deepEqual(first.items.map(item => item.id), seeded.ids.slice(0, 100));
+  // A consumed cursor remains valid after its record is restored/removed.
+  const restored = await store.restoreTrash({ id: first.nextCursor, path: 'recovered.md', expected: null });
+  assert.equal(restored.version, seeded.version);
+  assert.equal((await store.read(restored.path)).text, seeded.text);
+  await assert.rejects(store.restoreTrash({ id: seeded.ids.at(-1), path: restored.path, expected: null }), status(409));
+  const seen = first.items.map(item => item.id);
+  let page = first;
+  do {
+    page = await store.listTrash({ cursor: page.nextCursor });
+    assert.ok(page.items.length <= 100);
+    seen.push(...page.items.map(item => item.id));
+  } while (page.hasMore);
+  assert.equal(page.nextCursor, null);
+  assert.deepEqual(seen, seeded.ids);
+  assert.equal(new Set(seen).size, 1001);
+  await assert.rejects(store.listTrash({ cursor: '--help' }), status(400));
+  assert.deepEqual(await store.listTrash({ cursor: 'f'.repeat(40) }), { items: [], hasMore: false, nextCursor: null });
+  const enumerate = store.recovery.trashItems;
+  store.recovery.trashItems = () => { throw new Error('direct restore must not enumerate trash'); };
+  await store.restoreTrash({ id: seeded.ids.at(-1), path: 'direct.md', expected: null });
+  store.recovery.trashItems = enumerate;
+  assert.equal((await store.read('direct.md')).text, seeded.text);
+});
+
+test('trash lookup rejects mismatched ref targets, non-trash commits and commits outside note ancestry', async t => {
+  const { store } = await fixture(t);
+  const a = await store.save({ path: 'a.md', text: 'a', expected: null });
+  const deleted = await store.trash({ path: a.path, expected: a.version });
+  const b = await store.save({ path: 'b.md', text: 'b', expected: null });
+  const other = (await store.history(b.path)).items[0].revision;
+  await store.recovery.run(['update-ref', `refs/corilo/trash/${deleted.id}`, other], undefined, 256);
+  await assert.rejects(store.listTrash(), status(400));
+  await assert.rejects(store.restoreTrash({ id: deleted.id, path: 'bad.md', expected: null }), status(400));
+  await store.recovery.run(['update-ref', `refs/corilo/trash/${deleted.id}`, deleted.id], undefined, 256);
+  await store.recovery.putTrash(other);
+  await assert.rejects(store.restoreTrash({ id: other, path: 'bad.md', expected: null }), status(400));
+  await store.recovery.run(['update-ref', store.recovery.ref(a.path), other], undefined, 256);
+  await assert.rejects(store.restoreTrash({ id: deleted.id, path: 'bad.md', expected: null }), status(404));
+  const unsafe = await store.recovery.snapshot('../outside.md', 'unsafe path', 'trash');
+  await store.recovery.putTrash(unsafe);
+  await assert.rejects(store.restoreTrash({ id: unsafe, path: 'bad.md', expected: null }), status(400));
+  await assert.rejects(store.read('bad.md'), status(404));
 });
 
 test('state roots are bound to one knowledge root and reject nesting, links, hardlinks, special files and altered Git config', async t => {

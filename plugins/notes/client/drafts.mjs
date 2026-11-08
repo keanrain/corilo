@@ -1,4 +1,5 @@
 import { openDB } from 'idb';
+import { v4 as uuidv4 } from 'uuid';
 
 export const hasUnsavedDraft = draft => draft.text !== draft.original || draft.expected === null && (draft.text !== '' || draft.path !== '');
 const snapshotDraft = draft => ({
@@ -24,7 +25,8 @@ export function createDraftRecovery(identity) {
     state = { ...state, ...change };
     for (const listener of listeners) listener();
   };
-  const pageId = crypto.randomUUID();
+  // uuid falls back to getRandomValues on ordinary HTTP origins.
+  const pageId = uuidv4();
   let libraryId, database, current, saving = false, revision = 0, queue = Promise.resolve(), opening, disposed = false;
   const adopted = new Map();
   const candidatesOf = records => records.filter(record => record.id !== pageId).sort((a, b) => b.updatedAt - a.updatedAt);
