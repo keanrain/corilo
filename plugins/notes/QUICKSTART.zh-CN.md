@@ -4,6 +4,8 @@
 
 准备 **Node.js ≥24.9.0**、**Git ≥2.36** 和 npm。插件会安装固定版 Harness `0.2.2-rc.1`，不用另外全局安装 `dsh`。首次安装依赖需要联网；目前没有开箱即用的桌面安装器。
 
+笔记与待办一起使用时，可按[根目录上手](https://github.com/keanrain/corilo/blob/feat/cloud-notes/README.md#一起使用笔记和待办)执行一次 setup/init，日常只需 start 和同一个实例目录；下面保留笔记独立运行方式。
+
 ## 从源码启动
 
 在 Corilo 仓库根目录执行：
@@ -20,11 +22,11 @@ node plugins/notes/cli.mjs start --config /absolute/path/to/corilo-instance/note
 
 ## 收到独立安装包后启动
 
-收到 `corilo-dsh-notes-0.2.2.tgz` 后，在你选定的安装目录执行：
+收到 `corilo-dsh-notes-0.2.3.tgz` 后，在你选定的安装目录执行：
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.2.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.3.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -56,6 +58,8 @@ npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/n
 2. 接受 Harness 的预览提示；如果出现 API Key 引导，关闭它即可。
 3. 点击侧栏 **笔记**，输入文字，点击 **仅保存原话**。
 4. 看到 **已保存** 后，正文已写入主机上的 Markdown 文件。浏览器“草稿已保存”只是本机浏览器的恢复副本。
+
+手机默认直接进入正文，“查找笔记”展开列表/搜索，打开后回到正文。文件名在正文后可选；“更多操作”提供历史与回收站。保存失败和冲突仍直接显示。
 
 停止服务用 `Ctrl+C`。以后重新执行相同的 `start --config ...` 即可；不是每次都执行 `init`。当前启动命令默认只监听主机回环地址；手机和其他电脑的远程访问仍需另行配置和实际验证。
 

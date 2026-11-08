@@ -14,7 +14,12 @@
     "test:worker": "node --test --test-concurrency=1 app/tests/cloud-worker.mjs app/tests/cloud-worker-model.mjs app/tests/cloud-worker-scheduler.mjs app/tests/cloud-controller-cli.mjs",
     "test:cloud": "node --test --test-concurrency=1 app/tests/cloud-integration.mjs app/tests/cloud-conversations.mjs app/tests/cloud-hosts.mjs app/tests/cloud-host-control.mjs app/tests/cloud-scheduler.mjs app/tests/cloud-runs.mjs app/tests/cloud-model-grants.mjs app/tests/pi-model-relay.mjs",
     "test:notes": "npm --prefix plugins/notes test",
-    "test:todos": "npm --prefix plugins/todos test"
+    "test:todos": "npm --prefix plugins/todos test",
+    "setup:corilo": "npm --prefix plugins/notes ci --ignore-scripts && npm --prefix plugins/todos ci --ignore-scripts && npm --prefix plugins/notes run build && npm --prefix plugins/todos run build",
+    "init:corilo": "node scripts/corilo.mjs init",
+    "check:corilo": "node scripts/corilo.mjs check",
+    "start:corilo": "node scripts/corilo.mjs start",
+    "test:startup": "node --test scripts/test/corilo.test.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "1.1.0",

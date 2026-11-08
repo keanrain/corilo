@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import uuid
 
 from playwright.sync_api import sync_playwright, expect
 
@@ -76,6 +77,7 @@ def main():
                         target.get_by_role('button', name='待办', exact=True).click(timeout=20000)
                         if narrow:
                             target.mouse.click(target.viewport_size['width'] - 8, 220)
+                            target.wait_for_function("() => document.getAnimations().every(animation => animation.playState !== 'running')")
                         panel = target.get_by_role('region', name='Corilo 待办')
                         expect(panel).to_be_visible()
                         return panel
@@ -113,6 +115,8 @@ def main():
                     assert not invalid['ok'] and invalid['error']['code'] == 'todos/400'
                     assert api('list', {'status': 'all'})['items'] == []
 
+                    panel.get_by_text('更多操作', exact=True).click()
+                    panel.get_by_role('button', name='新待办', exact=True).click()
                     title = panel.get_by_role('textbox', name='待办标题', exact=True)
                     body = panel.get_by_role('textbox', name='待办说明', exact=True)
                     note = panel.get_by_role('textbox', name='关联笔记路径', exact=True)
@@ -123,6 +127,7 @@ def main():
                     first_body = '带上中文笔记，讨论第二章。\n不需要模型或提醒服务。'
                     title.fill(first_title)
                     body.fill(first_body)
+                    panel.get_by_text('更多设置', exact=True).click()
                     note.fill('读书/第二章.md')
                     panel.get_by_role('button', name='创建待办', exact=True).click()
                     expect(status).to_have_text('已保存')
@@ -148,6 +153,7 @@ def main():
                     panel.get_by_role('button', name='保存待办', exact=True).click()
                     expect(status).to_have_text('已保存')
                     assert api('get', {'id': first['id']})['title'] == first_title + '（已确认）'
+                    library.locator('summary').filter(has_text='搜索待办').click()
                     library.get_by_role('textbox', name='搜索待办').fill('读书会')
                     library.get_by_role('button', name='搜索', exact=True).click()
                     expect(library.locator('li')).to_have_count(1)
@@ -184,7 +190,7 @@ def main():
                     # editor must keep its own input and require reconciliation.
                     second = context.new_page()
                     other = enter(second)
-                    other.get_by_role('complementary', name='待办列表').locator('li').filter(has_text=lost_title).get_by_role('button').click()
+                    other.get_by_role('complementary', name='待办列表').locator('li').filter(has_text=lost_title).get_by_role('button', name=lost_title, exact=True).click()
                     other.get_by_role('textbox', name='待办说明', exact=True).fill('另一页面已保存的新版本')
                     other.get_by_role('button', name='保存待办', exact=True).click()
                     expect(other.get_by_role('status')).to_have_text('已保存')
@@ -222,7 +228,7 @@ def main():
                     expect(status).to_have_text('已保存')
                     assert len(api('list', {'status': 'all'})['items']) == 3
                     assert len(creates) == 5 and creates[3] == creates[4]
-                    library.locator('li').filter(has_text=lost_title).get_by_role('button').click()
+                    library.locator('li').filter(has_text=lost_title).get_by_role('button', name=lost_title, exact=True).click()
                     expect(body).to_have_value(local_draft)
 
                     # An older listing can still be in flight when a mutation
@@ -257,7 +263,7 @@ def main():
                     old_route.fulfill(response=old_response)
                     expect(delayed_item).to_have_count(0)
                     expect(filtering).to_be_enabled()
-                    library.locator('li').filter(has_text=lost_title).get_by_role('button').click()
+                    library.locator('li').filter(has_text=lost_title).get_by_role('button', name=lost_title, exact=True).click()
                     expect(body).to_have_value(local_draft)
 
                     # Export a portable versioned public format via the actual UI.
@@ -285,10 +291,19 @@ def main():
                     phone = mobile.new_page()
                     phone.on('pageerror', lambda error: errors.append(str(error)))
                     mobile_panel = enter(phone, first=True)
-                    expect(mobile_panel.get_by_role('textbox', name='待办标题')).to_be_enabled()
+                    expect(mobile_panel.get_by_role('textbox', name='快速新增待办')).to_be_enabled()
                     assert mobile_panel.evaluate('(el) => el.scrollWidth <= el.clientWidth + 1')
-                    mobile_title = mobile_panel.get_by_role('textbox', name='待办标题')
+                    mobile_title = mobile_panel.get_by_role('textbox', name='快速新增待办')
                     assert mobile_title.evaluate('(el) => parseFloat(getComputedStyle(el).fontSize)') >= 16
+                    expect(mobile_panel.get_by_role('textbox', name='待办标题')).to_have_count(0)
+                    assert 0 <= mobile_title.bounding_box()['y'] < 250
+                    for control in mobile_panel.get_by_role('checkbox').all():
+                        assert control.bounding_box()['height'] >= 44
+                    artifact_dir = os.environ.get('CORILO_BROWSER_ARTIFACT_DIR')
+                    if artifact_dir:
+                        target = pathlib.Path(artifact_dir)
+                        target.mkdir(parents=True, exist_ok=True)
+                        phone.screenshot(path=str(target / 'todos-mobile-core.png'))
                     mobile_panel.get_by_role('complementary', name='待办列表').locator('li').filter(has_text=lost_title).get_by_role('button').tap()
                     mobile_panel.get_by_role('textbox', name='待办说明').fill('手机尺寸编辑的中文说明')
                     save = mobile_panel.get_by_role('button', name='保存待办', exact=True)
@@ -318,13 +333,93 @@ def main():
                     assert (base / 'notes/读书/第二章.md').read_text() == note_text
 
 
+                    # Core flow starts with one field, supports consecutive
+                    # entry and performs completion directly in the list.
+                    core_page = context.new_page()
+                    core = enter(core_page)
+                    quick = core.get_by_role('textbox', name='快速新增待办', exact=True)
+                    core_list = core.get_by_role('complementary', name='待办列表')
+                    expect(core.get_by_role('textbox', name='待办标题')).to_have_count(0)
+                    core_titles = ['连续记录第一件事', '连续记录第二件事']
+                    for index, text in enumerate(core_titles):
+                        quick.fill(text)
+                        if index == 1:
+                            before_ime = len(creates)
+                            quick.dispatch_event('compositionstart')
+                            quick.press('Enter')
+                            core_page.wait_for_timeout(100)
+                            assert len(creates) == before_ime, 'IME confirmation must not create a todo'
+                            expect(quick).to_have_value(text)
+                            quick.dispatch_event('compositionend')
+                            quick.press('Enter')
+                        else:
+                            core.get_by_role('button', name='添加', exact=True).click()
+                        expect(quick).to_have_value('')
+                        expect(quick).to_be_focused()
+                        expect(core_list.get_by_role('button', name=text, exact=True)).to_have_count(1)
+                    records = {item['title']: item for item in api('list', {'status': 'all'})['items']}
+                    first_core = records[core_titles[0]]
+                    second_core = records[core_titles[1]]
+                    first_check = core_list.get_by_role('checkbox', name='完成：' + core_titles[0], exact=True)
+                    first_check.click()
+                    expect(first_check).to_have_count(0)
+                    assert api('get', {'id': first_core['id']})['status'] == 'done'
+                    core.get_by_role('button', name='撤销完成', exact=True).click()
+                    expect(first_check).to_be_checked(checked=False)
+                    assert api('get', {'id': first_core['id']})['status'] == 'open'
+                    second_check = core_list.get_by_role('checkbox', name='完成：' + core_titles[1], exact=True)
+                    second_check.click()
+                    core_filter = core_list.get_by_role('combobox', name='待办状态筛选')
+                    core_filter.select_option('done')
+                    expect(second_check).to_be_checked()
+                    second_check.click()
+                    expect(second_check).to_have_count(0)
+                    assert api('get', {'id': second_core['id']})['status'] == 'open'
+                    core_filter.select_option('open')
+
+                    # Completing an unrelated item never replaces editor input.
+                    core_list.get_by_role('button', name=lost_title, exact=True).click()
+                    core_body = core.get_by_role('textbox', name='待办说明', exact=True)
+                    core_body.fill('正在编辑另一项，列表操作不能覆盖这段输入')
+                    first_check.click()
+                    expect(core_body).to_have_value('正在编辑另一项，列表操作不能覆盖这段输入')
+                    core.get_by_role('button', name='撤销完成', exact=True).click()
+                    expect(first_check).to_have_count(1)
+                    current = api('get', {'id': first_core['id']})
+                    api('update', {'requestId': str(uuid.uuid4()), 'id': current['id'], 'expected': current['version'], 'patch': {'body': '另一页面更新'}})
+                    first_check.click()
+                    expect(core.get_by_role('alert')).to_contain_text('这项待办已有更新')
+                    assert api('get', {'id': current['id']})['status'] == 'open'
+                    expect(first_check).not_to_be_checked()
+                    expect(core_body).to_have_value('正在编辑另一项，列表操作不能覆盖这段输入')
+
+                    # A list action can commit before its reply is lost. Retry
+                    # remains available globally even after changing filters.
+                    row_requests = []
+                    core_page.on('request', lambda request: row_requests.append(request.post_data_json) if '/api/corilo-todos/update' in request.url else None)
+                    def lose_row_reply(route):
+                        assert route.fetch().json()['ok']
+                        route.abort()
+                    core_page.route('**/api/corilo-todos/update', lose_row_reply, times=1)
+                    second_check.click()
+                    expect(core.get_by_role('button', name='重试列表操作', exact=True)).to_be_visible()
+                    committed_row = api('get', {'id': second_core['id']})
+                    assert committed_row['status'] == 'done'
+                    core_filter.select_option('done')
+                    core.get_by_role('button', name='重试列表操作', exact=True).click()
+                    expect(core.get_by_role('button', name='重试列表操作', exact=True)).to_have_count(0)
+                    assert api('get', {'id': second_core['id']})['version'] == committed_row['version']
+                    assert len(row_requests) == 2 and row_requests[0] == row_requests[1]
+                    expect(core_body).to_have_value('正在编辑另一项，列表操作不能覆盖这段输入')
+                    core_page.close()
+
                     assert not errors, errors
                     assert not external, external
                     anonymous.dispose()
                     browser.close()
                 host.terminate()
                 assert host.wait(timeout=10) == 0
-                print('Harness todos Chromium passed: personal todo lifecycle, notes plugin coexistence/association, JSON export, lost-reply/503 idempotency, delayed-list refresh, stale-version protection, authentication/origin/store identity, 390px layout; zero model/external requests.')
+                print('Harness todos Chromium passed: personal todo lifecycle, notes plugin coexistence/association, JSON export, lost-reply/503 idempotency, delayed-list refresh, stale-version protection, authentication/origin/store identity, 390px layout, quick consecutive entry, direct completion/undo and unrelated-draft protection; zero model/external requests.')
             finally:
                 if host.poll() is None:
                     host.terminate()

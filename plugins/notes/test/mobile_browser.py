@@ -24,7 +24,7 @@ def main():
         existing = vault / '已有中文笔记.md'
         existing.write_text('移动端原有正文\n', encoding='utf-8')
         patch = base / 'notes.patch.json'
-        patch.write_text(json.dumps([{'insert': [{'id': 'corilo-notes', 'name': str(ROOT / 'index.mjs'), 'config': {'root': str(vault)}}]}, {'id': 'workspace-controller', 'config': {'documentsDirectory': str(base / 'documents')}}]))
+        patch.write_text(json.dumps([{'insert': [{'id': 'corilo-notes', 'name': str(ROOT / 'index.mjs'), 'config': {'root': str(vault), 'stateRoot': str(base / 'recovery')}}]}, {'id': 'workspace-controller', 'config': {'documentsDirectory': str(base / 'documents')}}]))
         log_path = base / 'host.log'
         with log_path.open('w') as log:
             host = subprocess.Popen(['node', str(ROOT / 'node_modules/@deepseek-ai/dsh/lib/bin.js'), 'web', '--patch', str(patch), '--no-open', '--port', '0'], cwd=base, stdout=log, stderr=log,
@@ -60,6 +60,7 @@ def main():
                             # after selecting a plugin. Close its backdrop as a user would.
                             page.touchscreen.tap(page.viewport_size['width'] - 8, 220)
                             expect(panel.get_by_role('textbox', name='笔记正文', exact=True)).to_be_enabled()
+                            panel.get_by_role('textbox', name='笔记正文', exact=True).tap(trial=True)
                             expect(page.get_by_text('Unable to create default workspace. Use Choose workspace to select a folder.', exact=True)).to_have_count(0)
                             return panel
 
@@ -70,15 +71,29 @@ def main():
                         panel = enter(first=True)
                         body = panel.get_by_role('textbox', name='笔记正文', exact=True)
                         status = panel.get_by_role('status')
+                        capture = panel.get_by_role('button', name='仅保存原话', exact=True)
+                        expect(status).to_have_text('开始记录')
+                        expect(capture).to_be_disabled()
+                        body.fill(' ')
+                        expect(capture).to_be_enabled()
+                        body.fill('')
+                        expect(capture).to_be_disabled()
                         no_overflow(panel)
+                        expect(panel.get_by_role('textbox', name='搜索笔记')).not_to_be_visible()
+                        first_body = body.bounding_box()
+                        assert first_body and first_body['y'] < 300 and first_body['height'] >= 150, 'Core editor must be visible immediately on mobile'
+                        artifact_dir = os.environ.get('CORILO_BROWSER_ARTIFACT_DIR')
+                        if artifact_dir:
+                            pathlib.Path(artifact_dir).mkdir(parents=True, exist_ok=True)
+                            page.screenshot(path=str(pathlib.Path(artifact_dir) / ('notes-first-' + device.replace(' ', '-').lower() + '.png')), animations='disabled')
                         assert body.evaluate('(el) => parseFloat(getComputedStyle(el).fontSize)') >= 16
                         text = f'  {device} 中文原话 MobileNeedle\n第二行，零模型  '
                         body.fill(text)
+                        expect(capture).to_be_enabled()
                         # Simulate space occupied by the keyboard. Focus/edit and
                         # scroll real touch controls into a reduced visible viewport.
                         page.set_viewport_size({'width': 390, 'height': 400})
                         body.tap(position={'x': 12, 'y': 12})
-                        capture = panel.get_by_role('button', name='仅保存原话', exact=True)
                         # No scroll-to-save: the narrow-screen save bar stays
                         # reachable while the editor itself has focus.
                         box = capture.bounding_box()
@@ -89,11 +104,24 @@ def main():
                         assert len(captured) == 1 and len(captures) == 1
                         capture_path = captured[0].relative_to(vault).as_posix()
                         page.set_viewport_size({'width': 390, 'height': 844})
+                        expect(panel.get_by_role('button', name='版本历史', exact=True)).not_to_be_visible()
+                        more = panel.get_by_text('更多操作', exact=True)
+                        assert more.bounding_box()['height'] >= 44
+                        more.tap()
+                        panel.get_by_role('button', name='版本历史', exact=True).tap()
+                        expect(panel.get_by_role('region', name='版本历史列表').get_by_role('button')).to_have_count(1)
+                        panel.get_by_role('button', name='回收站', exact=True).tap()
+                        expect(panel.get_by_role('region', name='回收站列表')).to_contain_text('回收站为空')
+                        more.tap()
+                        panel.get_by_role('button', name='查找笔记', exact=True).tap()
                         library = panel.get_by_role('complementary', name='笔记列表')
                         library.get_by_role('textbox', name='搜索笔记').fill('MobileNeedle')
                         library.get_by_role('button', name='搜索', exact=True).tap()
                         library.get_by_role('button', name=capture_path, exact=True).tap()
                         expect(body).to_have_value(text)
+                        expect(library).not_to_be_visible()
+                        body.fill('')
+                        expect(panel.get_by_role('button', name='保存笔记', exact=True)).to_be_enabled()
                         long_draft = 'https://example.invalid/' + 'a' * 300 + f'\n{device} 持久中文草稿'
                         body.fill(long_draft)
                         expect(panel.get_by_test_id('draft-persistence')).to_have_text('草稿已保存在此浏览器，尚未保存到文件。')
@@ -108,6 +136,7 @@ def main():
                         page.once('dialog', lambda dialog: dialog.accept())
                         panel = enter()
                         candidates = panel.get_by_role('region', name='待恢复草稿')
+                        candidates.locator('details').first.locator('summary').first.tap()
                         candidate = candidates.locator('li').filter(has_text=capture_path)
                         candidate.get_by_text('预览草稿', exact=True).tap()
                         expect(candidate.get_by_role('textbox', name='草稿正文预览')).to_have_value(long_draft)

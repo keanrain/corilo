@@ -1,6 +1,11 @@
 .corilo-notes { color: var(--dsw-alias-label-primary, inherit); background: var(--dsw-alias-bg-base, transparent); height: 100%; min-width: 0; overflow: auto; padding: 24px; padding-inline-start: max(24px, var(--dsh-frame-leading-clearance, 0px)); box-sizing: border-box; font: inherit; }
 .corilo-notes * { box-sizing: border-box; }
-.corilo-notes header, .corilo-notes-save, .corilo-notes-list-tools { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+.corilo-notes header, .corilo-notes-primary-actions, .corilo-notes-save, .corilo-notes-list-tools { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+.corilo-notes header, .corilo-notes-primary-actions { flex-wrap: wrap; }
+.corilo-notes-find { display: none; }
+.corilo-notes-library { min-width: 0; }
+.corilo-notes-more > summary { cursor: pointer; padding: 10px 0; }
+.corilo-notes-filename { order: -1; }
 .corilo-notes h1 { font-size: 24px; margin: 0; font-weight: 600; }
 .corilo-notes p { margin: 12px 0; line-height: 1.6; }
 .corilo-notes button, .corilo-notes input, .corilo-notes textarea { font: inherit; color: inherit; border: 1px solid var(--dsw-alias-border-l2, currentColor); border-radius: 8px; background: transparent; padding: 9px 12px; }
@@ -39,10 +44,14 @@
 .corilo-notes-drafts li button { width: auto; margin: 0; }
 @media (max-width: 700px) {
   .corilo-notes { padding: 18px; padding-top: 52px; }
-  .corilo-notes-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .corilo-notes-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 16px; }
+  .corilo-notes-find { display: inline-block; }
+  .corilo-notes-library { display: none; }
+  .corilo-notes-library.is-open { display: block; }
+  .corilo-notes-filename { order: 0; }
   .corilo-notes ul { max-height: 170px; }
-  .corilo-notes-body textarea { min-height: 36vh; }
-  .corilo-notes button { min-height: 44px; }
+  .corilo-notes-body textarea { min-height: clamp(150px, 36vh, 260px); }
+  .corilo-notes button, .corilo-notes summary { min-height: 44px; }
   .corilo-notes input, .corilo-notes textarea { font-size: max(16px, 1em); }
   .corilo-notes-save { position: sticky; bottom: 0; z-index: 1; padding: 8px 0; background: var(--dsw-alias-bg-base, Canvas); }
 }

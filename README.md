@@ -4,16 +4,27 @@
 
 **2026-11-08 路线调整：** 直接复用 Harness 网页、会话、模型配置和默认 Agent/工具，Corilo 优先开发笔记插件，再做个人待办/日程、可靠提醒和记忆。旧 Pi/Files.md 云端代码保留，不继续作为主应用扩展，也不自动迁移用户资料或凭据。
 
-首个独立包见 [plugins/notes](plugins/notes/README.md)，提供 Markdown 文件服务、笔记工具及 Harness 内笔记页面：分页浏览、正文搜索、阅读编辑、零模型原话保存、冲突保护、浏览器草稿与本地历史/回收站。插件已支持并列安装升级/回退、restic 笔记恢复和移动触控布局回归；v0.2.2 增加 Linux 常驻运行指南、systemd 用户服务示例、原生配置目录预检及重启登录/草稿恢复验收。真实手机、日程/提醒、远程部署、真实模型及 NAS 恢复仍待验收。
+首个独立包见 [plugins/notes](plugins/notes/README.md)，提供 Markdown 文件服务、笔记工具及 Harness 内笔记页面：分页浏览、正文搜索、阅读编辑、零模型原话保存、冲突保护、浏览器草稿与本地历史/回收站。插件已支持并列安装升级/回退、restic 笔记恢复和移动触控布局回归；v0.2.3 进一步收敛手机记录与查找流程，历史/回收站放入次级入口。真实手机、日程/提醒、远程部署、真实模型及 NAS 恢复仍待验收。
+
+## 一起使用笔记和待办
+
+源码安装需要 Node.js ≥24.9.0、Git ≥2.36。在仓库根目录，选一个**仓库之外**的实例绝对路径：
 
 ```sh
-# 插件使用独立依赖锁；Node.js >= 24.9.0
-npm --prefix plugins/notes ci --ignore-scripts
-npm --prefix plugins/notes run build
-npm run test:notes
+npm run setup:corilo
+npm run init:corilo -- --directory /absolute/corilo-instance
+npm run start:corilo -- --directory /absolute/corilo-instance
 ```
 
-个人待办独立包见 [plugins/todos](plugins/todos/README.md)：SQLite 持久化、五个 Agent 工具与 Harness 内待办页面，支持版本/幂等保护及 JSON 导出。日程和通知后续实现。
+`setup` 按两包锁文件安装依赖并构建，不启动服务；`init` 只需执行一次，生成两个插件的组合配置，不覆盖已有配置或迁移资料。以后只运行 `start`；需要排错时运行 `npm run check:corilo -- --directory /absolute/corilo-instance`。默认固定回环端口 `3000`，可给 start 加 `--port 其他端口`。
+
+打开终端打印的鉴权地址，关闭模型密钥引导即可直接记笔记和待办；不用先配模型。停止用 Ctrl+C。实例下的 `notes/` 是正文，`state/` 是笔记历史，`todos/` 是待办数据库，`runtime/{harness,agents}` 是固定原生配置/会话目录；它们分别管理，不把整个实例称作无凭据的资料导出。组合中的工作目录使用实例的 `workspace/`，避免无桌面 Linux 首次创建工作目录报错。
+
+统一 `check` 不创建资料根、原生 home 或待办数据库；待办 schema 完整校验在原生插件实际启动时执行。已有的独立笔记/待办实例继续按各插件指南管理，统一初始化不会自动接管或迁移它们。源码路径改变后组合配置不自动改写，需保留旧实例配置并按升级指南核对。
+
+此入口沿用 Harness 认证和默认工具权限，不配置远程监听或安装自启服务。若需 Linux 常驻，审阅 [统一用户服务示例](scripts/corilo.service.example)，替换绝对路径后按 [Linux 指南](plugins/notes/LINUX.zh-CN.md)的用户服务步骤管理，将其中服务名改为 `corilo.service`，使用本示例的统一入口；原生 home 由统一脚本固定，不另行更换。该示例未自动安装。原有 `npm start` 仍是下面保留的旧应用。
+
+个人待办独立包见 [plugins/todos](plugins/todos/README.md)：v0.2.0 提供快速连续新增、列表完成/撤销、刷新草稿恢复与版本/幂等保护；详情/导出放入次级入口。当前只打磨核心笔记/待办，日期、联动、日程与通知暂缓。
 
 插件如何安装到固定 Harness 版本、配置资料目录以及测试边界，见各插件 README。当前产品规则、架构和验收统一见 [设计索引](docs/README.md)。
 

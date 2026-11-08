@@ -7,7 +7,7 @@ import styles from './notes.css';
 
 const fresh = () => ({ path: '', text: '', original: '', expected: null, status: 'clean', error: '', latest: null, notice: '' });
 const dirty = hasUnsavedDraft;
-const labels = { clean: '未保存', dirty: '未保存', saving: '保存中…', saved: '已保存', failed: '保存失败', conflict: '版本冲突' };
+const labels = { clean: '开始记录', dirty: '未保存', saving: '保存中…', saved: '已保存', failed: '保存失败', conflict: '版本冲突' };
 
 function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
   const d = useStore(s => s.draft);
@@ -15,8 +15,12 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
   const [libraryRevision, setLibraryRevision] = useState(0);
   const [loading, setLoading] = useState(false);
   const [navigationError, setNavigationError] = useState('');
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [draftsOpen, setDraftsOpen] = useState(() => !window.matchMedia('(max-width: 700px)').matches);
+  const page = useRef(null);
   const alive = useRef(true);
   const busy = loading || d.status === 'saving' || !persistence.ready || persistence.rootChanged;
+  const emptyCapture = !d.path && d.text.length === 0;
   async function refresh() { if (alive.current) setLibraryRevision(value => value + 1); }
   useEffect(() => {
     alive.current = true;
@@ -28,7 +32,10 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
     setLoading(true); setNavigationError('');
     try {
       const kept = await retainCurrent();
-      if (alive.current) actions.setDraft({ ...fresh(), notice: kept ? '原草稿已保留，可从待恢复草稿继续编辑。' : '' });
+      if (alive.current) {
+        actions.setDraft({ ...fresh(), notice: kept ? '原草稿已保留，可从待恢复草稿继续编辑。' : '' });
+        setLibraryOpen(false); page.current?.scrollTo({ top: 0 });
+      }
     } catch (error) { if (alive.current) setNavigationError(error.message); }
     finally { if (alive.current) setLoading(false); }
   }
@@ -39,12 +46,15 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
       const note = await call('read', { path });
       if (!alive.current) return;
       const kept = await retainCurrent();
-      if (alive.current) actions.setDraft({ ...fresh(), ...note, original: note.text, expected: note.version, status: 'saved', notice: kept ? '原草稿已保留。' : '' });
+      if (alive.current) {
+        actions.setDraft({ ...fresh(), ...note, original: note.text, expected: note.version, status: 'saved', notice: kept ? '原草稿已保留。' : '' });
+        setLibraryOpen(false); page.current?.scrollTo({ top: 0 });
+      }
     } catch (error) { if (alive.current) actions.setDraft({ ...d, error: error.message }); }
     finally { if (alive.current) setLoading(false); }
   }
   async function save(copy = false) {
-    if (busy) return;
+    if (busy || emptyCapture) return;
     const snapshot = { ...d };
     actions.setDraft({ ...snapshot, status: 'saving', error: '', latest: null });
     try {
@@ -84,37 +94,44 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
         if (!alive.current) return;
         drafts.adopt(record, recovered);
         actions.setDraft(recovered);
+        if (window.matchMedia('(max-width: 700px)').matches) setDraftsOpen(false);
+        page.current?.scrollTo({ top: 0 });
       }
     } catch (error) { if (alive.current) setNavigationError(`草稿尚未恢复：${error.message}`); }
     finally { if (alive.current) setLoading(false); }
   }
-  return <section className="corilo-notes" aria-label="Corilo 笔记">
-    <header><div><h1>笔记</h1><p>留下原话，也可以直接编辑。</p></div>
+  return <section ref={page} className="corilo-notes" aria-label="Corilo 笔记">
+    <header><h1>笔记</h1><div className="corilo-notes-primary-actions">
+      <button className="corilo-notes-find" aria-controls="corilo-notes-library" aria-expanded={libraryOpen} onClick={() => setLibraryOpen(value => !value)}>{libraryOpen ? '返回正文' : '查找笔记'}</button>
       <button disabled={busy} onClick={newNote}>{dirty(d) ? '保留草稿并新建' : '新笔记'}</button>
-    </header>
+    </div></header>
     {persistence.candidates.length > 0 && <section className="corilo-notes-drafts" aria-label="待恢复草稿">
-      <p>发现此浏览器保存的草稿。恢复只会放回编辑器，不会自动改写磁盘文件；其他标签页的草稿也可能出现在这里。</p>
+      <details open={draftsOpen} onToggle={event => setDraftsOpen(event.currentTarget.open)}>
+      <summary>待恢复草稿（{persistence.candidates.length}）</summary>
+      <p>恢复只会放回编辑器，不会自动改写已保存的笔记。</p>
       <ul>{persistence.candidates.map(record => <li key={record.id}>
         <span>{record.draft.path || '未命名笔记'} · {new Date(record.updatedAt).toLocaleString('zh-CN')}</span>
         <p className="corilo-notes-hint">{record.draft.text.trim().slice(0, 100) || '空白正文'}</p>
         <details><summary>预览草稿</summary><textarea aria-label="草稿正文预览" readOnly value={record.draft.text} /></details>
         <button disabled={busy} onClick={() => recover(record)}>恢复草稿</button>
         <button disabled={busy} onClick={() => { if (window.confirm('永久丢弃这份浏览器草稿？不会删除磁盘笔记。')) void drafts.discard(record); }}>丢弃草稿</button>
-      </li>)}</ul>
+      </li>)}</ul></details>
     </section>}
     {persistence.error && <p role="alert">{persistence.error} {!persistence.rootChanged && <button onClick={() => drafts.start()}>重试草稿保护</button>}</p>}
     {navigationError && <p role="alert">{navigationError}</p>}
     <div className="corilo-notes-grid">
-      <LibraryPanel call={call} onOpen={open} disabled={busy} selectedPath={d.path} revision={libraryRevision} />
+      <div id="corilo-notes-library" className={`corilo-notes-library${libraryOpen ? ' is-open' : ''}`}>
+        <LibraryPanel call={call} onOpen={open} disabled={busy} selectedPath={d.path} revision={libraryRevision} />
+      </div>
       <div className="corilo-notes-editor">
-        <label>文件名<input aria-label="笔记文件名" disabled={busy || d.expected !== null} placeholder="留空自动命名，或输入 文件名.md" value={d.path}
-          onChange={e => actions.setDraft({ ...d, path: e.target.value, status: 'dirty' })} /></label>
         <label className="corilo-notes-body">正文<textarea aria-label="笔记正文" disabled={busy} value={d.text} spellCheck={false} placeholder="此刻想留下什么？"
           onChange={e => actions.setDraft({ ...d, text: e.target.value, status: d.status === 'conflict' ? 'conflict' : 'dirty' })} /></label>
         <div className="corilo-notes-save"><span role="status">{loading ? '读取中…' : labels[d.status]}</span>
-          <button disabled={busy || d.status === 'conflict'} onClick={() => save()}>{d.expected === null && !d.path ? '仅保存原话' : '保存笔记'}</button>
+          <button disabled={busy || emptyCapture || d.status === 'conflict'} onClick={() => save()}>{d.expected === null && !d.path ? '仅保存原话' : '保存笔记'}</button>
         </div>
-        <p className="corilo-notes-hint">直接保存到 Markdown，不调用模型。浏览器草稿仅用于恢复，不是文件保存或独立备份。</p>
+        <label className="corilo-notes-filename">文件名<input aria-label="笔记文件名" disabled={busy || d.expected !== null} placeholder="留空自动命名，或输入 文件名.md" value={d.path}
+          onChange={e => actions.setDraft({ ...d, path: e.target.value, status: 'dirty' })} /></label>
+
         <p className="corilo-notes-hint" aria-live="polite" data-testid="draft-persistence">{persistence.status === 'loading' ? '正在读取浏览器草稿…' : persistence.status === 'pending' ? '正在保护草稿…' : persistence.status === 'stored' ? '草稿已保存在此浏览器，尚未保存到文件。' : persistence.status === 'failed' ? (persistence.ready ? '草稿保护失败，请保存文件后再关闭。' : '知识库身份未确认，操作已暂停。') : '浏览器草稿保护已就绪。'}</p>
         {d.error && <p role="alert">{d.error}</p>}
         {d.notice && <p aria-live="polite">{d.notice}</p>}
@@ -129,12 +146,15 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
             if (window.confirm('放弃当前草稿，改为编辑刚刚读取的磁盘版本？')) actions.setDraft({ ...fresh(), path: d.latest.path, text: d.latest.text, original: d.latest.text, expected: d.latest.version, status: 'saved' });
           }}>采用此版本，放弃草稿</button>
         </div>}
+        <details className="corilo-notes-more"><summary>更多操作</summary>
+        <p className="corilo-notes-hint">历史、回收站与删除。浏览器草稿只用于恢复，不是独立备份。</p>
         <RecoveryPanel key={d.path} call={call} draft={d} enabled={persistence.recoveryEnabled}
           refreshList={refresh}
           onBegin={() => actions.setDraft({ ...d, status: 'saving', error: '' })}
           onRestored={note => actions.setDraft({ ...fresh(), path: note.path, text: note.text, original: note.text, expected: note.version, status: 'saved' })}
           onTrashed={() => actions.setDraft({ ...fresh(), notice: '已移入回收站，可在回收站中恢复。' })}
           onFailure={error => actions.setDraft({ ...d, status: error.code === 'notes/409' ? 'conflict' : 'failed', error: error.message })} />
+        </details>
       </div>
     </div>
   </section>;

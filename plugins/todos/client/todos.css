@@ -1,6 +1,6 @@
 .corilo-todos { color: var(--dsw-alias-label-primary, inherit); background: var(--dsw-alias-bg-base, transparent); height: 100%; min-width: 0; overflow: auto; padding: 24px; padding-inline-start: max(24px, var(--dsh-frame-leading-clearance, 0px)); box-sizing: border-box; font: inherit; }
 .corilo-todos * { box-sizing: border-box; }
-.corilo-todos header, .corilo-todos-actions, .corilo-todos-save { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.corilo-todos header, .corilo-todos-actions, .corilo-todos-save, .corilo-todos-editor-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .corilo-todos h1 { font-size: 24px; margin: 0; font-weight: 600; }
 .corilo-todos h2 { font-size: 18px; margin: 0; }
 .corilo-todos p { margin: 10px 0; line-height: 1.6; overflow-wrap: anywhere; }
@@ -11,25 +11,40 @@
 .corilo-todos :focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .corilo-todos input, .corilo-todos textarea, .corilo-todos select { width: 100%; min-width: 0; }
 .corilo-todos label { display: flex; flex-direction: column; gap: 8px; }
-.corilo-todos-grid { display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr); gap: 24px; margin-top: 18px; }
+.corilo-todos summary { cursor: pointer; padding: 10px 0; }
+.corilo-todos-more button { margin: 4px 0 4px 8px; }
+.corilo-todos-quick { display: flex; align-items: center; gap: 10px; margin: 20px 0 12px; }
+.corilo-todos-quick label { flex: 1; min-width: 0; }
+.corilo-todos-quick input { min-height: 48px; }
+.corilo-todos-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 14px; }
+.corilo-todos-grid.has-editor { grid-template-columns: minmax(220px, .8fr) minmax(0, 1.2fr); }
 .corilo-todos aside { min-width: 0; }
-.corilo-todos aside > button { margin-top: 10px; }
-.corilo-todos-search { display: flex; align-items: end; gap: 8px; margin: 14px 0 0; }
+.corilo-todos-list-tools { display: flex; gap: 10px; align-items: center; }
+.corilo-todos-list-tools label { flex: 1; }
+.corilo-todos-search form { display: flex; align-items: end; gap: 8px; }
 .corilo-todos-search label { flex: 1; min-width: 0; }
-.corilo-todos ul { list-style: none; padding: 0; max-height: 60vh; overflow: auto; }
-.corilo-todos li button { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: start; margin-bottom: 6px; overflow-wrap: anywhere; }
-.corilo-todos li small { opacity: .7; }
-.corilo-todos [aria-current="page"] { font-weight: 600; border-width: 2px; }
+.corilo-todos ul { list-style: none; padding: 0; }
+.corilo-todos-items { max-height: 64vh; overflow: auto; }
+.corilo-todos-items > li { display: flex; align-items: center; gap: 8px; margin: 6px 0; border: 1px solid var(--dsw-alias-border-l2, currentColor); border-radius: 8px; padding: 4px; }
+.corilo-todos-items .corilo-todos-check { flex: 0 0 44px; width: 44px; min-width: 44px; padding: 0; border-color: transparent; font-size: 22px; }
+.corilo-todos-items .corilo-todos-item-title { flex: 1; min-width: 0; border-color: transparent; display: flex; flex-direction: column; gap: 5px; text-align: start; overflow-wrap: anywhere; }
+.corilo-todos-items small { opacity: .65; font-size: 12px; }
+.corilo-todos-items [aria-current="page"] { font-weight: 600; }
 .corilo-todos-editor { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.corilo-todos textarea { min-height: 180px; resize: vertical; line-height: 1.6; }
-.corilo-todos-hint { opacity: .7; font-size: 13px; }
-.corilo-todos-resolution { border: 1px solid var(--dsw-alias-border-l2, currentColor); border-radius: 8px; padding: 12px; }
+.corilo-todos textarea { min-height: 150px; resize: vertical; line-height: 1.6; }
+.corilo-todos-persistence { opacity: .7; font-size: 13px; }
+.corilo-todos-persistence:empty { display: none; }
+.corilo-todos-resolution, .corilo-todos-drafts { border: 1px solid var(--dsw-alias-border-l2, currentColor); border-radius: 8px; padding: 12px; }
+.corilo-todos-drafts li { margin: 8px 0; overflow-wrap: anywhere; }
+.corilo-todos-drafts button { margin-inline-end: 8px; }
 .corilo-todos-resolution textarea { min-height: 120px; }
 .corilo-todos code { overflow-wrap: anywhere; }
+.corilo-todos-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 700px) {
-  .corilo-todos { padding: 18px; padding-top: 52px; }
-  .corilo-todos-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-  .corilo-todos ul { max-height: 200px; }
+  .corilo-todos { padding: 18px; padding-top: max(18px, var(--dsh-frame-top-clearance, 0px)); }
+  .corilo-todos-grid.has-editor { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .corilo-todos-grid.has-editor .corilo-todos-items { max-height: 170px; }
+  .corilo-todos-items { max-height: none; }
   .corilo-todos input, .corilo-todos textarea, .corilo-todos select { font-size: max(16px, 1em); }
   .corilo-todos-save { position: sticky; bottom: 0; z-index: 1; background: var(--dsw-alias-bg-base, Canvas); padding-block: 8px; }
 }

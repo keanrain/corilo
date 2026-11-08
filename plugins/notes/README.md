@@ -6,6 +6,8 @@ Notes plugin for the personal self-hosted Corilo direction. It uses the publishe
 
 This package supplies Markdown storage, model-facing tools and a **笔记** page inside the Harness Web shell. The page browses Markdown metadata in bounded pages, searches filenames and body text, reads and edits notes, and saves original words directly without AI. Harness supplies the conversation UI, model settings, default tools and permission/sandbox policy. No Pi runtime or second agent loop is mounted.
 
+On phones, the editor and save action come first; **查找笔记** reveals browsing/search and returns to the editor after opening a note. History/trash live under **更多操作**, while failures/conflicts remain visible. For both plugins together from a source checkout, use the [root setup/init/start flow](https://github.com/keanrain/corilo/blob/feat/cloud-notes/README.md#一起使用笔记和待办); the independent package commands below remain supported.
+
 ## Install and run
 
 Requires Node.js >=24.9.0 and system Git >=2.36 (available as `git` on PATH). Install Git using your OS package manager. The package includes the exact supported Harness runtime as an npm dependency; a global `dsh` installation is neither required nor used. The supported Host release is **0.2.2-rc.1**; future Harness versions require compatibility testing first.
@@ -45,7 +47,7 @@ npm pack --pack-destination /absolute/existing/output-directory
 mkdir corilo-install
 cd corilo-install
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.2.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.3.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -65,7 +67,7 @@ and recovery-state formats.
 1. Save any browser drafts to files, stop this instance, and take a verified
    backup of its notes and state. A browser draft is not part of that backup.
 2. In a new installation directory, run `npm init -y` and
-   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.2.tgz`.
+   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.3.tgz`.
 3. From that **new** directory, generate a new overlay referring to the new
    installed package while keeping the original data paths:
 

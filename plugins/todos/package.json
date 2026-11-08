@@ -1,6 +1,6 @@
 {
   "name": "@corilo/dsh-todos",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -28,12 +28,13 @@
     "build": "node build.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test:browser": "python3 test/browser.py"
+    "test:browser": "python3 test/draft_runtime_browser.py && python3 test/browser.py && python3 test/drafts_browser.py"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.1",
     "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
-    "@deepseek-ai/schemastery": "3.19.0"
+    "@deepseek-ai/schemastery": "3.19.0",
+    "idb": "8.0.3"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",

@@ -1,0 +1,25 @@
+# Source-checkout combined notes + todos service. Review every /absolute/... path
+# before copying to ~/.config/systemd/user/corilo.service. Never auto-installed.
+[Unit]
+Description=Corilo notes and personal todos
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+WorkingDirectory=/absolute/corilo-instance
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+UMask=0077
+# The source launcher fixes DSH_HOME/DSH_AGENTS_HOME below instance/runtime.
+ExecStartPre="/absolute/node" "/absolute/corilo-checkout/scripts/corilo.mjs" check --directory "/absolute/corilo-instance"
+ExecStart="/absolute/node" "/absolute/corilo-checkout/scripts/corilo.mjs" start --directory "/absolute/corilo-instance" --port 3000
+Restart=on-failure
+RestartSec=5s
+KillMode=mixed
+TimeoutStopSec=20s
+# Native startup logs include a private authentication URL; do not share it.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

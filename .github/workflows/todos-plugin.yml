@@ -6,6 +6,7 @@ on:
       - 'plugins/notes/**'
       - 'requirements-dev.txt'
       - 'package.json'
+      - 'scripts/**'
       - '.github/workflows/todos-plugin.yml'
   pull_request:
     paths:
@@ -13,6 +14,7 @@ on:
       - 'plugins/notes/**'
       - 'requirements-dev.txt'
       - 'package.json'
+      - 'scripts/**'
       - '.github/workflows/todos-plugin.yml'
 permissions:
   contents: read
@@ -35,6 +37,7 @@ jobs:
         working-directory: plugins/notes
       - run: npm --prefix plugins/notes run build
       - run: npm run test:todos
+      - run: npm run test:startup
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

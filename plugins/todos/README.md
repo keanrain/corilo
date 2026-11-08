@@ -1,10 +1,14 @@
 # Corilo 个人待办 for DeepSeek Harness
 
-独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.1.0，目前没有发布到 npm。
+独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.2.0，目前没有发布到 npm。
 
 页面直接创建、查看、编辑、完成、取消或重新打开待办，不需要模型密钥；Agent 工具使用同一持久化服务。个人待办与 Harness 的 Agent 执行计划分开。首版不包含日期、日历、提醒调度或通知，创建待办不代表安排通知。
 
+当前主流程收敛为快速新增、未完成列表、直接完成/撤销；编辑详情和辅助功能按需打开。
+
 ## 安装与启动
+
+两个插件一起从源码使用时，优先按[根目录上手](https://github.com/keanrain/corilo/blob/feat/cloud-notes/README.md#一起使用笔记和待办)的 setup/init/start 三步，一个实例目录即可；下面保留独立插件方式。
 
 源码方式，在 Corilo 仓库根目录：
 
@@ -38,14 +42,15 @@ cd plugins/todos
         notesRoot: /absolute/corilo-instance/notes
 ```
 
-使用固定 Harness 原生启动命令加载这份组合配置。笔记包的 `corilo-notes` CLI 只接受单笔记 overlay，不用于解析多插件组合。原 Linux 用户服务示例的单笔记启动命令也不会自动加载待办；不要悄悄替换已运行实例的配置。常驻时继续固定 `DSH_HOME`、`DSH_AGENTS_HOME`、工作目录与端口，参考笔记包的 Linux 指南。
+使用固定 Harness 原生启动命令加载这份组合配置。源码统一入口 `scripts/corilo.mjs` 已负责生成组合，无需手写。笔记包的 `corilo-notes` CLI 只接受单笔记 overlay，不用于解析多插件组合。原 Linux 用户服务示例的单笔记启动命令也不会自动加载待办；不要悄悄替换已运行实例的配置。常驻时继续固定 `DSH_HOME`、`DSH_AGENTS_HOME`、工作目录与端口，参考笔记包的 Linux 指南。
 
 ## 页面与可靠性
 
+- 首页只填标题即可连续新增，成功后清空并聚焦输入框。列表行可直接完成/撤销，完成后的提示也提供撤销入口；行操作不覆盖其他待办的编辑草稿。
 - 列表按未完成、已完成、已取消或全部筛选，支持标题/详情的字面搜索及每页 100 条的继续加载。SQLite 原生搜索对 ASCII 英文字母忽略大小写，中文逐字匹配。
 - 修改使用读取时的整数版本；其他页面已修改时拒绝陈旧写入，并保留编辑内容供核对。完成、取消和重新打开也遵循相同版本保护。
 - 每个写请求携带 UUID v4。SQLite 将变更和幂等回执放在一个事务中；丢失响应后明确重试同一个请求不会重复创建。相同 UUID 改成其他内容会被拒绝。原请求重试返回当时的提交结果，后续修改须重新读取当前版本。
-- 页面保留当前面板内存草稿；刷新/离开时对未保存内容给出提示。首版未将待办编辑内容持久化到 IndexedDB，关闭或崩溃仍可能丢失未保存输入。网络结果未知时保留原请求，核对或重试后再继续编辑，不自动重发。
+- 页面复用 idb 保护详细编辑、快速输入和结果未知的完整请求。刷新后明确恢复/丢弃，保留原版本和 UUID，不自动重发；多标签通过事务与内容校验保护较新草稿，按持久 SQLite 身份隔离。浏览器副本不等于主机已保存；存储失败明显提示，直接保存仍可用，清除站点数据或更换浏览器来源会失去恢复副本。
 - 关联笔记保存相对 `.md`/`.markdown` 路径，页面显示路径供在笔记“按路径打开”中使用；不验证文件存在、不自动移动笔记，也不承诺重命名后自动修复关联。
 
 ## 存储与资料带走
@@ -77,7 +82,7 @@ cd plugins/todos
 npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.1.0.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
+收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.2.0.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
 
 源码验证：
 

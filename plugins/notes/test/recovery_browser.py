@@ -54,6 +54,8 @@ def main():
                     panel.get_by_role('button', name='保存笔记', exact=True).click()
                     expect(panel.get_by_role('status')).to_have_text('已保存')
                     assert note.read_text() == '第二次保存的内容'
+                    if panel.locator('details.corilo-notes-more').get_attribute('open') is None:
+                        panel.get_by_text('更多操作', exact=True).click()
                     panel.get_by_role('button', name='版本历史', exact=True).click()
                     listing = panel.get_by_role('region', name='版本历史列表')
                     first_hash = hashlib.sha256(first_text.encode()).hexdigest()[:8]
@@ -72,6 +74,8 @@ def main():
                     page.get_by_role('button', name='笔记', exact=True).click()
                     panel.get_by_role('button', name='可恢复.md', exact=True).click()
                     expect(body).to_have_value('外部新增内容')
+                    if panel.locator('details.corilo-notes-more').get_attribute('open') is None:
+                        panel.get_by_text('更多操作', exact=True).click()
                     panel.get_by_role('button', name='版本历史', exact=True).click()
                     listing.get_by_role('button').filter(has_text=first_hash).last.click()
                     panel.get_by_role('button', name='恢复此版本', exact=True).click()
