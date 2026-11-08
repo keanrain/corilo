@@ -1,0 +1,48 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { Context } from '@deepseek-ai/cordis';
+import Tools from '@deepseek-ai/dsh-tools';
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
+import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline';
+import * as notes from '../index.mjs';
+
+test('published Cordis and Harness pipeline load notes tools, validate calls and unload registrations', async t => {
+  const root=await mkdtemp(path.join(os.tmpdir(),'corilo-plugin-'));
+  const ctx=new Context();
+  t.after(async()=>{await ctx.fiber.dispose();await rm(root,{recursive:true,force:true});});
+  await ctx.plugin(SystemPrompt);await ctx.plugin(Tools);
+  const fiber=await ctx.plugin(notes,{root});
+  assert.equal(ctx.tools.definitions().length,4);
+  const pipeline=new ToolExecutionPipeline(ctx);
+  let callId=0;
+  const call=async(name,args,signal=new AbortController().signal)=>{
+    const prepared=await pipeline.prepare({callId:String(++callId),name,arguments:args,signal});
+    const dispatched=prepared.kind==='dispatch'?await pipeline.dispatch(prepared.exec):prepared;
+    return pipeline.complete(prepared.exec,dispatched);
+  };
+  const saved=await call('corilo_notes_save',{path:'项目/测试.md',text:'原文',expected:null});
+  assert.equal(saved.isError,false,JSON.stringify(saved));
+  const listed=await call('corilo_notes_list',{});
+  assert.deepEqual(listed.value.items.map(x=>x.path),['项目/测试.md']);
+  const read=await call('corilo_notes_read',{path:'项目/测试.md'});
+  assert.equal(read.value.text,'原文');
+  const updated=await call('corilo_notes_save',{path:read.value.path,text:'更新',expected:read.value.version});
+  assert.equal(updated.isError,false,JSON.stringify(updated));
+  const conflict=await call('corilo_notes_save',{path:read.value.path,text:'不能覆盖',expected:read.value.version});
+  assert.equal(conflict.isError,true);
+  assert.equal(await readFile(path.join(root,read.value.path),'utf8'),'更新');
+  const captured=await call('corilo_notes_capture',{text:'exact\r\nraw words'});
+  assert.equal(await readFile(path.join(root,captured.value.path),'utf8'),'exact\r\nraw words');
+  assert.equal((await call('corilo_notes_read',{path:123})).isError,true);
+  assert.equal((await call('corilo_notes_read',{path:'../private.md'})).isError,true);
+  const abort=new AbortController();abort.abort();
+  assert.equal((await call('corilo_notes_save',{path:'cancelled.md',text:'no',expected:null},abort.signal)).isError,true);
+  const final=await call('corilo_notes_list',{});
+  assert.equal(final.value.items.length,2);
+  await fiber.dispose();
+  assert.equal(ctx.tools.definitions().length,0,'unloading cleans up real registry effects');
+  assert.equal((await call('corilo_notes_list',{})).isError,true);
+});

@@ -1,0 +1,26 @@
+name: Corilo Harness notes plugin
+on:
+  push:
+    paths:
+      - 'plugins/notes/**'
+      - '.github/workflows/notes-plugin.yml'
+  pull_request:
+    paths:
+      - 'plugins/notes/**'
+      - '.github/workflows/notes-plugin.yml'
+permissions:
+  contents: read
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: plugins/notes/package-lock.json
+      - run: npm ci --ignore-scripts
+        working-directory: plugins/notes
+      - run: npm run test:notes

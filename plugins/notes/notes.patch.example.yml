@@ -1,0 +1,6 @@
+# Replace both absolute paths before using this overlay.
+- insert:
+    - id: corilo-notes
+      name: /absolute/path/to/corilo/plugins/notes/index.mjs
+      config:
+        root: /absolute/path/to/knowledge
