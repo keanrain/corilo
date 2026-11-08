@@ -1,0 +1,54 @@
+{
+  "name": "@corilo/dsh-todos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.9.0"
+  },
+  "exports": {
+    ".": "./index.mjs",
+    "./store": "./storage.mjs",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.mjs",
+    "storage.mjs",
+    "api.mjs",
+    "lib/client.js",
+    "README.md",
+    "todos.patch.example.yml",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "build": "node build.mjs",
+    "prepack": "npm run build",
+    "pretest": "npm run build",
+    "test:browser": "python3 test/browser.py"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "3.19.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1",
+    "esbuild": "0.25.12",
+    "uuid": "11.1.0"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-connection"
+      ]
+    }
+  }
+}

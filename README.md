@@ -13,7 +13,9 @@ npm --prefix plugins/notes run build
 npm run test:notes
 ```
 
-插件如何安装到固定 Harness 版本、配置笔记目录以及测试边界，见插件 README。当前产品规则、架构和验收统一见 [设计索引](docs/README.md)。
+个人待办独立包见 [plugins/todos](plugins/todos/README.md)：SQLite 持久化、五个 Agent 工具与 Harness 内待办页面，支持版本/幂等保护及 JSON 导出。日程和通知后续实现。
+
+插件如何安装到固定 Harness 版本、配置资料目录以及测试边界，见各插件 README。当前产品规则、架构和验收统一见 [设计索引](docs/README.md)。
 
 以下是旧应用历史说明和可继续使用的开发命令，不能当作 Harness 插件的运行入口或当前路线。
 

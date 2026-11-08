@@ -1,0 +1,89 @@
+# Corilo 个人待办 for DeepSeek Harness
+
+独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.1.0，目前没有发布到 npm。
+
+页面直接创建、查看、编辑、完成、取消或重新打开待办，不需要模型密钥；Agent 工具使用同一持久化服务。个人待办与 Harness 的 Agent 执行计划分开。首版不包含日期、日历、提醒调度或通知，创建待办不代表安排通知。
+
+## 安装与启动
+
+源码方式，在 Corilo 仓库根目录：
+
+```sh
+npm --prefix plugins/todos ci --ignore-scripts
+npm --prefix plugins/todos run build
+```
+
+按 `todos.patch.example.yml` 创建自己的本地 overlay，把入口和资料目录改为绝对路径。SQLite 使用专用目录，例如 `/absolute/corilo-instance/todos`；不放入 Markdown、笔记历史或 Harness 凭据/会话目录。`notesRoot` 可指定现有知识库，用于拒绝与数据库目录互相嵌套；它不授予额外读写权限。
+
+```sh
+cd plugins/todos
+./node_modules/.bin/dsh web --patch /absolute/todos.patch.yml --no-open --port 3000
+```
+
+沿用 Harness 打印的鉴权访问地址，不分享 token。关闭模型密钥引导即可点击侧栏的待办入口直接使用。模型设置和默认工具权限仍由 Harness 提供；root 不是默认 bash 或文件工具的沙箱。
+
+若要与笔记一起使用，在 Harness 的 overlay 中同时插入两包的绝对入口：
+
+```yaml
+- insert:
+    - id: corilo-notes
+      name: /absolute/corilo-install/node_modules/@corilo/dsh-notes/index.mjs
+      config:
+        root: /absolute/corilo-instance/notes
+        stateRoot: /absolute/corilo-instance/state
+    - id: corilo-todos
+      name: /absolute/corilo-install/node_modules/@corilo/dsh-todos/index.mjs
+      config:
+        root: /absolute/corilo-instance/todos
+        notesRoot: /absolute/corilo-instance/notes
+```
+
+使用固定 Harness 原生启动命令加载这份组合配置。笔记包的 `corilo-notes` CLI 只接受单笔记 overlay，不用于解析多插件组合。原 Linux 用户服务示例的单笔记启动命令也不会自动加载待办；不要悄悄替换已运行实例的配置。常驻时继续固定 `DSH_HOME`、`DSH_AGENTS_HOME`、工作目录与端口，参考笔记包的 Linux 指南。
+
+## 页面与可靠性
+
+- 列表按未完成、已完成、已取消或全部筛选，支持标题/详情的字面搜索及每页 100 条的继续加载。SQLite 原生搜索对 ASCII 英文字母忽略大小写，中文逐字匹配。
+- 修改使用读取时的整数版本；其他页面已修改时拒绝陈旧写入，并保留编辑内容供核对。完成、取消和重新打开也遵循相同版本保护。
+- 每个写请求携带 UUID v4。SQLite 将变更和幂等回执放在一个事务中；丢失响应后明确重试同一个请求不会重复创建。相同 UUID 改成其他内容会被拒绝。原请求重试返回当时的提交结果，后续修改须重新读取当前版本。
+- 页面保留当前面板内存草稿；刷新/离开时对未保存内容给出提示。首版未将待办编辑内容持久化到 IndexedDB，关闭或崩溃仍可能丢失未保存输入。网络结果未知时保留原请求，核对或重试后再继续编辑，不自动重发。
+- 关联笔记保存相对 `.md`/`.markdown` 路径，页面显示路径供在笔记“按路径打开”中使用；不验证文件存在、不自动移动笔记，也不承诺重命名后自动修复关联。
+
+## 存储与资料带走
+
+专用目录包含 `todos.sqlite`，运行时可能有 `-wal` 与 `-shm`。SQLite WAL、FULL 同步和事务负责本地持久化及并发，写锁等待最多 2 秒；默认同一主机本地文件系统，不将未经验证的网络共享目录当工作数据库。未知 schema、危险链接、特殊文件或无关目录内容会拒绝打开，不自动迁移/覆盖已有数据库。
+
+待办含 `id`、`title`、`body`、`notePath`、`status`、`version`、`createdAt` 和 `updatedAt`。标题去掉首尾空白后 1–200 字符，详情最多 20000 字符，关联路径最多 1024 字节。完成/取消保留记录，不作物理删除。请求回执随数据库持久保存，尚未设置自动清理或磁盘配额。
+
+页面和 `corilo_todos_export` 可导出公开 `corilo-todos-v1` JSON，含所有状态的业务记录，最多 10000 条/8 MiB；超限报错，不能把部分导出叫完整。JSON 不含凭据、Harness 会话或幂等回执；首版不提供 JSON 导入，不把它称作等价数据库灾备。
+
+需要备份时停止所有使用该目录的 Harness 实例及外部写入，复用 restic 备份**整个待办资料目录**，恢复到新的空目录后校验并用匹配版本重新打开。不要只复制运行中的主数据库而漏掉 WAL。现有笔记备份仅选择 notes/state，**不会自动包含待办**；笔记 `restore.mjs` 只接受 notes/state，也不能处理三目录组合。待办目录属于新增备份边界，NAS/全实例一致性恢复仍需单独验收。
+
+## Agent 工具
+
+| 工具 | 用途 |
+|---|---|
+| `corilo_todos_list` | 筛选、字面搜索、分页列出个人待办 |
+| `corilo_todos_read` | 读取内容和当前版本 |
+| `corilo_todos_create` | 带请求 UUID 新建待办 |
+| `corilo_todos_update` | 检查版本后修改、完成、取消或重新打开 |
+| `corilo_todos_export` | 导出版本化 JSON |
+
+在 Agent 对话中使用工具仍涉及模型轮次；直接页面操作没有模型请求。调用只在用户明确要求记录/修改个人事项时使用，不把普通讨论或 Agent 执行步骤自动写成个人待办。
+
+## 独立分发与验证
+
+```sh
+cd plugins/todos
+npm pack --pack-destination /absolute/existing/output-directory
+```
+
+收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.1.0.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
+
+源码验证：
+
+```sh
+npm run test:todos
+npm --prefix plugins/todos run test:browser
+```
+
+浏览器共存检查还需已安装、构建 `plugins/notes`；浏览器依赖沿用根目录 `requirements-dev.txt` 和 Chromium。测试使用临时资料与合成凭据，不调用模型。真实模型、物理手机、NAS 与目标设备部署证据分别记录在主技术设计中，不能由工具或 Chromium 测试代替。

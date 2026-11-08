@@ -1,6 +1,6 @@
 # Corilo 可里技术设计
 
-v0.21 · 2026-11-08。用户决定以 DeepSeek Harness 为主体，Corilo 开发笔记、事项/日程插件，优先个人自部署。产品规则唯一来源为 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)。本文后半的 1–17 节是旧云端历史记录，不再定义当前路线。
+v0.22 · 2026-11-08。用户决定以 DeepSeek Harness 为主体，Corilo 开发笔记、事项/日程插件，优先个人自部署。产品规则唯一来源为 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)。本文后半的 1–17 节是旧云端历史记录，不再定义当前路线。
 
 ## 当前架构
 
@@ -8,7 +8,8 @@ v0.21 · 2026-11-08。用户决定以 DeepSeek Harness 为主体，Corilo 开发
 桌面 / 手机浏览器（IndexedDB/idb 保存按知识库隔离的恢复草稿）
     → DeepSeek Harness Web（会话、模型设置、默认 Agent 与工具）
         → Corilo 笔记插件：普通 Markdown、原话保存、版本检查
-        → 后续事项插件：个人 todo/event/reminder，持久调度与通知
+        → Corilo 待办插件：个人 todo、SQLite、版本/幂等保护
+        → 后续日程/提醒：event/reminder、持久调度与通知
         → 后续记忆插件：来源、纠正、遗忘
 常开主机本地 Markdown 工作目录 + Harness 自有状态
     + 知识库外的 Corilo stateRoot/history.git（本机历史/回收站）
@@ -31,7 +32,7 @@ v0.21 · 2026-11-08。用户决定以 DeepSeek Harness 为主体，Corilo 开发
 2. 已增加 Harness 内笔记页面：列表/文件名搜索、阅读、编辑、原话保存、失败/冲突草稿保留；真实发布版 Harness + Chromium 已验证。
 3. 已补持久草稿、Git 历史/回收站与独立分发，v0.19 再补大库分页、ripgrep 正文搜索、草稿交接、历史批读与安全维护。后续编辑预览继续优先复用 Harness 组件或成熟 Markdown 编辑器，不另造模型管理。
 4. 验证个人主机启动、远程鉴权、手机跨端、真实 DeepSeek 与 NAS/restic 备份恢复；硬件与通知渠道未定，未经授权不开通服务。
-5. 实现个人事项持久服务/UI/工具，优先 SQLite、成熟时区/ICS 库，再选择持久调度与通知渠道；日程和提醒仍未实现。
+5. 已实现独立个人待办持久服务/UI/工具（Node SQLite），日期、日程/ICS 和提醒仍未实现；后续优先成熟时区/ICS 库，再选择持久调度与通知渠道。
 6. 增加可追溯记忆与完整资料包，先复用全文检索，按需求再评估 sqlite-vec，避免提前引入独立向量平台。
 
 首轮工具和文件检查不能算页面、手机、供应商或 NAS 验收。当前单用户不需要先实现旧平台的多租户计费，但仍需对实际服务的资源、默认工具范围和网络访问进行部署配置与验证。
@@ -133,6 +134,21 @@ CI 安装 restic 并设置 CORILO_REQUIRE_RESTIC=1，工具缺失必须失败，
 最终验证：37 项插件 Node 检查通过，包含真实 restic 演练；原有 CLI 分发 fixture 改用独立临时原生 home 后，其 4 项和新的部署预检共 5 项复跑通过。8 套插件 Chromium 检查通过（6 套真实 Harness 流程与 2 套运行时/IndexedDB 检查），旧应用 59 项 Node 检查通过。独立包实际仅装生产依赖、启动/回退检查通过，包内包含 Linux 指南和用户服务示例。独立只读复核未发现阻塞项；远端 Actions 尚未确认。
 
 指南继续保持默认回环监听。Tailscale/远程 TLS、真实手机、NAS 及完整实例恢复没有由本轮交付自动验收；笔记级备份仍只覆盖 notes/state，不包含 runtime 会话/凭据及浏览器草稿。
+
+## v0.22 最小个人待办（todos v0.1.0，2026-11-08）
+
+新增独立 `plugins/todos` 包，不修改既有笔记/旧应用资料。复用固定 Harness 0.2.2-rc.1、Cordis、宿主 React/Store 与 Node >=24.9 的 node:sqlite；不另造 Agent loop、ORM、调度器或模型配置。Node SQLite API 仍有实验性提示，运行时升级仍须实际验证。
+
+- **业务闭环**：用户个人待办标题、详情、关联 Markdown 路径及 open/done/cancelled，支持创建/查看/修改/完成/取消/重新打开。关联只记录相对路径，用户在笔记“按路径打开”中使用，不读取笔记正文或自动修复重命名。不是 Harness 内部执行计划，也不声称通知已安排。
+- **同源 UI 与工具**：页面通过公开 slots/lazy-CJS bundle 接入；`corilo_todos_list/read/create/update/export` 与六个 Connection POST 路由闭包共用同一个 TodoStore。身份来自持久 DB UUID；页面除 identity 外必须带匹配的 x-corilo-todos-id，沿用原生认证/Host/Origin/owner 边界。API 不暴露 SQLite/文件诊断，卸载关闭数据库。
+- **SQLite 原子语义**：独立数据根仅含 todos.sqlite 及 WAL/SHM，未知 schema/链接/特殊文件拒绝。application_id/user_version 与精确 schema、启动 quick_check 校验；WAL、synchronous=FULL、BEGIN IMMEDIATE 内检查整数版本并同时写入待办与幂等回执。提交前取消回滚，提交后不假装撤回。请求 UUID 重试返回原结果，异 payload 冲突；回执不自动过期。同步 SQLite 的 busy 上限 2 秒可能短暂占用宿主线程，不承诺任意外部文件编辑事务。
+- **边界与性能**：100 项 keyset 页、筛选/库身份绑定游标、标题/详情字面搜索；SQLite lower 只提供 ASCII 大小写折叠，中文逐字匹配。导出按一个只读事务遍历，10000 项/8 MiB 超限明确失败。Unicode 用 Node isWellFormed 拒绝未配对代理项，避免回执与持久值不一致。独立只读 review 在 Node24/Linux 临时库 10100 项、约 30 MB 正文的 3 次中位数：未完成首屏约 12 ms、缺失词查询约 52 ms；只作本环境比较，未引入 FTS 服务或硬件性能承诺。
+- **交互可靠性**：未知响应及 todos/503 保留完整请求 UUID 和输入，只允许明确重试同一请求；409 保留编辑内容并提供最新版本核对。正在读取旧列表时保存成功会排队刷新，旧响应结束后自动补读。跨面板内存草稿与离开警告有效，但未加入待办 IndexedDB；刷新/崩溃仍可能丢失未保存内容，不能套用笔记持久草稿承诺。JSON 下载是公开当前业务记录，不包含回执，尚无 JSON 导入。
+- **分发与备份范围**：独立锁文件及 tarball 包含 host、构建客户端、示例配置和许可，不含测试/用户资料。可与笔记放入原生 Harness 组合 overlay；笔记单插件 CLI 不解析该组合。新增 SQLite 目录需要显式加入停写备份；原 notes/state 备份与 restore helper 不会自动涵盖待办，未声称完整实例/NAS恢复。
+
+实际验证：12 项待办 Node 测试通过（9 项真实 SQLite 存储边界、真实 Cordis pipeline、真实发布版 Harness boot、仓库外 tarball 仅生产依赖安装/启动）。真实 Harness Chromium 待办流程通过：全生命周期、搜索/筛选、关联笔记与 JSON 下载、两个页面的陈旧版本冲突保留输入、提交后丢响应/503 原 UUID 重试不重复、延迟旧列表期间创建/完成后自动补刷新、认证/Origin/资料库身份与 390px 布局。笔记和待办在同一 Harness 实际共存，笔记可正常保存读取，待办变更/导出不改笔记。独立 review 发现的 Unicode 回执不一致和旧列表竞态均已修复并实测。旧应用 59 项 Node 与三套浏览器回归通过。npm 包干跑共 9 个分发文件，源码测试、依赖目录和用户数据库不在包内。新增独立 CI 工作流，本地通过不代表远端 Actions 已通过。
+
+直接页面操作和合成测试不调用模型；真实 DeepSeek、物理 Android/iPhone、日程/提醒与目标设备部署仍分别验收。本轮对 H08 只交付个人 todo 部分，H09 提醒未覆盖；H20 记录当前待办闭环。
 
 ## 历史实现与证据
 
