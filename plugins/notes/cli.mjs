@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 import path from 'node:path';
 import { constants } from 'node:fs';
-import { access, lstat, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
+import { access, lstat, mkdir, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseDocument } from 'yaml';
+import { NotesStore } from './storage.mjs';
 
 const packageRoot = fileURLToPath(new URL('./', import.meta.url));
 const require = createRequire(import.meta.url);
 const pinnedHarness = '0.2.2-rc.1';
 const fail = message => { throw new Error(message); };
+const quoteArgument = value => process.platform === 'win32' ? `'${value.replaceAll("'", "''")}'` : `'${value.replaceAll("'", "'\\''")}'`;
 const within = (parent, child) => child === parent || child.startsWith(parent.endsWith(path.sep) ? parent : parent + path.sep);
 
 export function supportedNode(version) {
@@ -126,12 +128,30 @@ export async function initialize({ root, stateRoot, configPath }) {
   return resolved;
 }
 
+export async function initializeDirectory(input) {
+  await runtime(); await gitVersion();
+  const instance = await directory(input, 'Instance directory');
+  await mkdir(instance, { recursive: true, mode: 0o700 });
+  return initialize({ root: path.join(instance, 'notes'), stateRoot: path.join(instance, 'state'), configPath: path.join(instance, 'notes.patch.json') });
+}
+
 export async function inspect(configPath) {
   const installed = await runtime();
   const resolved = await readConfig(configPath);
   const git = await gitVersion();
   const state = await stateBinding(resolved.root, resolved.stateRoot);
   return { ...resolved, node: installed.node, harness: installed.harness, git, state, client: 'built', entry: installed.entry };
+}
+
+export async function maintain(configPath) {
+  const checked = await inspect(configPath);
+  if (checked.state !== 'bound') fail('History has not been initialized. Start this instance before maintaining it.');
+  for (const input of [checked.root, path.join(checked.stateRoot, 'history.git')]) {
+    const stat = await lstat(input).catch(() => null);
+    if (!stat?.isDirectory() || stat.isSymbolicLink()) fail('Existing notes and recovery directories are required; maintenance creates no library.');
+  }
+  const store = await NotesStore.open(checked.root, {}, { stateRoot: checked.stateRoot });
+  return store.maintain();
 }
 
 async function start(configPath, port) {
@@ -155,12 +175,12 @@ async function start(configPath, port) {
   }
 }
 
-const usage = `Corilo Notes (Harness ${pinnedHarness})\n\ncorilo-notes init --root /absolute/notes --state-root /absolute/state --config /absolute/notes.patch.json\ncorilo-notes check --config /absolute/notes.patch.json\ncorilo-notes start --config /absolute/notes.patch.json [--port 3000]\n\ninit creates only the config and never overwrites it. Keep notes, state and config separate.\nstart runs the pinned Harness Web launcher; use its authenticated URL. No model key is needed for direct notes.\n`;
+const usage = `Corilo 可里笔记 (Harness ${pinnedHarness})\n\n无需模型密钥即可直接记笔记。最短初始化：\ncorilo-notes init --directory /absolute/corilo-instance\ncorilo-notes check --config /absolute/corilo-instance/notes.patch.json\ncorilo-notes start --config /absolute/corilo-instance/notes.patch.json [--port 3000]\n\n已有目录可显式指定：\ncorilo-notes init --root /absolute/notes --state-root /absolute/state --config /absolute/notes.patch.json\n\n停止该实例服务后整理本机历史（保留所有版本）：\ncorilo-notes maintain --config /absolute/corilo-instance/notes.patch.json\n\n初始化不覆盖配置、不迁移笔记。启动后使用 Harness 打印的鉴权地址；首次提示中的 API Key 配置可关闭。\n`;
 
 export async function main(args) {
   if (!args.length || args.length === 1 && ['--help', '-h'].includes(args[0])) { process.stdout.write(usage); return; }
   const [command, ...rest] = args;
-  const allowed = command === 'init' ? ['--root', '--state-root', '--config'] : command === 'start' ? ['--config', '--port'] : command === 'check' ? ['--config'] : [];
+  const allowed = command === 'init' ? ['--directory', '--root', '--state-root', '--config'] : command === 'start' ? ['--config', '--port'] : ['check', 'maintain'].includes(command) ? ['--config'] : [];
   if (!allowed.length) fail('Unknown command. Use corilo-notes --help.');
   const options = {};
   for (let i = 0; i < rest.length; i += 2) {
@@ -168,15 +188,23 @@ export async function main(args) {
     if (!allowed.includes(key) || key in options || !value || value.startsWith('--')) fail('Unknown, duplicate or missing option. Use corilo-notes --help.');
     options[key] = value;
   }
+  if (command === 'init' && options['--directory']) {
+    if (['--root', '--state-root', '--config'].some(key => options[key])) fail('--directory cannot be combined with explicit root/state/config options.');
+    const result = await initializeDirectory(options['--directory']);
+    process.stdout.write(`已创建配置：${result.configPath}\n直接笔记无需模型密钥。下一步：corilo-notes start --config ${quoteArgument(result.configPath)}\n`);
+    return;
+  }
   if (!options['--config']) fail('--config is required and must be an absolute path.');
   if (options['--port'] !== undefined && (!/^\d+$/.test(options['--port']) || Number(options['--port']) > 65535)) fail('--port must be an integer from 0 through 65535.');
   if (command === 'init') {
     if (!options['--root'] || !options['--state-root']) fail('init requires --root and --state-root absolute paths.');
     const result = await initialize({ root: options['--root'], stateRoot: options['--state-root'], configPath: options['--config'] });
-    process.stdout.write(`Created notes overlay: ${result.configPath}\nRun corilo-notes check --config ${JSON.stringify(result.configPath)} before starting.\n`);
+    process.stdout.write(`Created notes overlay: ${result.configPath}\nRun corilo-notes check --config ${quoteArgument(result.configPath)} before starting.\n`);
   } else if (command === 'check') {
     const { entry, ...report } = await inspect(options['--config']);
     process.stdout.write(JSON.stringify({ ok: true, ...report }, null, 2) + '\n');
+  } else if (command === 'maintain') {
+    process.stdout.write(JSON.stringify({ ok: true, ...await maintain(options['--config']) }, null, 2) + '\n');
   } else await start(options['--config'], options['--port']);
 }
 

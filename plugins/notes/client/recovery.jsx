@@ -46,7 +46,12 @@ export function RecoveryPanel({ call, draft, onBegin, onRestored, onTrashed, onF
           {item.time} · {operations[item.operation]} · {item.version.slice(0, 8)}
         </button>
       </li>)}</ul>
-      {history.hasMore && <p>仅显示最近的检查点，较早记录仍保留在恢复目录。</p>}
+      {history.hasMore && <button disabled={locked} onClick={() => perform(async () => {
+        const page = await call('history', { path: draft.path, cursor: history.nextCursor });
+        const items = new Map(history.items.map(item => [item.revision, item]));
+        for (const item of page.items) items.set(item.revision, item);
+        setHistory({ ...page, items: [...items.values()] });
+      })}>加载更早版本</button>}
     </section>}
     {preview && <section aria-label="历史版本预览">
       <label>历史正文<textarea aria-label="历史正文" readOnly value={preview.text} /></label>

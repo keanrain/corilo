@@ -150,8 +150,9 @@ def main():
                         assert result['ok'] is False and result['error']['code'] == 'notes/400'
                     invalid = context.request.post(origin + '/api/corilo-notes/save', data={'path': 'existing.md', 'text': 'invalid', 'expected': ['a' * 64]}).json()
                     assert invalid['ok'] is False and invalid['error']['code'] == 'notes/400'
-                    expect(panel.get_by_role('textbox', name='搜索文件名')).to_be_visible()
-                    panel.get_by_role('textbox', name='搜索文件名').fill('连接测试')
+                    expect(panel.get_by_role('textbox', name='搜索笔记')).to_be_visible()
+                    panel.get_by_role('textbox', name='搜索笔记').fill('连接测试')
+                    panel.get_by_role('button', name='搜索', exact=True).click()
                     expect(panel.get_by_role('button', name='已有笔记.md', exact=True)).to_have_count(0)
                     expect(panel.get_by_role('button', name='连接测试.md', exact=True)).to_be_visible()
                     artifact_dir = os.environ.get('CORILO_BROWSER_ARTIFACT_DIR')

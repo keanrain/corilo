@@ -7,7 +7,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { initialize, inspect } from '../cli.mjs';
+import { initialize, initializeDirectory, inspect, maintain } from '../cli.mjs';
+import { NotesStore } from '../storage.mjs';
 
 const exec = promisify(execFile);
 const packageRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -38,6 +39,26 @@ test('CLI creates a private reviewable overlay without touching notes and reject
   await assert.rejects(inspect(configPath), /different notes root/);
 });
 
+test('single-directory setup preserves existing configuration and maintenance preserves real notes/history', async t => {
+  const base = await mkdtemp(path.join(os.tmpdir(), 'corilo-simple-setup-'));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const instance = path.join(base, 'instance');
+  await exec(process.execPath, [path.join(packageRoot, 'cli.mjs'), 'init', '--directory', instance]);
+  const result = await inspect(path.join(instance, 'notes.patch.json'));
+  assert.equal(result.root, path.join(instance, 'notes'));
+  const original = await readFile(result.configPath, 'utf8');
+  await assert.rejects(access(result.root), { code: 'ENOENT' });
+  await assert.rejects(maintain(result.configPath), /not been initialized/);
+  await assert.rejects(initializeDirectory(path.join(base, 'instance')), /already exists/);
+  assert.equal(await readFile(result.configPath, 'utf8'), original);
+  const store = await NotesStore.open(result.root, {}, { stateRoot: result.stateRoot });
+  await store.save({ path: 'keep.md', text: 'all versions remain', expected: null });
+  const before = await store.history('keep.md');
+  assert.deepEqual(await maintain(result.configPath), { packed: true, historyPruned: false });
+  assert.deepEqual(await store.history('keep.md'), before);
+  assert.equal((await store.read('keep.md')).text, 'all versions remain');
+});
+
 test('npm tarball installs outside the checkout with production dependencies and its CLI boots published Harness', { timeout: 180000 }, async t => {
   const base = await mkdtemp(path.join(os.tmpdir(), 'corilo-distribution-'));
   let child;
@@ -52,7 +73,7 @@ test('npm tarball installs outside the checkout with production dependencies and
   const packed = await exec('npm', ['pack', '--json', '--pack-destination', base], { cwd: packageRoot, env, maxBuffer: 8 * 1024 * 1024 });
   const report = JSON.parse(packed.stdout)[0];
   const files = report.files.map(file => file.path);
-  for (const file of ['cli.mjs', 'index.mjs', 'api.mjs', 'storage.mjs', 'history.mjs', 'recovery-tools.mjs', 'lib/client.js', 'LICENSE', 'THIRD_PARTY_NOTICES.md']) assert.ok(files.includes(file), `Missing runtime file: ${file}`);
+  for (const file of ['cli.mjs', 'index.mjs', 'api.mjs', 'storage.mjs', 'library.mjs', 'history.mjs', 'recovery-tools.mjs', 'lib/client.js', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'QUICKSTART.zh-CN.md']) assert.ok(files.includes(file), `Missing runtime file: ${file}`);
   assert.ok(files.every(file => !/^(client\/|test\/|node_modules\/|\.env|.*\.patch\.json$)/.test(file)), 'Distribution excludes sources/tests/user configs');
   const installRoot = path.join(base, 'independent-install');
   await mkdir(installRoot);
@@ -92,4 +113,16 @@ test('npm tarball installs outside the checkout with production dependencies and
   child.kill('SIGTERM');
   const result = await Promise.race([exited, new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error('Installed launcher did not stop')), 10000); timer.unref(); })]);
   assert.equal(result.code, 0, 'CLI forwards shutdown to Harness cleanly');
+  // The packaged ripgrep optional binary must work even with install scripts
+  // disabled. Search the real installed store, not a source-tree dependency.
+  const proof = await exec(process.execPath, ['--input-type=module', '-e', `
+    import {pathToFileURL} from 'node:url';
+    const {NotesStore}=await import(pathToFileURL(process.argv[1]));
+    const store=await NotesStore.open(process.argv[2],{}, {stateRoot:process.argv[3]});
+    await store.capture('独立安装的蓝鲸正文');
+    console.log(JSON.stringify(await store.search({query:'蓝鲸'})));
+  `, path.join(installRoot, 'node_modules/@corilo/dsh-notes/storage.mjs'), root, state], { cwd: installRoot, env });
+  assert.ok(JSON.parse(proof.stdout).items.some(item => item.kind === 'content' && item.text.includes('蓝鲸')));
+  const compacted = await exec(process.execPath, [cli, 'maintain', '--config', config], { cwd: installRoot, env });
+  assert.equal(JSON.parse(compacted.stdout).historyPruned, false);
 });

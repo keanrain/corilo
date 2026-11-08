@@ -25,7 +25,7 @@ const check = signal => signal?.throwIfAborted();
 export function noteTools(store) {
   return [
     defineTool({
-      name: 'corilo_notes_list', description: 'List Markdown notes and their current versions. A bounded full scan fails rather than silently truncates.',
+      name: 'corilo_notes_list', description: 'Legacy complete list with content versions, bounded to 2000 entries and 8 MiB. Prefer corilo_notes_browse for large libraries; read a note before editing.',
       parameters: {},
       output: output({ type: 'object', additionalProperties: false, properties: {
         items: { type: 'array', required: true, items: { type: 'object', additionalProperties: false, properties: {
@@ -33,6 +33,17 @@ export function noteTools(store) {
         } } },
       } }),
       async execute(_args, exec) { check(exec.signal); return store.list(); },
+    }),
+    defineTool({
+      name: 'corilo_notes_browse', description: 'Browse Markdown paths and sizes without reading every body. Results are paginated; pass nextCursor as cursor to continue. Optional query filters filenames.',
+      parameters: { cursor: { type: 'string' }, query: { type: 'string' } },
+      output: output({ type: 'object', additionalProperties: true }),
+      async execute(args, exec) { check(exec.signal); return store.browse({ ...args, signal: exec.signal }); },
+    }),
+    defineTool({
+      name: 'corilo_notes_search', description: 'Search literal words in Markdown filenames and content using ripgrep. Results include snippets and line numbers; truncated=true means there are additional matches. Never changes notes.',
+      parameters: { query: string }, output: output({ type: 'object', additionalProperties: true }),
+      async execute(args, exec) { check(exec.signal); return store.search({ ...args, signal: exec.signal }); },
     }),
     defineTool({
       name: 'corilo_notes_read', description: 'Read a Markdown note and its content version before editing it.',

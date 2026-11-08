@@ -1,6 +1,6 @@
 {
   "name": "@corilo/dsh-notes",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -24,14 +24,16 @@
     "history.mjs",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
-    "recovery-tools.mjs"
+    "recovery-tools.mjs",
+    "library.mjs",
+    "QUICKSTART.zh-CN.md"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "build": "node build.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test:browser": "python3 test/browser_capabilities.py && python3 test/browser.py && python3 test/drafts_browser.py && python3 test/recovery_browser.py",
+    "test:browser": "python3 test/browser_capabilities.py && python3 test/browser.py && python3 test/drafts_browser.py && python3 test/draft_stash_browser.py && python3 test/recovery_browser.py && python3 test/library_browser.py",
     "test:distribution": "node --test test/distribution.test.mjs",
     "benchmark": "node test/benchmark.mjs"
   },
@@ -39,6 +41,7 @@
     "@deepseek-ai/dsh": "0.2.2-rc.1",
     "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
     "@deepseek-ai/schemastery": "3.19.0",
+    "@vscode/ripgrep": "1.18.0",
     "idb": "8.0.3",
     "yaml": "2.9.1"
   },

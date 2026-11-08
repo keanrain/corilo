@@ -22,6 +22,8 @@ try {
  async function measure(scale){
   const row={scale,stateEntries:await countEntries(store.recovery.stateRoot),operations:[]};
   row.operations.push(await timed('list 201 notes / 800KiB',()=>store.list()));
+  row.operations.push(await timed('browse metadata page100',()=>store.browse()));
+  row.operations.push(await timed('literal body search <=100 results',()=>store.search({query:'a'})));
   row.operations.push(await timed('read small note',()=>store.read('bench.md')));
   row.operations.push(await timed('save changed note',async i=>{const n=await store.read('bench.md');return store.save({path:n.path,text:`${scale}-v${i}`,expected:n.version})}));
   row.operations.push(await timed('history latest100',()=>store.history(fixture.path)));

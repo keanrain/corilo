@@ -27,6 +27,11 @@
 .corilo-notes-recovery textarea { min-height: 160px; resize: vertical; }
 .corilo-notes-trash-item { margin: 14px 0; padding: 12px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; }
 .corilo-notes-trash-item button { margin-top: 10px; }
+.corilo-notes-search-snippet { font-size: 13px; opacity: .8; overflow-wrap: anywhere; }
+.corilo-notes-direct { margin-top: 18px; }
+.corilo-notes-direct summary, .corilo-notes-drafts summary { cursor: pointer; padding-block: 8px; }
+.corilo-notes-direct form { display: flex; flex-direction: column; gap: 8px; }
+.corilo-notes-drafts details textarea { min-height: 140px; resize: vertical; }
 .corilo-notes-drafts { border: 1px solid var(--dsw-alias-border-l2, currentColor); border-radius: 8px; padding: 0 12px; margin-top: 16px; }
 .corilo-notes-drafts ul { max-height: 220px; }
 .corilo-notes-drafts li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }

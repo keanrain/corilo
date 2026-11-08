@@ -38,6 +38,7 @@ export function createDraftRecovery(identity) {
     return queue;
   };
   const persist = draft => {
+    if (disposed) return;
     current = snapshotDraft(draft);
     saving = draft.status === 'saving';
     const next = ++revision;
@@ -70,6 +71,7 @@ export function createDraftRecovery(identity) {
     opening = (async () => {
       try {
         const result = await identity();
+        if (disposed) return;
         if (typeof result.id !== 'string' || !result.id) throw new Error('Missing library identity');
         if (libraryId && result.id !== libraryId) {
           publish({ ready: true, rootChanged: true, error: '知识库已切换。当前草稿仍属于原知识库，请重新加载页面后操作。' });
@@ -84,6 +86,7 @@ export function createDraftRecovery(identity) {
           blocking() { database?.close(); database = undefined; unavailable(); },
           terminated() { database = undefined; unavailable(); },
         });
+        if (disposed) { database.close(); database = undefined; return; }
         const records = await database.getAllFromIndex('drafts', 'libraryId', libraryId);
         if (records.some(record => typeof record.id !== 'string' || !Number.isFinite(record.updatedAt) || !validDraft(record.draft))) throw new Error('Invalid draft record');
         publish({ ready: true, status: 'idle', error: '', recoveryEnabled: Boolean(result.recoveryEnabled), candidates: candidatesOf(records) });
@@ -99,6 +102,46 @@ export function createDraftRecovery(identity) {
     get identity() { return libraryId; },
     start,
     track: persist,
+    async stash(draft) {
+      if (!hasUnsavedDraft(draft)) return null;
+      if (disposed || !database || !libraryId || state.rootChanged || saving || draft.status === 'saving') {
+        throw new Error('草稿尚未安全保留，请先完成当前操作或重试草稿保护。文字仍在编辑器中。');
+      }
+      const value = snapshotDraft(draft);
+      const sources = [...adopted.values()];
+      const record = { id: uuidv4(), libraryId, updatedAt: Date.now(), draft: value };
+      publish({ status: 'pending' });
+      try {
+        await enqueue(async () => {
+          if (disposed || !database || state.rootChanged) throw new Error('Draft storage changed');
+          const tx = database.transaction('drafts', 'readwrite');
+          let records, changed = false;
+          try {
+            // A separate key survives track(fresh()). Both copies move together:
+            // a failed transaction leaves the current-page recovery intact.
+            await tx.store.add(record);
+            await tx.store.delete(pageId);
+            for (const source of sources) {
+              const actual = await tx.store.get(source.id);
+              if (sameRecord(actual, source)) await tx.store.delete(source.id);
+              else if (actual) changed = true;
+            }
+            records = await tx.store.index('libraryId').getAll(libraryId);
+            await tx.done;
+          } catch (error) {
+            try { tx.abort(); } catch {}
+            await tx.done.catch(() => {});
+            throw error;
+          }
+          for (const source of sources) if (adopted.get(source.id) === source) adopted.delete(source.id);
+          if (!disposed) publish({ status: 'stored', candidates: candidatesOf(records), error: changed ? changedMessage : '' });
+        });
+        return record;
+      } catch {
+        if (!disposed) unavailable();
+        throw new Error('未能保留草稿，文字仍在编辑器中。请重试，或先保存到文件。');
+      }
+    },
     needsLeaveWarning: () => current && (hasUnsavedDraft(current) || saving),
     libraryChanged() { publish({ ready: true, rootChanged: true, error: '知识库已切换。当前草稿仍属于原知识库，请重新加载页面后操作。' }); },
     adopt(record, draft) {

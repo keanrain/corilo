@@ -3,6 +3,7 @@ import * as fs from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
 import { NoteHistory } from './history.mjs';
+import { listPage, searchNotes } from './library.mjs';
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -122,6 +123,8 @@ export class NotesStore {
       return { items };
     });
   }
+  browse(options = {}) { return this.serial(() => listPage(this, options)); }
+  search(options = {}) { return this.serial(() => searchNotes(this, options)); }
   save({ path: input, text, expected, signal } = {}) {
     return this.serial(() => this.write(input, text, expected, signal));
   }
@@ -178,9 +181,10 @@ export class NotesStore {
     if (!this.recovery) throw fail(400, '历史与回收站尚未配置');
     return this.recovery;
   }
-  history(input) {
-    return this.serial(async () => { this.parts(input); return this.requireRecovery().history(input); });
+  history(input, options = {}) {
+    return this.serial(async () => { this.parts(input); return this.requireRecovery().history(input, options); });
   }
+  maintain() { return this.serial(() => this.requireRecovery().maintain()); }
   readRevision(input, revision) {
     return this.serial(async () => { this.parts(input); return this.requireRecovery().read(input, revision); });
   }

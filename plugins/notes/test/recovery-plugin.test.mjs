@@ -16,7 +16,7 @@ test('published Harness tools share versioned Git recovery, trash and restore', 
   t.after(async () => { await ctx.fiber.dispose(); await rm(temporary, { recursive: true, force: true }); });
   await ctx.plugin(SystemPrompt); await ctx.plugin(Tools);
   const fiber = await ctx.plugin(notes, { root, stateRoot });
-  assert.equal(ctx.tools.definitions().length, 10);
+  assert.equal(ctx.tools.definitions().length, 12);
   const pipeline = new ToolExecutionPipeline(ctx);
   let id = 0;
   const call = async (suffix, args) => {

@@ -15,7 +15,7 @@ test('published Cordis and Harness pipeline load notes tools, validate calls and
   t.after(async()=>{await ctx.fiber.dispose();await rm(root,{recursive:true,force:true});});
   await ctx.plugin(SystemPrompt);await ctx.plugin(Tools);
   const fiber=await ctx.plugin(notes,{root});
-  assert.equal(ctx.tools.definitions().length,4);
+  assert.equal(ctx.tools.definitions().length,6);
   const pipeline=new ToolExecutionPipeline(ctx);
   let callId=0;
   const call=async(name,args,signal=new AbortController().signal)=>{
@@ -31,6 +31,10 @@ test('published Cordis and Harness pipeline load notes tools, validate calls and
   assert.equal(read.value.text,'原文');
   const updated=await call('corilo_notes_save',{path:read.value.path,text:'更新',expected:read.value.version});
   assert.equal(updated.isError,false,JSON.stringify(updated));
+  const browsed=await call('corilo_notes_browse',{});
+  assert.equal(browsed.isError,false);assert.equal(browsed.value.items[0].path,read.value.path);
+  const searched=await call('corilo_notes_search',{query:'更新'});
+  assert.equal(searched.isError,false);assert.ok(searched.value.items.some(x=>x.path===read.value.path && x.kind==='content'));
   const conflict=await call('corilo_notes_save',{path:read.value.path,text:'不能覆盖',expected:read.value.version});
   assert.equal(conflict.isError,true);
   assert.equal(await readFile(path.join(root,read.value.path),'utf8'),'更新');

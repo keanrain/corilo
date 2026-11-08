@@ -11,6 +11,7 @@ const config = '[core]\n\trepositoryformatversion = 0\n\tfilemode = true\n\tbare
 const MAX_HISTORY = 100;
 const MAX_TRASH_PAGE = 100;
 const TRASH_REF = 'refs/corilo/trash/';
+const MAX_COMMIT_BYTES = 8192;
 
 // A separate bare repository holds immutable blobs/checkpoints. No user worktree,
 // index, Git configuration, remotes or hooks are used or modified.
@@ -101,6 +102,37 @@ export class NoteHistory {
     const raw = (await this.run(['cat-file', 'commit', revision], undefined, 8192)).toString();
     return this.commitMetadata(raw, revision, input);
   }
+  async commits(revisions) {
+    if (!revisions.length) return [];
+    if (revisions.length > MAX_HISTORY + 1 || revisions.some(revision => !oid(revision))) throw fail(400, '历史版本无效');
+    const query = revisions.join('\n') + '\n';
+    // Preflight sizes before asking Git for bodies. Both processes retain the
+    // complete state-directory checks; output and each object remain bounded.
+    const lines = (await this.run(['cat-file', '--batch-check'], query, revisions.length * 128)).toString().trimEnd().split('\n');
+    if (lines.length !== revisions.length) throw fail(400, '历史记录无效');
+    const headers = lines.map((line, index) => {
+      const match = /^([a-f0-9]{40}) commit (0|[1-9][0-9]*)$/.exec(line);
+      if (!match || match[1] !== revisions[index]) throw fail(400, '历史记录无效');
+      const size = Number(match[2]);
+      if (!Number.isSafeInteger(size) || size > MAX_COMMIT_BYTES) throw fail(413, '历史记录超过大小限制');
+      return { line, size };
+    });
+    const limit = headers.reduce((sum, { line, size }) => sum + Buffer.byteLength(line) + size + 2, 0);
+    const bytes = await this.run(['cat-file', '--batch'], query, limit);
+    let offset = 0;
+    const result = headers.map(({ line, size }) => {
+      const header = Buffer.from(line + '\n');
+      if (!bytes.subarray(offset, offset + header.length).equals(header)) throw fail(400, '历史记录无效');
+      offset += header.length;
+      const body = bytes.subarray(offset, offset + size);
+      offset += size;
+      if (body.length !== size || bytes[offset++] !== 10) throw fail(400, '历史记录无效');
+      try { return new TextDecoder('utf-8', { fatal: true }).decode(body); }
+      catch { throw fail(400, '历史记录不是有效 UTF-8'); }
+    });
+    if (offset !== bytes.length) throw fail(400, '历史记录无效');
+    return result;
+  }
   commitMetadata(raw, revision, input) {
     const split = raw.indexOf('\n\n');
     let data;
@@ -118,13 +150,26 @@ export class NoteHistory {
     await this.run(['update-ref', this.ref(input), revision, previous ?? '0'.repeat(40)], undefined, 256);
     return revision;
   }
-  async history(input) {
+  async history(input, { cursor = null } = {}) {
+    if (cursor !== null && !oid(cursor)) throw fail(400, '历史分页位置无效');
     const tip = await this.tip(input);
-    if (!tip) return { items: [], hasMore: false };
-    const revisions = (await this.run(['rev-list', `--max-count=${MAX_HISTORY + 1}`, tip], undefined, 8192)).toString().trim().split('\n');
-    const items = [];
-    for (const revision of revisions.slice(0, MAX_HISTORY)) items.push(await this.metadata(revision, input));
-    return { items, hasMore: revisions.length > MAX_HISTORY };
+    if (!tip) {
+      if (cursor !== null) throw fail(404, '历史分页位置不存在');
+      return { items: [], hasMore: false, nextCursor: null };
+    }
+    if (cursor !== null) {
+      try { await this.run(['merge-base', '--is-ancestor', cursor, tip], undefined, 256); }
+      catch (error) { if (error.gitCode === 1 || error.gitCode === 128) throw fail(404, '历史分页位置不存在'); throw error; }
+    }
+    // First-parent traversal matches our append-only checkpoint chain. Keep the
+    // cursor in the batch so its path is checked even at the end of history.
+    const revisions = (await this.run(['rev-list', '--first-parent', `--max-count=${MAX_HISTORY + 1 + (cursor ? 1 : 0)}`, cursor ?? tip], undefined, 8192)).toString().trim().split('\n');
+    const selected = revisions.slice(0, MAX_HISTORY + (cursor ? 1 : 0));
+    const raw = await this.commits(selected);
+    const records = selected.map((revision, index) => this.commitMetadata(raw[index], revision, input));
+    const items = cursor ? records.slice(1) : records;
+    const hasMore = revisions.length > MAX_HISTORY + (cursor ? 1 : 0);
+    return { items, hasMore, nextCursor: hasMore ? items.at(-1).revision : null };
   }
   async read(input, revision) {
     if (!oid(revision)) throw fail(400, '历史版本无效');
@@ -148,8 +193,8 @@ export class NoteHistory {
   }
   async putTrash(revision) { await this.run(['update-ref', `refs/corilo/trash/${revision}`, revision, '0'.repeat(40)], undefined, 256); }
   async removeTrash(revision) { await this.run(['update-ref', '-d', `refs/corilo/trash/${revision}`, revision], undefined, 256); }
-  async trashMetadata(id) {
-    const raw = (await this.run(['cat-file', 'commit', id], undefined, 8192)).toString();
+  async trashMetadata(id, raw = undefined) {
+    raw ??= (await this.run(['cat-file', 'commit', id], undefined, 8192)).toString();
     let data; try { data = JSON.parse(raw.slice(raw.indexOf('\n\n') + 2)); } catch { throw fail(400, '回收站记录无效'); }
     if (!data || typeof data.path !== 'string') throw fail(400, '回收站记录无效');
     const item = this.commitMetadata(raw, id, data.path);
@@ -170,14 +215,36 @@ export class NoteHistory {
     if (!patterns.length) return { items: [], hasMore: false, nextCursor: null };
     const refs = (await this.run(['for-each-ref', '--sort=refname', '--format=%(refname) %(objectname)', `--count=${MAX_TRASH_PAGE + 1}`, ...patterns], undefined, 16384)).toString().trim();
     const entries = refs ? refs.split('\n') : [];
-    const result = [];
-    for (const entry of entries.slice(0, MAX_TRASH_PAGE)) {
-      const [ref, target] = entry.split(' '), id = ref.slice(TRASH_REF.length);
-      if (!oid(id) || target !== id) throw fail(400, '回收站记录无效');
-      result.push(await this.trashMetadata(id));
-    }
+    const ids = entries.slice(0, MAX_TRASH_PAGE).map(entry => {
+      const match = /^refs\/corilo\/trash\/([a-f0-9]{40}) ([a-f0-9]{40})$/.exec(entry);
+      if (!match || match[1] !== match[2]) throw fail(400, '回收站记录无效');
+      return match[1];
+    });
+    const raw = await this.commits(ids);
+    const result = await Promise.all(ids.map((id, index) => this.trashMetadata(id, raw[index])));
     const hasMore = entries.length > MAX_TRASH_PAGE;
     return { items: result, hasMore, nextCursor: hasMore ? result.at(-1).id : null };
+  }
+  async maintain() {
+    // Object headers alone cannot prove that packed bodies are readable. Check
+    // every pack before any mutation and again before removing loose copies.
+    await this.run(['fsck', '--full', '--no-dangling'], undefined, 8192);
+    const inventory = async () => ({
+      objects: await this.run(['cat-file', '--batch-all-objects', '--batch-check'], undefined, 8 * 1024 * 1024),
+      refs: await this.run(['for-each-ref', '--format=%(refname) %(objectname)'], undefined, 8 * 1024 * 1024),
+    });
+    const before = await inventory();
+    // No -d, gc, object pruning or expiry: unreachable objects and old packs
+    // survive. prune-packed only removes loose representations already in a
+    // pack, never logical objects. Git's locks protect its native operations;
+    // callers must also serialize maintenance with this instance's requests.
+    await this.run(['repack', '-a'], undefined, 1024);
+    await this.run(['fsck', '--full', '--no-dangling'], undefined, 8192);
+    await this.run(['prune-packed'], undefined, 1024);
+    await this.run(['pack-refs', '--all'], undefined, 1024);
+    const after = await inventory();
+    if (!before.objects.equals(after.objects) || !before.refs.equals(after.refs)) throw fail(503, '维护前后历史记录不一致，请检查恢复目录；不要自动重试');
+    return { packed: true, historyPruned: false };
   }
   async readTrash(id) {
     if (!oid(id)) throw fail(400, '回收站记录无效');
