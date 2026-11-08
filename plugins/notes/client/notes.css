@@ -1,0 +1,30 @@
+.corilo-notes { color: var(--dsw-alias-label-primary, inherit); background: var(--dsw-alias-bg-base, transparent); height: 100%; min-width: 0; overflow: auto; padding: 24px; padding-inline-start: max(24px, var(--dsh-frame-leading-clearance, 0px)); box-sizing: border-box; font: inherit; }
+.corilo-notes * { box-sizing: border-box; }
+.corilo-notes header, .corilo-notes-save, .corilo-notes-list-tools { display: flex; align-items: center; gap: 12px; justify-content: space-between; }
+.corilo-notes h1 { font-size: 24px; margin: 0; font-weight: 600; }
+.corilo-notes p { margin: 12px 0; line-height: 1.6; }
+.corilo-notes button, .corilo-notes input, .corilo-notes textarea { font: inherit; color: inherit; border: 1px solid var(--dsw-alias-border-l2, currentColor); border-radius: 8px; background: transparent; padding: 9px 12px; }
+.corilo-notes button { cursor: pointer; }
+.corilo-notes button:hover { background: var(--dsw-alias-interactive-bg-hover, transparent); }
+.corilo-notes button:disabled { opacity: .45; cursor: default; }
+.corilo-notes :focus-visible { outline: 2px solid var(--dsw-alias-label-primary, currentColor); outline-offset: 2px; }
+.corilo-notes-grid { display: grid; grid-template-columns: minmax(160px, 230px) minmax(0, 1fr); gap: 24px; margin-top: 20px; }
+.corilo-notes aside { min-width: 0; }
+.corilo-notes-list-tools { flex-wrap: wrap; }
+.corilo-notes input, .corilo-notes textarea { width: 100%; min-width: 0; }
+.corilo-notes ul { list-style: none; padding: 0; max-height: 65vh; overflow: auto; }
+.corilo-notes li button { width: 100%; text-align: start; overflow-wrap: anywhere; margin-bottom: 6px; }
+.corilo-notes [aria-current="page"] { font-weight: 600; border-width: 2px; }
+.corilo-notes-editor { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.corilo-notes label { display: flex; flex-direction: column; gap: 8px; }
+.corilo-notes-body textarea { min-height: 45vh; resize: vertical; line-height: 1.7; }
+.corilo-notes-hint { opacity: .65; font-size: 13px; }
+.corilo-notes-conflict button { margin: 4px 8px 4px 0; }
+.corilo-notes-latest textarea { min-height: 160px; resize: vertical; }
+@media (max-width: 700px) {
+  .corilo-notes { padding: 18px; padding-top: 52px; }
+  .corilo-notes-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .corilo-notes ul { max-height: 170px; }
+  .corilo-notes-body textarea { min-height: 36vh; }
+  .corilo-notes button { min-height: 42px; }
+}

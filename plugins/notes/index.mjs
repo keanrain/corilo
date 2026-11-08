@@ -1,6 +1,7 @@
 import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { NotesStore } from './storage.mjs';
+import { registerNotesApi } from './api.mjs';
 
 export const name = 'corilo-notes';
 export const inject = ['tools'];
@@ -17,7 +18,7 @@ const render = (_args, value) => [{ type: 'text', text: JSON.stringify(value) }]
 const output = schema => ({ schema, render });
 const check = signal => signal?.throwIfAborted();
 
-// These tools use the same storage service as the future notes UI. They do not
+// These tools use the same storage service as the notes UI. They do not
 // replace Harness filesystem tools or introduce a new permission/approval layer.
 export function noteTools(store) {
   return [
@@ -57,5 +58,6 @@ export function noteTools(store) {
 export async function apply(ctx, config) {
   const store = await NotesStore.open(config.root);
   for (const tool of noteTools(store)) ctx.tools.register(tool);
+  await ctx.inject(['connection'], scope => { registerNotesApi(scope, store); });
   ctx.logger('corilo-notes').info('Corilo notes tools registered');
 }

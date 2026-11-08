@@ -3,10 +3,12 @@ on:
   push:
     paths:
       - 'plugins/notes/**'
+      - 'requirements-dev.txt'
       - '.github/workflows/notes-plugin.yml'
   pull_request:
     paths:
       - 'plugins/notes/**'
+      - 'requirements-dev.txt'
       - '.github/workflows/notes-plugin.yml'
 permissions:
   contents: read
@@ -24,3 +26,9 @@ jobs:
       - run: npm ci --ignore-scripts
         working-directory: plugins/notes
       - run: npm run test:notes
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-dev.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: npm --prefix plugins/notes run test:browser

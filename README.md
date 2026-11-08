@@ -4,11 +4,12 @@
 
 **2026-11-08 路线调整：** 直接复用 Harness 网页、会话、模型配置和默认 Agent/工具，Corilo 优先开发笔记插件，再做个人待办/日程、可靠提醒和记忆。旧 Pi/Files.md 云端代码保留，不继续作为主应用扩展，也不自动迁移用户资料或凭据。
 
-首个独立包见 [plugins/notes](plugins/notes/README.md)，当前仅交付文件服务和工具接入；完整笔记 Web 页面、日程/提醒、一体化部署、真实模型及 NAS 恢复仍待完成。工具注册不代表第二大脑已交付。
+首个独立包见 [plugins/notes](plugins/notes/README.md)，已交付文件服务、四个工具及 Harness 内笔记页面：列表/文件名搜索、阅读编辑、零模型原话保存、冲突预览/另存和失败草稿保留。已做真实发布版 Harness 的 Chromium 验收；真实手机、日程/提醒、一体化部署、真实模型及 NAS 恢复仍待完成。
 
 ```sh
 # 插件使用独立依赖锁；Node.js >= 24.9.0
 npm --prefix plugins/notes ci --ignore-scripts
+npm --prefix plugins/notes run build
 npm run test:notes
 ```
 

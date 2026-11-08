@@ -9,17 +9,24 @@
   },
   "exports": {
     ".": "./index.mjs",
-    "./store": "./storage.mjs"
+    "./store": "./storage.mjs",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
   },
   "files": [
     "index.mjs",
     "storage.mjs",
+    "api.mjs",
+    "lib/client.js",
     "README.md",
-    "notes.patch.example.yml",
     "notes.patch.example.yml"
   ],
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "build": "node build.mjs",
+    "prepack": "npm run build",
+    "pretest": "npm run build",
+    "test:browser": "python3 test/browser.py"
   },
   "dependencies": {
     "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
@@ -28,6 +35,17 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1"
+    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1",
+    "esbuild": "0.25.12"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-connection"
+      ]
+    }
   }
 }
