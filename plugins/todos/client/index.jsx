@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { defineStore } from '@deepseek-ai/dsh-client-store';
 import { v4 as uuidv4 } from 'uuid';
-import { createTodoDraftRecovery, hasUnsavedTodoDraft, snapshotTodoDraft } from './drafts.mjs';
+import { createTodoDraftRecovery, hasUnsavedTodoDraft, snapshotTodoDraft, restoreTodoDraft } from './drafts.mjs';
 import styles from './todos.css';
 import tokens from './astryx-tokens.css';
 
@@ -73,7 +73,7 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
   async function retainEditor() {
     if (hasPending(getState())) return false;
     if (hasChanges(getState())) {
-      await drafts.stash(getState());
+      await drafts.stash(getState(), { scope: 'editor' });
     }
     return true;
   }
@@ -202,8 +202,11 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
     if (busy) return;
     set({ loading: true, error: '' });
     try {
-      if (hasUnsavedTodoDraft(getState())) await drafts.stash(getState());
-      const recovered = { ...getState(), ...record.draft, editorOpen: Boolean(record.draft.editorOpen || record.draft.pending) };
+      if (record.scope === 'editor') {
+        if (hasChanges(getState())) await drafts.stash(getState(), { scope: 'editor' });
+      } else if (hasUnsavedTodoDraft(getState())) await drafts.stash(getState());
+      const recovered = { ...restoreTodoDraft(getState(), record), latest: null,
+        editorOpen: Boolean(record.draft.editorOpen || record.draft.pending) };
       actions.replace(recovered); drafts.adopt(record, recovered);
     } catch (error) { set({ error: error.message }); }
     finally { set({ loading: false }); }

@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for
+from browser import ROOT, wait_for, manual_saves
 
 
 def main():
@@ -56,6 +56,7 @@ def main():
                         page.get_by_role('button', name='笔记', exact=True).click()
                         panel = page.get_by_role('region', name='Corilo 笔记')
                         expect(panel.get_by_role('textbox', name='笔记正文', exact=True)).to_be_enabled()
+                        manual_saves(panel)
                         return panel
 
                     panel = enter(first=True)

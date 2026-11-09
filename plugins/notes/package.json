@@ -1,6 +1,6 @@
 {
   "name": "@corilo/dsh-notes",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -37,18 +37,20 @@
     "build": "node build.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test:browser": "python3 test/browser_capabilities.py && python3 test/browser.py && python3 test/drafts_browser.py && python3 test/draft_stash_browser.py && python3 test/recovery_browser.py && python3 test/library_browser.py && python3 test/mobile_browser.py && python3 test/restart_browser.py && python3 test/visual_browser.py",
+    "test:browser": "python3 test/browser_capabilities.py && python3 test/browser.py && python3 test/drafts_browser.py && python3 test/draft_stash_browser.py && python3 test/recovery_browser.py && python3 test/library_browser.py && python3 test/mobile_browser.py && python3 test/restart_browser.py && python3 test/visual_browser.py && python3 test/editor_browser.py && python3 test/rename_browser.py",
     "test:distribution": "node --test test/distribution.test.mjs",
     "benchmark": "node test/benchmark.mjs"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-home-paths": "0.2.2-rc.1",
     "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
     "@deepseek-ai/schemastery": "3.19.0",
     "@vscode/ripgrep": "1.18.0",
+    "dompurify": "3.4.17",
     "idb": "8.0.3",
-    "yaml": "2.9.1",
-    "@deepseek-ai/dsh-home-paths": "0.2.2-rc.1"
+    "markdown-it": "15.0.3",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",

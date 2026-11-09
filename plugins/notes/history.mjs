@@ -137,25 +137,35 @@ export class NoteHistory {
     const split = raw.indexOf('\n\n');
     let data;
     try { data = JSON.parse(raw.slice(split + 2)); } catch { throw fail(400, '历史记录无效'); }
-    if (split < 0 || !data || data.format !== 1 || data.path !== input || !/^[a-f0-9]{64}$/.test(data.version) || !['save', 'before', 'trash', 'restore'].includes(data.operation) || typeof data.time !== 'string') throw fail(400, '历史记录无效');
-    return { revision, path: data.path, version: data.version, time: data.time, operation: data.operation };
+    if (split < 0 || !data || data.format !== 1 || data.path !== input || !/^[a-f0-9]{64}$/.test(data.version) || !['save', 'before', 'trash', 'restore', 'rename'].includes(data.operation) || typeof data.time !== 'string') throw fail(400, '历史记录无效');
+    if (data.operation === 'rename' && (typeof data.previousPath !== 'string' || !data.previousPath || !oid(data.previousRevision))) throw fail(400, '重命名历史记录无效');
+    return { revision, path: data.path, version: data.version, time: data.time, operation: data.operation,
+      ...(data.operation === 'rename' ? { previousPath: data.previousPath, previousRevision: data.previousRevision } : {}) };
   }
-  async snapshot(input, text, operation = 'save') {
+  async snapshot(input, text, operation = 'save', extra = {}) {
     const version = digest(Buffer.from(text)), previous = await this.tip(input);
-    if (previous && operation !== 'trash' && (await this.metadata(previous, input)).version === version) return previous;
+    if (previous && !['trash', 'rename'].includes(operation) && (await this.metadata(previous, input)).version === version) return previous;
     const blob = (await this.run(['hash-object', '-w', '--stdin'], Buffer.from(text), 256)).toString().trim();
     const tree = (await this.run(['mktree'], `100644 blob ${blob}\tnote\n`, 256)).toString().trim();
-    const data = { format: 1, path: input, version, time: new Date().toISOString(), operation };
+    const data = { format: 1, path: input, version, time: new Date().toISOString(), operation,
+      ...(operation === 'rename' ? { previousPath: extra.previousPath, previousRevision: extra.previousRevision } : {}) };
     const revision = (await this.run(['commit-tree', tree, ...(previous ? ['-p', previous] : [])], JSON.stringify(data), 256)).toString().trim();
     await this.run(['update-ref', this.ref(input), revision, previous ?? '0'.repeat(40)], undefined, 256);
     return revision;
   }
-  async history(input, { cursor = null } = {}) {
+  async history(input, { cursor = null, at = null } = {}) {
     if (cursor !== null && !oid(cursor)) throw fail(400, '历史分页位置无效');
-    const tip = await this.tip(input);
+    if (at !== null && !oid(at)) throw fail(400, '历史起点无效');
+    let tip = await this.tip(input);
     if (!tip) {
-      if (cursor !== null) throw fail(404, '历史分页位置不存在');
+      if (cursor !== null || at !== null) throw fail(404, '历史分页位置不存在');
       return { items: [], hasMore: false, nextCursor: null };
+    }
+    if (at !== null) {
+      try { await this.run(['merge-base', '--is-ancestor', at, tip], undefined, 256); }
+      catch (error) { if (error.gitCode === 1 || error.gitCode === 128) throw fail(404, '历史起点不存在'); throw error; }
+      await this.metadata(at, input);
+      tip = at;
     }
     if (cursor !== null) {
       try { await this.run(['merge-base', '--is-ancestor', cursor, tip], undefined, 256); }

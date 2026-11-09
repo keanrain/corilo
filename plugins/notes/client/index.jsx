@@ -3,33 +3,49 @@ import { defineStore } from '@deepseek-ai/dsh-client-store';
 import { createDraftRecovery, hasUnsavedDraft } from './drafts.mjs';
 import { RecoveryPanel } from './recovery.jsx';
 import { LibraryPanel } from './library.jsx';
+import { canAutosave, editedDraft, committedDraft, failedDraft } from './autosave.mjs';
+import { MarkdownPreview } from './preview.jsx';
+import { RenameNote } from './rename.jsx';
 import styles from './notes.css';
 import tokens from './astryx-tokens.css';
 
-const fresh = () => ({ path: '', text: '', original: '', expected: null, status: 'clean', error: '', latest: null, notice: '' });
+const fresh = () => ({ path: '', text: '', original: '', expected: null, status: 'clean', error: '', latest: null, notice: '', autosave: 'ready', savingMode: null, renameRequest: null });
 const dirty = hasUnsavedDraft;
 const labels = { clean: '开始记录', dirty: '未保存', saving: '保存中…', saved: '已保存', failed: '保存失败', conflict: '版本冲突' };
 const markdownPath = path => path && !/\.(md|markdown)$/i.test(path) ? `${path}.md` : path;
 
-function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
+function NotesPage({ useStore, actions, call, drafts, usePersistence, getDraft }) {
   const d = useStore(s => s.draft);
   const persistence = usePersistence(s => s);
   const [libraryRevision, setLibraryRevision] = useState(0);
   const [loading, setLoading] = useState(false);
   const [navigationError, setNavigationError] = useState('');
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [composing, setComposing] = useState(false);
+  const autoSaveEnabled = useStore(s => s.autoSaveEnabled);
+  const [renameOpen, setRenameOpen] = useState(() => Boolean(d.renameRequest));
   const [draftsOpen, setDraftsOpen] = useState(() => !window.matchMedia('(max-width: 700px)').matches);
   const page = useRef(null);
   const body = useRef(null);
   const focusBody = () => requestAnimationFrame(() => { body.current?.focus({ preventScroll: true }); });
   const alive = useRef(true);
-  const busy = loading || d.status === 'saving' || !persistence.ready || persistence.rootChanged;
+  const mutation = useRef(null);
+  const operationBusy = loading || d.status === 'saving' || !persistence.ready || persistence.rootChanged;
+  const busy = operationBusy || renameOpen;
+  const bodyDisabled = renameOpen || loading || !persistence.ready || persistence.rootChanged || d.status === 'saving' && d.savingMode !== 'auto';
   const emptyCapture = !d.path && d.text.length === 0;
   async function refresh() { if (alive.current) setLibraryRevision(value => value + 1); }
   useEffect(() => {
     alive.current = true;
     return () => { alive.current = false; };
   }, []);
+  useEffect(() => { setRenameOpen(Boolean(d.renameRequest)); }, [d.path]);
+  useEffect(() => {
+    if (!autoSaveEnabled || busy || composing || !canAutosave(d)) return;
+    const timer = setTimeout(() => { void save(false, true); }, 1000);
+    return () => clearTimeout(timer);
+  }, [d.text, d.path, d.expected, d.status, d.autosave, busy, composing, autoSaveEnabled]);
   async function retainCurrent() { return dirty(d) ? drafts.stash(d) : null; }
   async function newNote() {
     if (busy) return;
@@ -38,6 +54,7 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
       const kept = await retainCurrent();
       if (alive.current) {
         actions.setDraft({ ...fresh(), notice: kept ? '原草稿已保留，可从待恢复草稿继续编辑。' : '' });
+        setPreviewOpen(false);
         setLibraryOpen(false); page.current?.scrollTo({ top: 0 });
         focusBody();
       }
@@ -53,26 +70,29 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
       const kept = await retainCurrent();
       if (alive.current) {
         actions.setDraft({ ...fresh(), ...note, original: note.text, expected: note.version, status: 'saved', notice: kept ? '原草稿已保留。' : '' });
+        setPreviewOpen(false);
         setLibraryOpen(false); page.current?.scrollTo({ top: 0 });
         focusBody();
       }
     } catch (error) { if (alive.current) actions.setDraft({ ...d, error: error.message }); }
     finally { if (alive.current) setLoading(false); }
   }
-  async function save(copy = false) {
-    if (busy || emptyCapture) return;
-    const snapshot = { ...d };
-    actions.setDraft({ ...snapshot, status: 'saving', error: '', latest: null });
+  async function save(copy = false, automatic = false) {
+    const snapshot = { ...getDraft() };
+    if (busy || mutation.current || snapshot.status === 'saving' || !snapshot.path && !snapshot.text || composing) return;
+    if (automatic && !canAutosave(snapshot)) return;
+    mutation.current = 'save';
+    actions.setDraft({ ...snapshot, status: 'saving', savingMode: automatic ? 'auto' : 'manual', error: '', latest: null });
     try {
       // Never retry a mutation automatically: a lost reply may follow a commit.
       const result = copy || !snapshot.path
         ? await call('capture', { text: snapshot.text })
         : await call('save', { path: snapshot.expected === null ? markdownPath(snapshot.path) : snapshot.path, text: snapshot.text, expected: snapshot.expected });
-      actions.setDraft({ ...fresh(), path: result.path, text: snapshot.text, original: snapshot.text, expected: result.version, status: 'saved' });
+      actions.setDraft(committedDraft(getDraft(), snapshot, result));
       if (alive.current) void refresh();
     } catch (error) {
-      actions.setDraft({ ...snapshot, status: error.code === 'notes/409' ? 'conflict' : 'failed', error: error.message });
-    }
+      actions.setDraft(failedDraft(getDraft(), error));
+    } finally { mutation.current = null; }
   }
   async function compare() {
     if (busy || !d.path) return;
@@ -85,6 +105,7 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
     if (busy) return;
     setLoading(true);
     let recovered = { ...fresh(), ...record.draft, latest: null };
+    recovered.autosave = record.draft.autosave === 'blocked' || recovered.status === 'failed' || recovered.status === 'conflict' ? 'blocked' : 'recovered';
     if (recovered.expected === null) recovered.path = markdownPath(recovered.path);
     try {
       if (recovered.path) {
@@ -101,6 +122,8 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
         if (!alive.current) return;
         drafts.adopt(record, recovered);
         actions.setDraft(recovered);
+        setRenameOpen(Boolean(recovered.renameRequest));
+        setPreviewOpen(false);
         if (window.matchMedia('(max-width: 700px)').matches) setDraftsOpen(false);
         page.current?.scrollTo({ top: 0 });
       }
@@ -140,9 +163,23 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
         <label className="corilo-notes-filename"><span className="corilo-notes-sr-only">文件名</span><input aria-label="笔记文件名" disabled={busy || d.expected !== null} placeholder="未命名笔记" value={d.path}
           title="标题可留空，保存时自动命名；填写标题时自动补 .md。也支持 文件夹/标题.md。已保存文件的名称在此只读。"
           onChange={e => actions.setDraft({ ...d, path: e.target.value, status: 'dirty' })} /></label>
-        <p className="corilo-notes-document-hint">{d.path ? 'Markdown 笔记' : '直接写下正文，保存时自动命名。'}<span>Ctrl / ⌘ S 保存</span></p>
-        <label className="corilo-notes-body"><span className="corilo-notes-sr-only">正文</span><textarea ref={body} aria-label="笔记正文" disabled={busy} value={d.text} spellCheck={false} placeholder="此刻想留下什么？"
-          onChange={e => actions.setDraft({ ...d, text: e.target.value, status: d.status === 'conflict' ? 'conflict' : 'dirty' })} /></label>
+        {d.expected !== null && <RenameNote key={d.path} call={call} draft={d} locked={operationBusy} open={renameOpen} onOpen={setRenameOpen}
+          onBegin={request => { mutation.current = 'rename'; setLoading(true); actions.setDraft({ ...getDraft(), status: 'saving', savingMode: 'rename', renameRequest: request || getDraft().renameRequest }); }}
+          onEnd={() => {
+            mutation.current = null; setLoading(false);
+            const current = getDraft();
+            if (current.status === 'saving' && current.savingMode === 'rename') actions.setDraft({ ...current, status: 'failed', savingMode: null, autosave: 'blocked' });
+          }}
+          onFailure={(error, request) => actions.setDraft({ ...getDraft(), status: request ? 'failed' : 'saved', savingMode: null, autosave: request ? 'blocked' : getDraft().autosave, renameRequest: request })}
+          onComplete={note => { actions.setDraft({ ...fresh(), ...note, original: note.text, expected: note.version, status: 'saved' }); void refresh(); }} />}
+        <p className="corilo-notes-document-hint">{d.expected === null ? '直接写下正文，请明确首次保存。' : d.autosave === 'blocked' ? '自动保存已暂停，请核对后明确保存。' : d.autosave === 'recovered' ? '恢复内容尚未写入文件；继续编辑或点击保存。' : !autoSaveEnabled ? '自动保存已关闭，请点击保存或使用快捷键。' : '停止输入约 1 秒后自动保存。'}<span>Ctrl / ⌘ S 保存</span></p>
+        <div className="corilo-notes-view-tools" role="group" aria-label="笔记视图"><button aria-pressed={!previewOpen} onClick={() => setPreviewOpen(false)}>编辑</button><button aria-pressed={previewOpen} onClick={() => setPreviewOpen(true)}>实时预览</button></div>
+        <div className={`corilo-notes-writing${previewOpen ? ' with-preview' : ''}`}>
+        <label className="corilo-notes-body"><span className="corilo-notes-sr-only">正文</span><textarea ref={body} aria-label="笔记正文" disabled={bodyDisabled} value={d.text} spellCheck={false} placeholder="此刻想留下什么？"
+          onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)}
+          onChange={e => actions.setDraft(editedDraft(getDraft(), e.target.value))} /></label>
+        {previewOpen && <MarkdownPreview text={d.text} />}
+        </div>
         <div className="corilo-notes-save"><span role="status" data-state={loading ? 'loading' : d.status}>{loading ? '读取中…' : labels[d.status]}</span>
           <button className="corilo-notes-primary" disabled={busy || emptyCapture || d.status === 'conflict'} onClick={() => save()}>{d.expected === null && !d.path ? '仅保存原话' : '保存笔记'}</button>
         </div>
@@ -161,13 +198,14 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
           }}>采用此版本，放弃草稿</button>
         </div>}
         <details className="corilo-notes-more"><summary>更多操作</summary>
+        <label className="corilo-notes-auto-option"><input type="checkbox" aria-label="自动保存" checked={autoSaveEnabled} onChange={event => actions.setAutoSaveEnabled(event.target.checked)} />自动保存已保存的笔记</label>
         <p className="corilo-notes-hint">历史、回收站与删除。浏览器草稿只用于恢复，不是独立备份。</p>
-        <RecoveryPanel key={d.path} call={call} draft={d} enabled={persistence.recoveryEnabled}
+        <RecoveryPanel key={d.path} call={call} draft={d} enabled={persistence.recoveryEnabled} disabled={busy}
           refreshList={refresh}
           onBegin={() => actions.setDraft({ ...d, status: 'saving', error: '' })}
           onRestored={note => actions.setDraft({ ...fresh(), path: note.path, text: note.text, original: note.text, expected: note.version, status: 'saved' })}
-          onTrashed={() => actions.setDraft({ ...fresh(), notice: '已移入回收站，可在回收站中恢复。' })}
-          onFailure={error => actions.setDraft({ ...d, status: error.code === 'notes/409' ? 'conflict' : 'failed', error: error.message })} />
+          onTrashed={() => { setRenameOpen(false); actions.setDraft({ ...fresh(), notice: '已移入回收站，可在回收站中恢复。' }); }}
+          onFailure={error => actions.setDraft(failedDraft(getDraft(), error))} />
         </details>
       </div>
     </div>
@@ -192,17 +230,19 @@ export function apply(ctx) {
     try { const response = await fetch(`api/corilo-notes/${method}`, { method: 'POST', credentials: 'same-origin', signal, headers: { 'content-type': 'application/json', ...(method !== 'identity' && drafts?.identity ? { 'x-corilo-library-id': drafts.identity } : {}) }, body: JSON.stringify(args) });
       if (!response.ok) throw new Error('Transport failure');
       result = await response.json(); }
-    catch { throw new Error('连接失败；草稿已保留。保存结果可能未知，请刷新列表核对文件后重试。'); }
+    catch { throw Object.assign(new Error('连接失败；草稿已保留。保存结果可能未知，请刷新列表核对文件后重试。'), { unknown: true }); }
     if (!result.ok) {
       if (result.error.code === 'notes/library-changed') drafts?.libraryChanged();
       const known = result.error.code?.startsWith('notes/');
-      throw Object.assign(new Error(known ? result.error.message : '连接失败；草稿已保留。请核对文件后重试。'), { code: result.error.code });
+      throw Object.assign(new Error(known ? result.error.message : '连接失败；草稿已保留。请核对文件后重试。'), { code: result.error.code, details: result.error.details });
     }
     return result.value;
   };
   drafts = createDraftRecovery(() => call('identity', {}));
-  const store = defineStore({ init: () => ({ draft: fresh() }), actions: {
-    setDraft(state, draft) { state.draft = draft; drafts.track(draft); },
+  let snapshot = fresh();
+  const store = defineStore({ init: () => ({ draft: snapshot, autoSaveEnabled: true }), actions: {
+    setAutoSaveEnabled(state, enabled) { state.autoSaveEnabled = enabled; },
+    setDraft(state, draft) { state.draft = draft; snapshot = draft; drafts.track(draft); },
   } });
   ctx.effect(() => {
     void drafts.start();
@@ -212,6 +252,6 @@ export function apply(ctx) {
     window.addEventListener('beforeunload', guard);
     return () => { window.removeEventListener('beforeunload', guard); drafts.dispose(); };
   });
-  ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'corilo-notes', store, inject: () => ({ call, drafts, hooks: { persistence: drafts } }) }, NotesPage));
+  ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'corilo-notes', store, inject: () => ({ call, drafts, getDraft: () => snapshot, hooks: { persistence: drafts } }) }, NotesPage));
   ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist', id: 'corilo-notes', order: 5, label: '笔记' }, NotesIcon));
 }

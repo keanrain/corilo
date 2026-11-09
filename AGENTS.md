@@ -1,6 +1,6 @@
 # Corilo 可里开发约束
 
-当前方向 v0.26（2026-11-09）：用户决定以 DeepSeek Harness 为主体，Corilo 提供笔记、待办/日程与后续记忆插件，首期个人自部署。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，开发命令见 docs/DEVELOPMENT.md。用户新决定优先于旧 Pi/Files.md 云端要求；产品规则只在 PRODUCT-SPEC.md 维护。
+当前方向 v0.27（2026-11-09）：用户决定以 DeepSeek Harness 为主体，Corilo 提供笔记、待办/日程与后续记忆插件，首期个人自部署。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，开发命令见 docs/DEVELOPMENT.md。用户新决定优先于旧 Pi/Files.md 云端要求；产品规则只在 PRODUCT-SPEC.md 维护。
 
 视觉采用 Astryx Neutral 0.7.11 静态 token 子集与插件局部 CSS 适配，MIT notice 随包；固定 Harness 实测 React 18.3.1，而 Astryx React 组件要求 >=19，不得擅自升级宿主、另带 React 或声称已接入其组件。
 

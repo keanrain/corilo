@@ -7,11 +7,11 @@ export function registerNotesApi(ctx, store) {
   const handle = async (method, args, signal) => {
     const failure = (status, message) => ({ ok: false, error: { code: `notes/${status}`, message, details: {} } });
     const fields = {
-      identity: [], list: [], browse: [], search: ['query'], read: ['path'], save: ['path', 'text', 'expected'], capture: ['text'],
+      identity: [], list: [], browse: [], search: ['query'], read: ['path'], save: ['path', 'text', 'expected'], capture: ['text'], rename: ['path', 'to', 'expected'],
       history: ['path'], readRevision: ['path', 'revision'], restore: ['path', 'revision', 'expected'],
       trash: ['path', 'expected'], listTrash: [], restoreTrash: ['id', 'path', 'expected'],
     };
-    const optional = method === 'listTrash' || method === 'history' ? ['cursor'] : method === 'browse' ? ['cursor', 'query'] : [];
+    const optional = method === 'history' ? ['cursor', 'at'] : method === 'listTrash' ? ['cursor'] : method === 'browse' ? ['cursor', 'query'] : [];
     if (!Object.hasOwn(fields, method)) return failure(404, '笔记操作不存在');
     if (!args || typeof args !== 'object' || Array.isArray(args) ||
         Object.keys(args).some(key => !fields[method].includes(key) && !optional.includes(key)) ||
@@ -29,8 +29,9 @@ export function registerNotesApi(ctx, store) {
         : method === 'search' ? await store.search({ ...args, signal })
         : method === 'read' ? await store.read(args.path)
         : method === 'save' ? await store.save({ ...args, signal })
+        : method === 'rename' ? await store.rename({ ...args, signal })
         : method === 'capture' ? await store.capture(args.text, { signal })
-        : method === 'history' ? await store.history(args.path, { cursor: args.cursor })
+        : method === 'history' ? await store.history(args.path, { cursor: args.cursor, at: args.at })
         : method === 'readRevision' ? await store.readRevision(args.path, args.revision)
         : method === 'listTrash' ? await store.listTrash(args)
         : method === 'restoreTrash' ? await store.restoreTrash({ ...args, signal })
@@ -39,11 +40,12 @@ export function registerNotesApi(ctx, store) {
       return { ok: true, value };
     } catch (error) {
       const status = [400, 404, 409, 413].includes(error.status) ? error.status : 503;
-      if (error.committed === true) return { ok: false, error: { code: 'notes/503', message: error.message, details: { committed: true } } };
+      if (error.committed === true) return { ok: false, error: { code: 'notes/503', message: error.message, details: { committed: true,
+        ...(typeof error.path === 'string' ? { path: error.path, previousPath: error.previousPath } : {}) } } };
       return failure(status, status === 503 ? '笔记暂不可用；草稿已保留，请核对文件后重试' : error.message);
     }
   };
-  for (const method of ['identity', 'list', 'browse', 'search', 'read', 'save', 'capture', 'history', 'readRevision', 'restore', 'trash', 'listTrash', 'restoreTrash']) {
+  for (const method of ['identity', 'list', 'browse', 'search', 'read', 'save', 'capture', 'rename', 'history', 'readRevision', 'restore', 'trash', 'listTrash', 'restoreTrash']) {
     ctx.effect(() => ctx.connection.fetch.register({
       path: `/api/corilo-notes/${method}`, methods: ['POST'], requestBody: 'buffered',
       async fetch(request) {

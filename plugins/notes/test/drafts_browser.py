@@ -9,7 +9,7 @@ import tempfile
 from urllib.parse import urlsplit
 
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for
+from browser import ROOT, wait_for, manual_saves
 
 
 def main():
@@ -54,6 +54,7 @@ def main():
             page.get_by_role('button', name='笔记', exact=True).click()
             panel = page.get_by_role('region', name='Corilo 笔记')
             expect(panel.get_by_test_id('draft-persistence')).not_to_have_text('正在读取浏览器草稿…')
+            manual_saves(panel)
             return panel
 
         try:

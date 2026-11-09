@@ -232,11 +232,25 @@ def main():
 
                     # An older listing can still be in flight when a mutation
                     # commits. It must be followed by a fresh read automatically.
+                    # Keep one interceptor installed while releasing a stale
+                    # response: expiring a times=1 route can stall the immediate
+                    # fresh fetch in Chromium during interception-pattern churn.
+                    # Each arm still holds exactly one response from the real
+                    # host; all following reads continue without interception.
+                    pending_list_holds = []
+                    intercepted_list_requests = []
+                    def hold_next_list(route):
+                        intercepted_list_requests.append(route.request.post_data_json)
+                        if not pending_list_holds:
+                            route.continue_()
+                            return
+                        held = pending_list_holds.pop(0)
+                        held.append((route, route.fetch()))
+                    page.route('**/api/corilo-todos/list', hold_next_list)
+
                     def hold_list():
                         held = []
-                        def handler(route):
-                            held.append((route, route.fetch()))
-                        page.route('**/api/corilo-todos/list', handler, times=1)
+                        pending_list_holds.append(held)
                         library.get_by_role('button', name='刷新待办', exact=True).click()
                         expect(filtering.get_by_role('button').first).to_be_disabled()
                         deadline = time.monotonic() + 5
@@ -245,6 +259,7 @@ def main():
                         assert len(held) == 1
                         return held[0]
 
+                    request_count = len(intercepted_list_requests)
                     old_route, old_response = hold_list()
                     panel.get_by_role('button', name='新待办', exact=True).click()
                     delayed_title = '旧列表响应期间新建仍然可见'
@@ -256,12 +271,15 @@ def main():
                     delayed_item = library.locator('li').filter(has_text=delayed_title)
                     expect(delayed_item).to_have_count(1)
                     expect(filtering.get_by_role('button').first).to_be_enabled()
+                    assert len(intercepted_list_requests) == request_count + 2
+                    request_count = len(intercepted_list_requests)
                     old_route, old_response = hold_list()
                     panel.get_by_role('button', name='完成待办', exact=True).click()
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('已完成')
                     old_route.fulfill(response=old_response)
                     expect(delayed_item).to_have_count(0)
                     expect(filtering.get_by_role('button').first).to_be_enabled()
+                    assert len(intercepted_list_requests) == request_count + 2
                     library.locator('li').filter(has_text=lost_title).get_by_role('button', name=lost_title, exact=True).click()
                     expect(body).to_have_value(local_draft)
 
@@ -428,6 +446,24 @@ def main():
                     assert api('get', {'id': second_core['id']})['version'] == committed_row['version']
                     assert len(row_requests) == 2 and row_requests[0] == row_requests[1]
                     expect(core_body).to_have_value('正在编辑另一项，列表操作不能覆盖这段输入')
+                    # A detail navigation archive never owns quick capture.
+                    # Adding the independent quick input, then restoring the
+                    # old detail must not bring that already-added title back.
+                    core_filter.get_by_role('button', name='未完成', exact=True).click()
+                    quick.fill('导航时的独立快速输入')
+                    core_list.get_by_role('button', name=core_titles[0], exact=True).click()
+                    expect(quick).to_have_value('导航时的独立快速输入')
+                    expect(core_body).to_have_value('另一页面更新')
+                    core.get_by_role('button', name='添加', exact=True).click()
+                    expect(quick).to_have_value('')
+                    core_drafts = core.locator('.corilo-todos-drafts')
+                    core_drafts.locator('summary').first.click()
+                    navigation_draft = core_drafts.locator('li').filter(has_text='正在编辑另一项，列表操作不能覆盖这段输入')
+                    expect(navigation_draft).not_to_contain_text('导航时的独立快速输入')
+                    navigation_draft.get_by_role('button', name='恢复草稿', exact=True).click()
+                    expect(core_body).to_have_value('正在编辑另一项，列表操作不能覆盖这段输入')
+                    expect(quick).to_have_value('')
+                    assert len([item for item in api('list', {'status': 'all'})['items'] if item['title'] == '导航时的独立快速输入']) == 1
                     core_page.close()
 
                     assert not errors, errors

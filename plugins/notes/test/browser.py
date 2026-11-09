@@ -25,6 +25,21 @@ def wait_for(check, timeout=40):
     raise AssertionError('Timed out waiting for Harness or disk evidence')
 
 
+def manual_saves(panel):
+    """Exercise explicit-save/draft flows through the user's visible setting.
+
+    Dedicated editor_browser.py covers the default automatic-save mode.
+    """
+    more = panel.locator('details.corilo-notes-more')
+    was_open = more.get_attribute('open') is not None
+    if not was_open:
+        more.locator('summary').first.click()
+    panel.get_by_role('checkbox', name='自动保存', exact=True).uncheck()
+    if not was_open:
+        more.locator('summary').first.click()
+    panel.evaluate('(el) => el.scrollTo({top: 0})')
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='corilo-harness-browser-') as temp:
         base = pathlib.Path(temp)
@@ -64,6 +79,7 @@ def main():
                     page.get_by_role('button', name='笔记', exact=True).click(timeout=20000)
                     panel = page.get_by_role('region', name='Corilo 笔记')
                     expect(panel).to_be_visible()
+                    manual_saves(panel)
                     expect(panel.get_by_role('button', name='已有笔记.md', exact=True)).to_be_visible()
                     body = panel.get_by_role('textbox', name='笔记正文', exact=True)
                     status = panel.get_by_role('status')
@@ -138,6 +154,7 @@ def main():
                     page.reload()
                     page.get_by_role('button', name='Close', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
+                    manual_saves(panel)
                     panel.get_by_role('button', name='连接测试.md', exact=True).click()
                     expect(body).to_have_value('失败草稿')
                     # Authenticated requests with a hostile Origin still fail before file access.

@@ -61,6 +61,12 @@ export function noteTools(store) {
       async execute(args, exec) { check(exec.signal); return store.save({ ...args, signal: exec.signal }); },
     }),
     defineTool({
+      name: 'corilo_notes_rename', description: 'Rename a saved Markdown note within the same directory. Read it first and pass that version. The destination must be absent; existing files are never overwritten. Does not update links or associations. A partial-completion failure requires checking both paths before any retry.',
+      parameters: { path: string, to: string, expected: string },
+      output: output({ type: 'object', additionalProperties: true }),
+      async execute(args, exec) { check(exec.signal); return store.rename({ ...args, signal: exec.signal }); },
+    }),
+    defineTool({
       name: 'corilo_notes_capture', description: 'Save the exact supplied text as a new Markdown note without rewriting or classification. Use only when the user asks to keep these words.',
       parameters: { text: string }, output: output(versioned),
       async execute({ text }, exec) { check(exec.signal); return store.capture(text, { signal: exec.signal }); },

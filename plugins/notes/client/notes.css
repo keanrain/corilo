@@ -81,6 +81,26 @@
 .corilo-notes aside li small { font-size: 12px; color: var(--ax-color-text-secondary); font-weight: var(--ax-font-weight-normal); }
 .corilo-notes .corilo-notes-filename input { border: 0; background: transparent; color: var(--ax-color-text-primary); font-size: 24px; font-weight: var(--ax-font-weight-semibold); padding: 6px 8px; min-height: 44px; }
 .corilo-notes .corilo-notes-document-hint { display: flex; justify-content: space-between; gap: 12px; margin: -8px 8px 0; font-size: 12px; color: var(--ax-color-text-secondary); }
+.corilo-notes-view-tools { display: flex; gap: var(--ax-spacing-2); }
+.corilo-notes .corilo-notes-auto-option { flex-direction: row; align-items: center; min-height: 44px; }
+.corilo-notes .corilo-notes-auto-option input { width: 18px; height: 18px; padding: 0; }
+.corilo-notes-view-tools button { border-color: transparent; min-height: 44px; padding: 8px 12px; font-size: 13px; }
+.corilo-notes-view-tools button[aria-pressed="true"] { background: var(--ax-color-background-muted); font-weight: var(--ax-font-weight-semibold); }
+.corilo-notes-writing { min-width: 0; }
+.corilo-notes-writing.with-preview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--ax-spacing-5); }
+.corilo-notes-preview { min-width: 0; overflow: auto; max-height: 65vh; padding: var(--ax-spacing-3) var(--ax-spacing-2); overflow-wrap: anywhere; line-height: 1.8; border-inline-start: 1px solid var(--ax-color-border); }
+.corilo-notes-preview h1 { font-size: 24px; margin: 16px 0; }
+.corilo-notes-preview h2 { font-size: 20px; margin: 16px 0 10px; }
+.corilo-notes-preview h3 { font-size: 18px; margin: 14px 0 8px; }
+.corilo-notes-preview ul, .corilo-notes-preview ol { max-height: none; overflow: visible; padding-inline-start: 24px; }
+.corilo-notes-preview ul { list-style: disc; }
+.corilo-notes-preview ol { list-style: decimal; }
+.corilo-notes-preview pre { white-space: pre; overflow: auto; background: var(--ax-color-background-muted); border-radius: var(--ax-radius-inner); padding: 12px; }
+.corilo-notes-preview code { font-family: monospace; font-size: .9em; }
+.corilo-notes-preview table { border-collapse: collapse; display: block; overflow: auto; }
+.corilo-notes-preview th, .corilo-notes-preview td { padding: 6px 10px; border: 1px solid var(--ax-color-border); }
+.corilo-notes-preview blockquote { margin-inline: 0; padding-inline-start: 16px; border-inline-start: 3px solid var(--ax-color-border-emphasized); color: var(--ax-color-text-secondary); }
+.corilo-notes-preview a { color: var(--ax-color-text-info); text-decoration: underline; }
 .corilo-notes-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 700px) {
   .corilo-notes { padding: var(--ax-spacing-4); padding-top: max(var(--ax-spacing-4), var(--dsh-frame-top-clearance, 0px)); }
@@ -91,6 +111,9 @@
   .corilo-notes-library { display: none; border-inline-end: 0; padding-inline-end: 0; }
   .corilo-notes-library.is-open { display: block; border-bottom: 1px solid var(--ax-color-border); padding-bottom: var(--ax-spacing-4); }
   .corilo-notes.is-browsing .corilo-notes-editor { display: none; }
+  .corilo-notes-writing.with-preview { display: block; }
+  .corilo-notes-writing.with-preview .corilo-notes-body { display: none; }
+  .corilo-notes-preview { border-inline-start: 0; min-height: 200px; max-height: 55vh; }
   .corilo-notes aside ul { max-height: none; }
   .corilo-notes .corilo-notes-document-hint span { display: none; }
   .corilo-notes .corilo-notes-body textarea { min-height: clamp(150px, 36vh, 260px); padding: var(--ax-spacing-3) var(--ax-spacing-2); }
@@ -100,3 +123,7 @@
 @media (prefers-reduced-motion: reduce) {
   .corilo-notes button, .corilo-notes input, .corilo-notes textarea { transition: none; }
 }
+/* Renaming is an explicit file operation; the editor stays mounted underneath. */
+.corilo-notes-rename > button { border-color: transparent; font-size: 13px; padding: 6px 8px; }
+.corilo-notes-rename form { padding: var(--ax-spacing-4); border: 1px solid var(--ax-color-border); border-radius: var(--ax-radius-container); }
+.corilo-notes-rename form button { margin: 4px 8px 4px 0; }

@@ -65,6 +65,37 @@ def main():
               assert((await all()).some(r=>r.id===candidate.id && r.draft.quickTitle==='newest again'),'stale discard preserves newer source');
               observer.dispose();
 
+              // Detail navigation must neither archive nor restore independent
+              // quick input. The active full-page record also survives a crash
+              // between the stash transaction and the subsequent navigation.
+              const C='44444444-4444-4444-8444-444444444444';
+              const scoped=create(C); await scoped.start();
+              const detailModel={...fresh(),item:oldItem,draft:{title:oldItem.title,body:'detail A',notePath:''},quickTitle:'quick B',editorOpen:true};
+              scoped.track(detailModel); await scoped.flush();
+              const editorRecord=await scoped.stash(detailModel,{scope:'editor'});
+              assert(editorRecord.scope==='editor' && editorRecord.draft.quickTitle==='' && editorRecord.draft.quickPending===null,'detail archive excludes quick input and requests');
+              let scopedRecords=(await all()).filter(r=>r.libraryId===C);
+              assert(scopedRecords.length===2 && scopedRecords.some(r=>r.id!==editorRecord.id && r.draft.quickTitle==='quick B' && r.draft.draft.body==='detail A'),'stash keeps full page atomically through crash window');
+              const crashObserver=create(C);await crashObserver.start();
+              assert(crashObserver.getSnapshot().candidates.some(r=>r.draft.quickTitle==='quick B'),'reloaded manager can recover quick input before navigation track');
+              crashObserver.dispose();
+              const currentQuick={...fresh(),quickTitle:'current C'};
+              scoped.track(currentQuick);await scoped.flush();
+              const restored=TodoDrafts.restoreTodoDraft(currentQuick,editorRecord);
+              assert(restored.draft.body==='detail A' && restored.quickTitle==='current C','detail restore preserves current quick input');
+              assert(TodoDrafts.restoreTodoDraft(currentQuick,{draft:detailModel}).quickTitle==='quick B','legacy full-page recovery remains compatible');
+              // Scope itself belongs to the compare-and-swap identity.
+              await modify({...editorRecord,scope:undefined});
+              await scoped.discard(editorRecord);
+              assert((await all()).some(r=>r.id===editorRecord.id),'stale scope cannot remove a changed recovery record');
+              const scopedBefore=await all(), originalPut=IDBObjectStore.prototype.put;
+              IDBObjectStore.prototype.put=function(){throw Error('injected full-page write failure');};
+              let scopedFailed=false;try{await scoped.stash(detailModel,{scope:'editor'});}catch{scopedFailed=true;}finally{IDBObjectStore.prototype.put=originalPut;}
+              const scopedAfter=await all();
+              assert(scopedFailed && scopedAfter.length===scopedBefore.length,'failed scoped stash rolls back archive and preserves active quick input');
+              assert(scopedAfter.some(r=>r.libraryId===C && r.draft.quickTitle==='current C'),'failed scoped stash keeps full current recovery');
+              scoped.dispose();
+
               handle.track(dirty('stash rollback')); await handle.flush();
               const before=await all(), originalDelete=IDBObjectStore.prototype.delete;
               IDBObjectStore.prototype.delete=function(){throw Error('injected transaction failure');};

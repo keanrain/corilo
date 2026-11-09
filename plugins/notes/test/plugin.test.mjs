@@ -15,7 +15,7 @@ test('published Cordis and Harness pipeline load notes tools, validate calls and
   t.after(async()=>{await ctx.fiber.dispose();await rm(root,{recursive:true,force:true});});
   await ctx.plugin(SystemPrompt);await ctx.plugin(Tools);
   const fiber=await ctx.plugin(notes,{root});
-  assert.equal(ctx.tools.definitions().length,6);
+  assert.equal(ctx.tools.definitions().length,7);
   const pipeline=new ToolExecutionPipeline(ctx);
   let callId=0;
   const call=async(name,args,signal=new AbortController().signal)=>{
@@ -44,6 +44,12 @@ test('published Cordis and Harness pipeline load notes tools, validate calls and
   assert.equal((await call('corilo_notes_read',{path:'../private.md'})).isError,true);
   const abort=new AbortController();abort.abort();
   assert.equal((await call('corilo_notes_save',{path:'cancelled.md',text:'no',expected:null},abort.signal)).isError,true);
+  const renamed=await call('corilo_notes_rename',{path:read.value.path,to:'项目/已重命名.md',expected:updated.value.version});
+  assert.equal(renamed.isError,false,JSON.stringify(renamed));
+  assert.equal(renamed.value.path,'项目/已重命名.md');
+  assert.equal(await readFile(path.join(root,renamed.value.path),'utf8'),'更新');
+  assert.equal((await call('corilo_notes_read',{path:read.value.path})).isError,true);
+  assert.equal((await call('corilo_notes_rename',{path:renamed.value.path,to:'other.md',expected:updated.value.version})).isError,true);
   const final=await call('corilo_notes_list',{});
   assert.equal(final.value.items.length,2);
   await fiber.dispose();

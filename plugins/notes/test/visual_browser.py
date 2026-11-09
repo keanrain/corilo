@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for
+from browser import ROOT, wait_for, manual_saves
 
 
 def main():
@@ -57,6 +57,7 @@ def main():
                         expect(panel).to_have_attribute('data-ui', 'astryx-neutral')
                         body = panel.get_by_role('textbox', name='笔记正文', exact=True)
                         expect(body).to_be_enabled()
+                        manual_saves(panel)
                         wait_for(lambda: page.evaluate('getComputedStyle(document.documentElement).colorScheme') == scheme)
                         host_style = page.evaluate('({bg:getComputedStyle(document.body).backgroundColor, scheme:document.documentElement.style.colorScheme})')
                         assert page.evaluate('getComputedStyle(document.body).getPropertyValue("--ax-color-accent")') == '', 'Plugin tokens leaked to host body'

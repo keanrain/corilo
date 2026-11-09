@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import tempfile
 from playwright.sync_api import sync_playwright, expect
-from browser import wait_for
+from browser import wait_for, manual_saves
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -47,6 +47,7 @@ def main():
                     page.get_by_role('button', name='Close', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
                     panel = page.get_by_role('region', name='Corilo 笔记')
+                    manual_saves(panel)
                     panel.get_by_role('button', name='可恢复.md', exact=True).click()
                     body = panel.get_by_role('textbox', name='笔记正文', exact=True)
                     expect(body).to_have_value(first_text)

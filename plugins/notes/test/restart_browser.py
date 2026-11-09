@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for
+from browser import ROOT, wait_for, manual_saves
 
 
 def main():
@@ -90,6 +90,7 @@ def main():
                     panel = page.get_by_role('region', name='Corilo 笔记')
                     expect(panel.get_by_role('textbox', name='笔记正文', exact=True)).to_be_enabled()
                     expect(page.get_by_text('Unable to create default workspace. Use Choose workspace to select a folder.', exact=True)).to_have_count(0)
+                    manual_saves(panel)
                     return panel
 
                 anonymous_refused()

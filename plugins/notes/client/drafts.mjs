@@ -1,16 +1,21 @@
 import { openDB } from 'idb';
 import { v4 as uuidv4 } from 'uuid';
 
-export const hasUnsavedDraft = draft => draft.text !== draft.original || draft.expected === null && (draft.text !== '' || draft.path !== '');
+export const hasUnsavedDraft = draft => draft.text !== draft.original || draft.expected === null && (draft.text !== '' || draft.path !== '')
+  || draft.autosave === 'blocked' || draft.status === 'saving';
 const snapshotDraft = draft => ({
   path: draft.path, text: draft.text, original: draft.original, expected: draft.expected,
   status: draft.status === 'saving' ? 'failed' : draft.status,
+  autosave: ['saving', 'failed', 'conflict'].includes(draft.status) ? 'blocked' : draft.autosave || 'recovered',
   error: draft.status === 'saving' ? '上次保存结果未知，请先核对磁盘内容。' : draft.error,
   latest: null,
+  renameRequest: draft.renameRequest ? { path: draft.renameRequest.path, to: draft.renameRequest.to } : null,
 });
 const validDraft = draft => draft && typeof draft.path === 'string' && typeof draft.text === 'string'
   && typeof draft.original === 'string' && typeof draft.error === 'string'
   && ['clean', 'dirty', 'saved', 'failed', 'conflict'].includes(draft.status)
+  && (draft.autosave === undefined || ['ready', 'recovered', 'blocked'].includes(draft.autosave))
+  && (draft.renameRequest == null || typeof draft.renameRequest.path === 'string' && typeof draft.renameRequest.to === 'string' && draft.renameRequest.path.length <= 1024 && draft.renameRequest.to.length <= 1024)
   && (draft.expected === null || typeof draft.expected === 'string' && /^[a-f0-9]{64}$/.test(draft.expected));
 const sameRecord = (actual, expected) => actual && actual.libraryId === expected.libraryId
   && actual.updatedAt === expected.updatedAt && JSON.stringify(actual.draft) === JSON.stringify(expected.draft);

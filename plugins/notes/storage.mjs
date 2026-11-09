@@ -128,6 +128,63 @@ export class NotesStore {
   save({ path: input, text, expected, signal } = {}) {
     return this.serial(() => this.write(input, text, expected, signal));
   }
+  rename({ path: input, to, expected, signal } = {}) {
+    return this.serial(async () => {
+      checkSignal(signal);
+      this.parts(input); this.parts(to);
+      if (path.posix.dirname(input) !== path.posix.dirname(to)) throw fail(400, '重命名只能修改同一目录中的文件名');
+      if (input === to) throw fail(400, '新文件名与原文件名相同');
+      if (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected)) throw changed();
+      const source = await this.location(input).catch(error => { if (missing(error)) throw fail(404, '笔记不存在'); throw error; });
+      const destination = await this.location(to);
+      const current = await this.readFile(source);
+      if (current.version !== expected) throw changed();
+      // Occupancy includes links, directories and unsafe files: none may be
+      // replaced. Publication below repeats this check atomically via link().
+      if (await fs.lstat(destination).then(() => true, error => { if (missing(error)) return false; throw error; })) throw fail(409, '此文件名已存在，请使用其他名称');
+      let previousRevision = null;
+      if (this.recovery) previousRevision = await this.recovery.snapshot(input, current.text, 'before');
+      checkSignal(signal);
+      const temp = path.join(path.dirname(source), `.corilo-${randomUUID()}.tmp`);
+      let handle, published = false, removed = false;
+      try {
+        handle = await fs.open(temp, 'wx', 0o600);
+        await handle.writeFile(Buffer.from(current.text)); await handle.sync(); await handle.close(); handle = null;
+        const latest = await this.readFile(source);
+        if (latest.version !== expected) throw changed();
+        checkSignal(signal);
+        // Node has no portable rename-no-replace operation. Create the target
+        // exclusively, then remove the source only after target/history checks.
+        // Target publication is the commit boundary; cancellation afterwards
+        // cannot pretend to roll it back. A crash can leave both names.
+        try { await fs.link(temp, destination); }
+        catch (error) { if (error.code === 'EEXIST') throw fail(409, '此文件名已存在，请使用其他名称'); throw error; }
+        published = true;
+        await fs.unlink(temp);
+        const directory = await fs.open(path.dirname(source), constants.O_RDONLY);
+        try { await directory.sync(); } finally { await directory.close(); }
+        if (this.recovery) await this.recovery.snapshot(to, current.text, 'rename', { previousPath: input, previousRevision });
+        const beforeRemoval = await this.readFile(source), target = await this.readFile(destination);
+        if (beforeRemoval.version !== expected || target.version !== expected) throw changed();
+        await fs.unlink(source); removed = true;
+        const finalDirectory = await fs.open(path.dirname(source), constants.O_RDONLY);
+        try { await finalDirectory.sync(); } finally { await finalDirectory.close(); }
+        return { path: to, previousPath: input, previousRevision, text: current.text, version: current.version };
+      } catch (error) {
+        if (published) throw Object.assign(fail(503, removed
+          ? '新文件名已生效，但重命名确认未完成；请核对两个文件名，不要自动重试'
+          : '新文件名已创建，原文件尚未删除或历史确认未完成；请核对两个文件名，不要自动重试'),
+        { committed: true, previousPath: input, path: to });
+        throw error;
+      } finally {
+        try { await handle?.close(); await fs.rm(temp, { force: true }); }
+        catch {
+          if (published) throw Object.assign(fail(503, '新文件名已创建，但临时文件清理未完成；请核对两个文件名，不要自动重试'), { committed: true, previousPath: input, path: to });
+          throw fail(503, '重命名尚未完成，临时文件清理失败；请先核对文件');
+        }
+      }
+    });
+  }
   async write(input, text, expected, signal, operation = 'save') {
     checkSignal(signal);
     this.parts(input);

@@ -43,6 +43,17 @@ export function snapshotTodoDraft(model) {
     editorOpen: Boolean(model.editorOpen || pending),
   };
 }
+// A navigation draft belongs to one detail editor. Independent quick input and
+// list requests stay with the current page instead of travelling with that item.
+const snapshotEditorDraft = model => snapshotTodoDraft({ ...model,
+  quickTitle: '', quickPending: null, quickSaveState: 'clean', quickError: '',
+  rowPending: null, rowSaveState: 'clean', rowError: '',
+});
+export function restoreTodoDraft(current, record) {
+  if (record.scope !== 'editor') return { ...current, ...record.draft };
+  const { item, draft, pending, saveState, conflict, error, editorOpen } = record.draft;
+  return { ...current, item, draft, pending, saveState, conflict, error, editorOpen };
+}
 const validDraft = draft => plain(draft) && todo(draft.item) && plain(draft.draft)
   && ['title', 'body', 'notePath'].every(key => text(draft.draft[key]))
   && request(draft.pending) && request(draft.quickPending) && request(draft.rowPending)
@@ -50,7 +61,8 @@ const validDraft = draft => plain(draft) && todo(draft.item) && plain(draft.draf
   && ['error', 'quickTitle', 'quickError', 'rowError'].every(key => text(draft[key]))
   && typeof draft.conflict === 'boolean' && typeof draft.editorOpen === 'boolean';
 const sameRecord = (actual, expected) => actual && actual.libraryId === expected.libraryId
-  && actual.updatedAt === expected.updatedAt && JSON.stringify(actual.draft) === JSON.stringify(expected.draft);
+  && actual.scope === expected.scope && actual.updatedAt === expected.updatedAt
+  && JSON.stringify(actual.draft) === JSON.stringify(expected.draft);
 const changedMessage = '其他页面更新了这份草稿，较新内容已保留。请重新核对待恢复列表。';
 
 // Adapt the notes recovery transaction/CAS pattern to personal todos. idb owns
@@ -128,7 +140,8 @@ export function createTodoDraftRecovery(identity) {
         });
         if (disposed) { database.close(); database = undefined; return; }
         const records = await database.getAllFromIndex('drafts', 'libraryId', libraryId);
-        if (records.some(record => !uuid(record.id) || !Number.isFinite(record.updatedAt) || !validDraft(record.draft))) throw Error('Invalid draft record');
+        if (records.some(record => !uuid(record.id) || !Number.isFinite(record.updatedAt)
+          || record.scope !== undefined && record.scope !== 'editor' || !validDraft(record.draft))) throw Error('Invalid draft record');
         lastWriteError = null;
         publish({ ready: true, status: 'idle', error: '', candidates: candidatesOf(records) });
         if (current) persist(current);
@@ -147,11 +160,13 @@ export function createTodoDraftRecovery(identity) {
       await queue.catch(() => {});
       if (disposed || !database || !libraryId || state.rootChanged || lastWriteError) throw Error('草稿保护未完成，请保存后再关闭页面。');
     },
-    async stash(model) {
-      if (!hasUnsavedTodoDraft(model)) return null;
+    async stash(model, { scope } = {}) {
+      if (scope !== undefined && scope !== 'editor') throw Error('Invalid draft scope');
+      const value = scope === 'editor' ? snapshotEditorDraft(model) : snapshotTodoDraft(model);
+      if (!hasUnsavedTodoDraft(value)) return null;
       if (disposed || !database || !libraryId || state.rootChanged) throw Error('未能安全保留当前输入，请先完成保存或重试草稿保护。');
-      const value = snapshotTodoDraft(model), sources = [...adopted.values()];
-      const record = { id: uuidv4(), libraryId, updatedAt: Date.now(), draft: value };
+      const fullPage = scope === 'editor' ? snapshotTodoDraft(model) : null, sources = [...adopted.values()];
+      const record = { id: uuidv4(), libraryId, updatedAt: Date.now(), draft: value, ...(scope ? { scope } : {}) };
       publish({ status: 'pending' });
       try {
         await enqueue(async () => {
@@ -160,7 +175,11 @@ export function createTodoDraftRecovery(identity) {
           let records, changed = false;
           try {
             await tx.store.add(record);
-            await tx.store.delete(pageId);
+            // Retain the complete page until track(nextEditor) commits. A crash
+            // after this transaction but before navigation must retain quick
+            // input as well as the newly archived detail editor.
+            if (fullPage) await tx.store.put({ id: pageId, libraryId, updatedAt: Date.now(), draft: fullPage });
+            else await tx.store.delete(pageId);
             for (const source of sources) {
               const actual = await tx.store.get(source.id);
               if (sameRecord(actual, source)) await tx.store.delete(source.id);

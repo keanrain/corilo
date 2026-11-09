@@ -6,11 +6,15 @@ Notes plugin for the personal self-hosted Corilo direction. It uses the publishe
 
 This package supplies Markdown storage, model-facing tools and a **笔记** page inside the Harness Web shell. The page browses Markdown metadata in bounded pages, searches filenames and body text, reads and edits notes, and saves original words directly without AI. Harness supplies the conversation UI, model settings, default tools and permission/sandbox policy. No Pi runtime or second agent loop is mounted.
 
-The desktop page uses a persistent note list and a document editor with the title above the body. New titles are optional; `.md` is added when needed, and Markdown text is never rewritten. Ctrl/Cmd+S in the editor performs the same explicit save (no autosave or live Markdown preview).
+The desktop page uses a persistent note list and a document editor with the title above the body. New titles are optional; `.md` is added when needed, and Markdown text is never rewritten. Already-saved notes save after a 1-second typing pause; typing can continue during the request without losing newer text. New notes require their first explicit save. Ctrl/Cmd+S uses the same versioned service. Auto-save can be disabled under **更多操作** while this Harness page remains open (including plugin switches; a full reload restores the default); failures, conflicts and unknown outcomes stop automatic writes, including after draft recovery. Restoring a draft alone never submits it.
 
 On phones, the editor and save action come first; **查找笔记** switches to browsing/search, with **返回正文** to return without losing input; opening a result returns to the editor. The list and editor are separate phone views. History/trash live under **更多操作**, while failures/conflicts remain visible. For both plugins together from a source checkout, use the [root setup/init/start flow](https://github.com/keanrain/corilo/blob/feat/cloud-notes/README.md#一起使用笔记和待办); the independent package commands below remain supported.
 
 视觉使用 [Astryx Neutral](https://github.com/meta/astryx) 0.7.11 的 62 个静态设计 token，局部适配原生控件；浅深色与字体继承 Harness，主次按钮、焦点、列表与反馈保持一致。每包 token 子集约 3.6 KB，不载全局 reset 或网络字体。固定 Harness 的 React 实测为 18.3.1，Astryx React 组件要求 >=19，因此本包**没有接入其 React 组件**或另带 React。MIT 与来源哈希随代码记录，原功能和保存保护不变。
+
+Markdown preview uses pinned **markdown-it 15.0.3** and **DOMPurify 3.4.17**; raw HTML and active resources are disabled, images display only their alternative text, and links permit HTTP(S). Desktop shows source and preview together, phones switch views. Preview stops above 128×1024 UTF-16 code units with an explicit message; the full 1 MiB note remains editable and saveable.
+
+Saved notes can be renamed within their current directory after saving the body. Renaming checks the read version, never overwrites an existing destination and leaves earlier history discoverable by its anchored original path. It does not rewrite links or todo associations. A crash or partial failure can leave both names; the UI preserves the unresolved operation and offers explicit read-only verification, never automatic retry.
 
 ## Install and run
 
@@ -51,7 +55,7 @@ npm pack --pack-destination /absolute/existing/output-directory
 mkdir corilo-install
 cd corilo-install
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.5.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.3.0.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -71,7 +75,7 @@ and recovery-state formats.
 1. Save any browser drafts to files, stop this instance, and take a verified
    backup of its notes and state. A browser draft is not part of that backup.
 2. In a new installation directory, run `npm init -y` and
-   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.5.tgz`.
+   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.3.0.tgz`.
 3. From that **new** directory, generate a new overlay referring to the new
    installed package while keeping the original data paths:
 
@@ -111,6 +115,7 @@ when that release explicitly tests it; restoring a backup may then be necessary.
 | `corilo_notes_search` | Literal filename/body search with bounded snippets and an explicit truncation flag |
 | `corilo_notes_read` | Read text and content version before editing |
 | `corilo_notes_save` | Save with the read version; `expected: null` creates only when absent |
+| `corilo_notes_rename` | Rename within one directory using the read version, only to an absent target; preserve exact bytes and earlier history |
 | `corilo_notes_capture` | Create a unique Markdown note containing the exact supplied non-empty text |
 | `corilo_notes_history` / `corilo_notes_read_revision` | List/read this note's recovery checkpoints |
 | `corilo_notes_restore_revision` | Restore a checkpoint using the current file's expected version |
@@ -131,7 +136,7 @@ With `stateRoot` configured, the store uses system Git plumbing to maintain a se
 
 Managed saves checkpoint the previous and new content. Revision restoration still checks the current file version; deletion likewise requires the version actually read. Deleted notes have a recovery record; restoring them creates a new absent path and refuses to overwrite another note. If deletion was interrupted after recording recovery data, the trash list can indicate that the original still exists. A failed acknowledgement may follow an already committed file operation, so read the actual file before retrying.
 
-History returns at most 100 entries per page, with `hasMore`/`nextCursor`; pass the last returned revision as `cursor` to continue into older versions. The cursor must belong to this note's current history. Metadata is read in bounded Git batches rather than one process per version. Trash listing returns at most 100 records per page in stable ID order, with `hasMore`/`nextCursor`; pass `cursor` to continue. Known-ID restoration does not depend on enumerating the list. Recovery-state scanning is bounded to 20000 entries. There is no automatic expiry, historical-version deletion, remote backup, or disk-quota enforcement yet. After stopping the running instance, `corilo-notes maintain --config /absolute/notes.patch.json` uses Git compression and reference packing while preserving all object identities, versions and trash refs; it does not choose a retention period or delete notes. Run maintenance before reaching the 20000-entry state bound; it refuses a state directory that already fails validation. Changes made through external editors or Harness default tools are not continuously versioned; their current content can be checkpointed before the next Corilo-managed change, but intervening external versions may not be recoverable. Local Git history is not an independent backup; loss of the host/state disk still requires a separate backup strategy.
+History returns at most 100 entries per page, with `hasMore`/`nextCursor`; pass the last returned revision as `cursor` to continue into older versions. The cursor must belong to this note's current history. Metadata is read in bounded Git batches rather than one process per version. Trash listing returns at most 100 records per page in stable ID order, with `hasMore`/`nextCursor`; pass `cursor` to continue. Known-ID restoration does not depend on enumerating the list. Recovery-state scanning is bounded to 20000 entries. Frequent automatic saves can grow this history faster; unchanged text is not resubmitted, and in-flight edits are coalesced.  There is no automatic expiry, historical-version deletion, remote backup, or disk-quota enforcement yet. After stopping the running instance, `corilo-notes maintain --config /absolute/notes.patch.json` uses Git compression and reference packing while preserving all object identities, versions and trash refs; it does not choose a retention period or delete notes. Run maintenance before reaching the 20000-entry state bound; it refuses a state directory that already fails validation. Changes made through external editors or Harness default tools are not continuously versioned; their current content can be checkpointed before the next Corilo-managed change, but intervening external versions may not be recoverable. Local Git history is not an independent backup; loss of the host/state disk still requires a separate backup strategy.
 
 ## Web page and Host boundary
 

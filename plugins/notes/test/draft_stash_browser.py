@@ -64,6 +64,28 @@ def main():
               assert(candidates.filter(r => r.draft.text === text).length === 1, 'existing independent stash unchanged');
               handle.dispose();
 
+              // Editing after an uncertain result changes status to dirty, but
+              // must not erase the independent no-automatic-retry decision.
+              let paused = DraftRuntime.createDraftRecovery(async()=>({id:'blocked-fixture'}));
+              await paused.start();
+              paused.track({...dirty('failure followed by more input'), expected:'a'.repeat(64), autosave:'blocked'});
+              await settled(paused); paused.dispose();
+              paused = DraftRuntime.createDraftRecovery(async()=>({id:'blocked-fixture'}));
+              await paused.start();
+              assert(paused.getSnapshot().candidates[0].draft.autosave === 'blocked', 'pause survives remount after further typing');
+              paused.track({...dirty('in flight'), expected:'a'.repeat(64), status:'saving', autosave:'ready'});
+              await settled(paused); paused.dispose();
+              paused = DraftRuntime.createDraftRecovery(async()=>({id:'blocked-fixture'}));
+              await paused.start();
+              const inFlight = paused.getSnapshot().candidates.find(record => record.draft.text === 'in flight');
+              assert(inFlight.draft.status === 'failed' && inFlight.draft.autosave === 'blocked', 'unacknowledged request is paused after reload');
+              paused.track({...dirty('old original'), original:'old original', expected:'a'.repeat(64), status:'saving', autosave:'ready'});
+              await settled(paused); paused.dispose();
+              paused = DraftRuntime.createDraftRecovery(async()=>({id:'blocked-fixture'}));
+              await paused.start();
+              assert(paused.getSnapshot().candidates.some(record => record.draft.text === 'old original' && record.draft.autosave === 'blocked'), 'a reverted original still needs recovery after an uncertain write');
+              paused.dispose();
+
               // Disposing during asynchronous identity discovery must not open
               // a database or publish a completed startup after unmount.
               let identify;
