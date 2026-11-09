@@ -33,7 +33,7 @@ export function LibraryPanel({ call, onOpen, disabled, selectedPath, revision })
     </div>
     <form className="corilo-notes-list-tools" onSubmit={event => { event.preventDefault(); void load(query.trim() ? 'search' : 'browse'); }}>
       <input aria-label="搜索笔记" placeholder="搜索文件名或正文" value={query} onChange={event => setQuery(event.target.value)} />
-      <button disabled={disabled} type="submit">搜索</button>
+      <button disabled={disabled} type="submit" aria-label="搜索" title="搜索">⌕</button>
     </form>
     {pending && <p aria-live="polite">{pendingKind === 'search' ? '正在搜索…' : '正在读取笔记…'}</p>}
     {error && <p role="alert">{error}</p>}

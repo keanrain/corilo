@@ -41,6 +41,7 @@ export function snapshotTodoDraft(model) {
     rowSaveState: model.rowSaveState === 'saving' ? rowPending ? 'unknown' : 'failed' : model.rowSaveState || 'clean',
     rowError: model.rowSaveState === 'saving' && rowPending ? uncertain : model.rowError || '',
     editorOpen: Boolean(model.editorOpen || pending),
+    leaveSaveBlocked: Boolean(model.leaveSaveBlocked || pending || model.conflict || ['failed', 'unknown'].includes(model.saveState)),
   };
 }
 // A navigation draft belongs to one detail editor. Independent quick input and
@@ -51,10 +52,11 @@ const snapshotEditorDraft = model => snapshotTodoDraft({ ...model,
 });
 export function restoreTodoDraft(current, record) {
   if (record.scope !== 'editor') return { ...current, ...record.draft };
-  const { item, draft, pending, saveState, conflict, error, editorOpen } = record.draft;
-  return { ...current, item, draft, pending, saveState, conflict, error, editorOpen };
+  const { item, draft, pending, saveState, conflict, error, editorOpen, leaveSaveBlocked } = record.draft;
+  return { ...current, item, draft, pending, saveState, conflict, error, editorOpen, leaveSaveBlocked: Boolean(leaveSaveBlocked) };
 }
 const validDraft = draft => plain(draft) && todo(draft.item) && plain(draft.draft)
+  && (draft.leaveSaveBlocked === undefined || typeof draft.leaveSaveBlocked === 'boolean')
   && ['title', 'body', 'notePath'].every(key => text(draft.draft[key]))
   && request(draft.pending) && request(draft.quickPending) && request(draft.rowPending)
   && states.has(draft.saveState) && states.has(draft.quickSaveState) && states.has(draft.rowSaveState)

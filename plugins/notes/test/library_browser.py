@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for, manual_saves
+from browser import ROOT, wait_for, manual_saves, open_drafts
 
 
 def main():
@@ -73,7 +73,7 @@ def main():
                     library.get_by_text('按路径打开', exact=True).click()
                     library.get_by_role('textbox', name='要打开的笔记路径', exact=True).fill('z-large-08.md')
                     library.get_by_role('button', name='打开路径', exact=True).click()
-                    expect(panel.get_by_role('textbox', name='笔记文件名', exact=True)).to_have_value('z-large-08.md')
+                    expect(panel.get_by_role('textbox', name='笔记标题', exact=True)).to_have_value('z-large-08')
                     assert body.input_value() == large_text
 
                     # Ordinary capture remains zero-model even in a library
@@ -103,16 +103,18 @@ def main():
                     body.fill(draft_a)
                     panel.get_by_role('button', name='新笔记', exact=True).click()
                     expect(body).to_have_value('')
+                    open_drafts(panel)
                     candidate_a = panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='0000.md')
                     expect(candidate_a).to_have_count(1)
                     candidate_a.get_by_text('预览草稿', exact=True).click()
                     expect(candidate_a.get_by_role('textbox', name='草稿正文预览', exact=True)).to_have_value(draft_a)
                     assert note_a.read_text() == original_a
-                    panel.get_by_role('textbox', name='笔记文件名', exact=True).fill('B.md')
+                    panel.get_by_role('textbox', name='笔记标题', exact=True).fill('B.md')
                     body.fill('B 已保存正文')
                     panel.get_by_role('button', name='保存笔记', exact=True).click()
                     expect(status).to_have_text('已保存')
                     assert (vault / 'B.md').read_text() == 'B 已保存正文'
+                    open_drafts(panel)
                     candidate_a.get_by_role('button', name='恢复草稿', exact=True).click()
                     expect(body).to_have_value(draft_a)
                     assert note_a.read_text() == original_a
@@ -125,6 +127,7 @@ def main():
                     expect(panel.get_by_test_id('draft-persistence')).to_have_text('草稿已保存在此浏览器，尚未保存到文件。')
                     panel = enter()
                     body = panel.get_by_role('textbox', name='笔记正文', exact=True)
+                    open_drafts(panel)
                     candidates = panel.get_by_role('region', name='待恢复草稿')
                     candidate_a = candidates.locator('li').filter(has_text='0000.md')
                     candidate_c = candidates.locator('li').filter(has_text='0001.md')
@@ -132,9 +135,11 @@ def main():
                     expect(candidate_c).to_have_count(1)
                     candidate_a.get_by_text('预览草稿', exact=True).click()
                     expect(candidate_a.get_by_role('textbox', name='草稿正文预览', exact=True)).to_have_value(draft_a)
+                    open_drafts(panel)
                     candidate_c.get_by_role('button', name='恢复草稿', exact=True).click()
                     expect(body).to_have_value(draft_c)
                     # Restoring A while C is unsaved retains C as a candidate.
+                    open_drafts(panel)
                     candidate_a.get_by_role('button', name='恢复草稿', exact=True).click()
                     expect(body).to_have_value(draft_a)
                     expect(candidates.locator('li').filter(has_text='0001.md')).to_have_count(1)

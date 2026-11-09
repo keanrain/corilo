@@ -127,3 +127,64 @@
 .corilo-notes-rename > button { border-color: transparent; font-size: 13px; padding: 6px 8px; }
 .corilo-notes-rename form { padding: var(--ax-spacing-4); border: 1px solid var(--ax-color-border); border-radius: var(--ax-radius-container); }
 .corilo-notes-rename form button { margin: 4px 8px 4px 0; }
+/* Document workspace: tools occupy one bar; the page itself is the writing surface. */
+.corilo-notes { display: flex; flex-direction: column; padding: 0; }
+.corilo-notes .corilo-notes-toolbar { position: sticky; top: 0; z-index: 4; margin: 0; min-height: 58px; padding: 8px 20px; padding-inline-start: max(20px, var(--dsh-frame-leading-clearance, 0px)); border-bottom: 1px solid var(--ax-color-border); background: var(--ax-color-background-surface); flex-shrink: 0; gap: 8px; }
+.corilo-notes-toolbar-start { display: flex; align-items: center; gap: 12px; }
+.corilo-notes .corilo-notes-toolbar h1 { font-size: 16px; font-weight: 600; letter-spacing: 0; }
+.corilo-notes .corilo-notes-toolbar button, .corilo-notes .corilo-notes-toolbar summary { min-height: 36px; padding: 7px 10px; border-color: transparent; font-size: 13px; }
+.corilo-notes .corilo-notes-new { display: flex; align-items: center; gap: 5px; }
+.corilo-notes .corilo-notes-primary-actions { gap: 6px; flex-wrap: nowrap; }
+.corilo-notes .corilo-notes-primary-actions [role="status"] { margin-inline-end: 10px; font-size: 12px; white-space: nowrap; }
+.corilo-notes .corilo-notes-view-tools { margin: 0; gap: 2px; }
+.corilo-notes .corilo-notes-view-tools button { width: 36px; font-size: 19px; border-radius: 6px; }
+.corilo-notes .corilo-notes-view-tools button[aria-pressed="true"] { background: var(--ax-color-background-muted); }
+.corilo-notes .corilo-notes-grid { flex: 1; min-height: 0; grid-template-columns: 240px minmax(0, 1fr); gap: 0; margin: 0; }
+.corilo-notes .corilo-notes-library { padding: 16px 12px; background: var(--ax-color-background-muted); }
+.corilo-notes aside .corilo-notes-list-tools { gap: 4px; }
+.corilo-notes .corilo-notes-list-tools input { background: var(--ax-color-background-surface); padding: 8px 10px; font-size: 13px; }
+.corilo-notes .corilo-notes-list-tools button { border: 0; font-size: 20px; padding: 6px; min-width: 36px; }
+.corilo-notes .corilo-notes-editor { max-width: 960px; padding: 36px clamp(20px, 4vw, 60px) 60px; gap: 14px; }
+.corilo-notes .corilo-notes-filename { margin: 0; }
+.corilo-notes .corilo-notes-title, .corilo-notes .corilo-notes-filename input { font-size: 30px; font-weight: 650; line-height: 1.4; border: 0; border-radius: 0; padding: 2px 0; min-height: 48px; color: var(--ax-color-text-primary); background: transparent; }
+.corilo-notes .corilo-notes-title[readonly] { cursor: text; }
+.corilo-notes .corilo-notes-title:disabled { color: var(--ax-color-text-primary); background: transparent; }
+.corilo-notes .corilo-notes-title-line { display: flex; gap: 8px; align-items: center; }
+.corilo-notes-title-line > div { display: flex; }
+.corilo-notes .corilo-notes-title-line button { padding: 6px; min-width: 36px; min-height: 36px; border-color: transparent; }
+.corilo-notes .corilo-notes-rename form { padding: 0; border: 0; border-radius: 0; }
+.corilo-notes .corilo-notes-body textarea { min-height: 55vh; padding: 8px 0; line-height: 1.9; border: 0; border-radius: 0; resize: vertical; }
+.corilo-notes .corilo-notes-body textarea:focus-visible { outline: none; box-shadow: inset 2px 0 0 var(--ax-color-text-info); padding-inline-start: 10px; }
+.corilo-notes .corilo-notes-writing { min-height: 0; }
+.corilo-notes .corilo-notes-breadcrumb { color: var(--ax-color-text-secondary); font-size: 12px; margin: 0; }
+.corilo-notes .corilo-notes-more { position: relative; border: 0; margin: 0; }
+.corilo-notes-more > summary { list-style: none; font-size: 18px; text-align: center; border-radius: 6px; }
+.corilo-notes-more > summary::-webkit-details-marker { display: none; }
+.corilo-notes-popover { position: absolute; inset-inline-end: 0; top: calc(100% + 6px); z-index: 5; width: min(340px, calc(100vw - 32px)); max-height: 70vh; overflow: auto; padding: 16px; text-align: start; background: var(--ax-color-background-surface); border: 1px solid var(--ax-color-border); border-radius: 10px; box-shadow: 0 8px 30px #0002; }
+.corilo-notes-popover > strong { display: block; font-size: 13px; margin-bottom: 12px; }
+.corilo-notes .corilo-notes-popover p { font-size: 12px; color: var(--ax-color-text-secondary); }
+.corilo-notes .corilo-notes-drafts { margin-top: 20px; padding: 0 8px; border: 0; background: transparent; }
+.corilo-notes .corilo-notes-drafts summary { font-size: 12px; }
+.corilo-notes .corilo-notes-drafts ul { max-height: 45vh; }
+.corilo-notes .corilo-notes-drafts li { font-size: 12px; }
+.corilo-notes > [role="alert"] { margin: 10px 20px; }
+.corilo-notes .corilo-notes-notice { margin: 0; font-size: 12px; }
+@media (max-width: 700px) {
+  .corilo-notes { padding: 0; }
+  .corilo-notes .corilo-notes-toolbar { padding: 8px 12px; padding-top: max(8px, var(--dsh-frame-top-clearance, 0px)); }
+  .corilo-notes-toolbar-start { gap: 3px; }
+  .corilo-notes .corilo-notes-new span { display: none; }
+  .corilo-notes .corilo-notes-new { font-size: 22px; }
+  .corilo-notes .corilo-notes-toolbar button, .corilo-notes .corilo-notes-toolbar summary { min-height: 44px; }
+  .corilo-notes .corilo-notes-toolbar h1 { display: none; }
+  .corilo-notes .corilo-notes-primary-actions { gap: 2px; }
+  .corilo-notes .corilo-notes-primary-actions [role="status"] { margin-inline-end: 4px; font-size: 11px; }
+  .corilo-notes .corilo-notes-grid { grid-template-columns: minmax(0, 1fr); }
+  .corilo-notes .corilo-notes-editor { padding: 22px 20px 40px; }
+  .corilo-notes .corilo-notes-library { border: 0; padding: 20px; }
+  .corilo-notes .corilo-notes-title, .corilo-notes .corilo-notes-filename input { font-size: 26px; }
+  .corilo-notes .corilo-notes-body textarea { min-height: clamp(170px, 48vh, 360px); }
+  .corilo-notes.is-browsing .corilo-notes-editor { display: none; }
+}
+.corilo-notes aside li button { background: transparent; }
+.corilo-notes aside li [aria-current="page"] { background: var(--ax-color-background-surface); }

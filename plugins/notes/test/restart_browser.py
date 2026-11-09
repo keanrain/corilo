@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for, manual_saves
+from browser import ROOT, wait_for, manual_saves, open_drafts
 
 
 def main():
@@ -104,7 +104,7 @@ def main():
                 assert len(captured) == 1 and captured[0].read_text() == saved_text
                 relative = captured[0].relative_to(base / 'notes').as_posix()
                 if panel.locator('details.corilo-notes-more').get_attribute('open') is None:
-                    panel.get_by_text('更多操作', exact=True).click()
+                    panel.locator('details.corilo-notes-more > summary').click()
                 panel.get_by_role('button', name='版本历史', exact=True).click()
                 listing = panel.get_by_role('region', name='版本历史列表')
                 expect(listing.get_by_role('button')).to_have_count(1)
@@ -124,15 +124,17 @@ def main():
                 page.once('dialog', lambda dialog: dialog.accept())
                 panel = enter(origin)
                 assert page.url.rstrip('/') == origin
+                open_drafts(panel)
                 candidates = panel.get_by_role('region', name='待恢复草稿')
                 candidate = candidates.locator('li').filter(has_text=relative)
                 candidate.get_by_text('预览草稿', exact=True).click()
                 expect(candidate.get_by_role('textbox', name='草稿正文预览')).to_have_value(draft)
+                open_drafts(panel)
                 candidate.get_by_role('button', name='恢复草稿', exact=True).click()
                 expect(body).to_have_value(draft)
                 assert captured[0].read_text() == saved_text, 'Draft recovery must not write a file'
                 if panel.locator('details.corilo-notes-more').get_attribute('open') is None:
-                    panel.get_by_text('更多操作', exact=True).click()
+                    panel.locator('details.corilo-notes-more > summary').click()
                 panel.get_by_role('button', name='版本历史', exact=True).click()
                 expect(listing.get_by_role('button')).to_have_count(1)
                 expect(listing.get_by_role('button')).to_have_text(revision_label)

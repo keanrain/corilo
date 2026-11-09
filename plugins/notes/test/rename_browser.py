@@ -9,7 +9,7 @@ import tempfile
 import time
 
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for, manual_saves
+from browser import ROOT, wait_for, manual_saves, open_drafts
 
 
 def main():
@@ -50,15 +50,12 @@ def main():
                     body = panel.get_by_role('textbox', name='笔记正文', exact=True)
                     manual_saves(panel)
                     panel.get_by_role('button', name='原名.md', exact=True).click()
-                    panel.get_by_role('button', name='重命名笔记', exact=True).click()
+                    panel.get_by_role('textbox', name='笔记标题', exact=True).click()
                     field = panel.get_by_role('textbox', name='新笔记名称', exact=True)
                     expect(field).to_be_focused()
                     expect(body).to_be_disabled()
                     expect(panel.get_by_role('button', name='新笔记', exact=True)).to_be_disabled()
                     more = panel.locator('details.corilo-notes-more')
-                    more.locator('summary').first.click()
-                    expect(panel.get_by_role('button', name='移入回收站', exact=True)).to_be_disabled()
-                    expect(panel.get_by_role('button', name='版本历史', exact=True)).to_be_disabled()
                     field.fill('已有')
                     panel.get_by_role('button', name='确认重命名', exact=True).click()
                     expect(panel.get_by_role('alert')).to_contain_text('已存在')
@@ -73,6 +70,9 @@ def main():
                     while not held and time.monotonic() < deadline:
                         page.wait_for_timeout(25)
                     assert held, 'Rename request must reach the host'
+                    more.locator('summary').first.click()
+                    expect(panel.get_by_role('button', name='移入回收站', exact=True)).to_be_disabled()
+                    expect(panel.get_by_role('button', name='版本历史', exact=True)).to_be_disabled()
                     page.get_by_role('button', name='Plugins', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
                     expect(body).to_be_disabled()
@@ -96,7 +96,7 @@ def main():
 
                     # The host commits before its response is lost. No retry is
                     # allowed until explicit read-only verification and choice.
-                    panel.get_by_role('button', name='重命名笔记', exact=True).click()
+                    panel.get_by_role('textbox', name='笔记标题', exact=True).click()
                     field.fill('最终名字')
                     def lose_reply(route):
                         assert route.fetch().json()['ok']
@@ -114,12 +114,13 @@ def main():
                     page.reload()
                     page.get_by_role('button', name='Close', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
+                    open_drafts(panel)
                     panel.get_by_role('button', name='恢复草稿', exact=True).click()
                     expect(verify).to_be_visible()
                     verify.click()
                     panel.get_by_role('button', name='打开新文件', exact=True).click()
                     expect(body).to_be_enabled()
-                    expect(panel.get_by_role('textbox', name='笔记文件名')).to_have_value('最终名字.md')
+                    expect(panel.get_by_role('textbox', name='笔记标题')).to_have_value('最终名字')
 
                     # Following earlier names is discoverable after a reload.
                     page.reload()
@@ -133,7 +134,7 @@ def main():
                     # Recover an unresolved rename after opening its source.
                     # The same path keeps the child mounted, so initial local
                     # state alone cannot represent the recovered request.
-                    panel.get_by_role('button', name='重命名笔记', exact=True).click()
+                    panel.get_by_role('textbox', name='笔记标题', exact=True).click()
                     field.fill('中断的改名')
                     page.route('**/api/corilo-notes/rename', lambda route: route.abort(), times=1)
                     panel.get_by_role('button', name='确认重命名', exact=True).click()
@@ -144,6 +145,7 @@ def main():
                     page.get_by_role('button', name='笔记', exact=True).click()
                     panel.get_by_role('button', name='最终名字.md', exact=True).click()
                     expect(body).to_be_enabled()
+                    open_drafts(panel)
                     panel.get_by_role('button', name='恢复草稿', exact=True).click()
                     expect(verify).to_be_visible()
                     expect(field).to_have_value('中断的改名.md')

@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import tempfile
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for
+from browser import ROOT, wait_for, open_drafts
 
 
 def main():
@@ -38,7 +38,7 @@ def main():
                     context = browser.new_context(viewport={'width': 1400, 'height': 1000})
                     errors, external, mutations = [], [], []
                     context.on('request', lambda request: external.append(request.url.split('?')[0]) if request.url.startswith('http') and not request.url.startswith(origin + '/') else None)
-                    context.on('request', lambda request: mutations.append(request.url.split('/')[-1]) if re.search(r'/api/corilo-notes/(save|capture)$', request.url) else None)
+                    context.on('request', lambda request: mutations.append(request.url.split('/')[-1]) if re.search(r'/api/corilo-notes/(save|capture|create)$', request.url) else None)
                     page = context.new_page()
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     page.goto(url)
@@ -48,9 +48,10 @@ def main():
                     panel = page.get_by_role('region', name='Corilo 笔记')
                     body = panel.get_by_role('textbox', name='笔记正文', exact=True)
                     expect(body).to_be_enabled()
-                    body.fill('首次记录需明确保存，不因停顿自动捕获')
-                    page.wait_for_timeout(1400)
-                    assert not mutations and len(list(vault.rglob('*.md'))) == 1
+                    body.fill('直接开始写作，自动建立文档')
+                    expect(panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
+                    assert (vault / '未命名.md').read_text() == '直接开始写作，自动建立文档'
+                    assert mutations == ['create']
 
                     panel.get_by_role('button', name='自动保存.md', exact=True).click()
                     expect(body).to_have_value('原始正文\n')
@@ -67,9 +68,9 @@ def main():
                     expect(panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
                     # The manual-workflow preference survives leaving the
                     # plugin panel, without silently saving when it remounts.
-                    panel.get_by_text('更多操作', exact=True).click()
+                    panel.locator('details.corilo-notes-more > summary').click()
                     panel.get_by_role('checkbox', name='自动保存', exact=True).uncheck()
-                    panel.get_by_text('更多操作', exact=True).click()
+                    panel.locator('details.corilo-notes-more > summary').click()
                     body.fill('关闭自动保存后的未保存输入')
                     before = len(mutations)
                     page.get_by_role('button', name='Plugins', exact=True).click()
@@ -77,11 +78,11 @@ def main():
                     expect(body).to_have_value('关闭自动保存后的未保存输入')
                     page.wait_for_timeout(1400)
                     assert len(mutations) == before and note.read_text() == '原始正文\n'
-                    panel.get_by_text('更多操作', exact=True).click()
+                    panel.locator('details.corilo-notes-more > summary').click()
                     option = panel.get_by_role('checkbox', name='自动保存', exact=True)
                     expect(option).not_to_be_checked()
                     option.check()
-                    panel.get_by_text('更多操作', exact=True).click()
+                    panel.locator('details.corilo-notes-more > summary').click()
                     body.fill('  自动保存保持原话\r\n第二行  ')
                     expect(panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
                     # Textarea normalizes browser input line endings; the host
@@ -129,6 +130,7 @@ def main():
                     page.reload()
                     page.get_by_role('button', name='Close', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
+                    open_drafts(panel)
                     panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='自动保存.md').get_by_role('button', name='恢复草稿', exact=True).click()
                     expect(body).to_have_value('失败后继续输入，暂停标记不能消失')
                     before = len(mutations)
@@ -158,6 +160,7 @@ def main():
                     page.reload()
                     page.get_by_role('button', name='Close', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
+                    open_drafts(panel)
                     panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='自动保存.md').get_by_role('button', name='恢复草稿', exact=True).click()
                     expect(body).to_have_value(original)
                     expect(panel.get_by_role('status')).to_have_text('版本冲突')
@@ -174,6 +177,7 @@ def main():
                     page.reload()
                     page.get_by_role('button', name='Close', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
+                    open_drafts(panel)
                     panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='自动保存.md').get_by_role('button', name='恢复草稿', exact=True).click()
                     expect(body).to_have_value('失败后继续写，等待人工核对')
                     expect(panel.get_by_role('status')).to_have_text('版本冲突')
@@ -222,15 +226,16 @@ def main():
                     assert panel.locator('textarea[aria-label="笔记正文"]').input_value() == large
                     assert len(mutations) == before
                     panel.get_by_role('button', name='新笔记', exact=True).click()
-                    expect(body).to_be_visible()
-                    expect(body).to_have_value('')
+                    expect(panel.get_by_role('alert').filter(has_text='请先核对').first).to_be_visible()
+                    assert panel.locator('textarea[aria-label="笔记正文"]').input_value() == large
+                    assert len(mutations) == before
                     assert not errors, errors
                     assert not external, external
                     context.close()
                     browser.close()
                 host.terminate()
                 assert host.wait(timeout=10) == 0
-                print('Harness editor Chromium passed: first-save opt-in, versioned debounce, typing during in-flight save, IME, lost-reply pause, recovered stale draft without automatic write, markdown/table/code preview, sanitized links/no resource loads, 390px view switch and explicit preview size bound; zero model/external requests.')
+                print('Harness editor Chromium passed: automatic first document, versioned debounce, typing during in-flight save, IME, lost-reply pause, recovered stale draft without automatic write, markdown/table/code preview, sanitized links/no resource loads, 390px view switch and explicit preview size bound; zero model/external requests.')
             finally:
                 if host.poll() is None:
                     host.kill()

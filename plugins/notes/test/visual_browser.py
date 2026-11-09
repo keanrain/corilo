@@ -69,14 +69,14 @@ def main():
                         expected_primary = 'rgb(27, 27, 27)' if scheme == 'light' else 'rgb(241, 241, 241)'
                         wait_for(lambda: primary.evaluate('(el) => getComputedStyle(el).backgroundColor') == expected_primary)
                         body.focus()
-                        assert body.evaluate('(el) => getComputedStyle(el).outlineStyle') == 'solid'
-                        assert body.evaluate('(el) => parseFloat(getComputedStyle(el).outlineWidth)') >= 2
+                        assert body.evaluate('(el) => getComputedStyle(el).boxShadow') != 'none'
+                        assert body.evaluate('(el) => getComputedStyle(el).boxShadow').startswith('rgb(')
                         page.screenshot(path=str(artifact_dir / f'notes-{scheme}-desktop.png'), animations='disabled')
                         page.set_viewport_size({'width': 390, 'height': 844})
                         panel.evaluate('(el) => el.scrollTo({top:0})')
                         assert panel.evaluate('(el) => el.scrollWidth <= el.clientWidth + 1')
                         assert body.evaluate('(el) => parseFloat(getComputedStyle(el).fontSize)') >= 16
-                        assert 150 <= body.bounding_box()['height'] <= 270, 'Mobile editor should leave room for save and recovery feedback'
+                        assert 170 <= body.bounding_box()['height'] <= 380, 'Mobile editor should leave room for save and recovery feedback'
                         assert primary.bounding_box()['height'] >= 44
                         page.screenshot(path=str(artifact_dir / f'notes-{scheme}-mobile.png'), animations='disabled')
                         # State styling does not replace business feedback or hide drafts.

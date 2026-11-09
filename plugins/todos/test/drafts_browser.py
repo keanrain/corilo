@@ -13,6 +13,7 @@ import tempfile
 import uuid
 
 from playwright.sync_api import sync_playwright, expect
+from browser import manual_saves
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -77,6 +78,7 @@ def main():
                     target.get_by_role('button', name='待办', exact=True).click(timeout=20000)
                     panel = target.get_by_role('region', name='Corilo 待办')
                     expect(panel).to_be_visible()
+                    manual_saves(panel)
                     return panel
 
                 # The UI-specific selectors below intentionally exercise the

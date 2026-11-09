@@ -19,7 +19,7 @@ test('published dsh web profile loads the external notes plugin and executes its
       import {ToolExecutionPipeline} from ${JSON.stringify(pipeline)};
       export const inject=['tools'];
       export async function apply(ctx){
-        const names=['corilo_notes_list','corilo_notes_read','corilo_notes_save','corilo_notes_capture'];
+        const names=['corilo_notes_list','corilo_notes_read','corilo_notes_save','corilo_notes_capture','corilo_notes_create'];
         for(let n=0;!names.every(name=>ctx.tools.get(name));n++){
           if(n>100)throw new Error('Notes tools did not activate');
           await new Promise(resolve=>setTimeout(resolve,50));
@@ -31,6 +31,7 @@ test('published dsh web profile loads the external notes plugin and executes its
           if(result.isError)throw new Error('Notes tool failed');return result.value;
         };
         await call('corilo_notes_save',{path:'boot.md',text:'Real Harness host',expected:null});
+        await call('corilo_notes_create',{});
         const read=await call('corilo_notes_read',{path:'boot.md'});
         const list=await call('corilo_notes_list',{});
         await writeFile(${JSON.stringify(proof)},JSON.stringify({names,text:read.text,paths:list.items.map(x=>x.path)}));
@@ -57,7 +58,8 @@ test('published dsh web profile loads the external notes plugin and executes its
     }
     assert.ok(evidence,'Published host did not register/execute notes tools');
     assert.ok(address,'Published Web profile did not start');
-    assert.equal(evidence.names.length,4);assert.equal(evidence.text,'Real Harness host');assert.deepEqual(evidence.paths,['boot.md']);
+    assert.equal(evidence.names.length,5);assert.equal(evidence.text,'Real Harness host');assert.deepEqual(evidence.paths,['boot.md','未命名.md']);
+    assert.equal(await readFile(path.join(root,'notes','未命名.md'),'utf8'),'');
     assert.equal((await fetch(address)).status,401,'published Web host requires its own authentication');
     assert.equal(await readFile(path.join(root,'notes','boot.md'),'utf8'),'Real Harness host');
     child.kill('SIGTERM');

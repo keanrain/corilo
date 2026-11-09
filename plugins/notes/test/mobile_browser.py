@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for, manual_saves
+from browser import ROOT, wait_for, manual_saves, open_drafts
 
 
 def main():
@@ -106,7 +106,7 @@ def main():
                         capture_path = captured[0].relative_to(vault).as_posix()
                         page.set_viewport_size({'width': 390, 'height': 844})
                         expect(panel.get_by_role('button', name='版本历史', exact=True)).not_to_be_visible()
-                        more = panel.get_by_text('更多操作', exact=True)
+                        more = panel.locator('details.corilo-notes-more > summary')
                         assert more.bounding_box()['height'] >= 44
                         more.tap()
                         panel.get_by_role('button', name='版本历史', exact=True).tap()
@@ -136,8 +136,8 @@ def main():
                         page.unroute('**/api/corilo-notes/save')
                         page.once('dialog', lambda dialog: dialog.accept())
                         panel = enter()
+                        open_drafts(panel)
                         candidates = panel.get_by_role('region', name='待恢复草稿')
-                        candidates.locator('details').first.locator('summary').first.tap()
                         candidate = candidates.locator('li').filter(has_text=capture_path)
                         candidate.get_by_text('预览草稿', exact=True).tap()
                         expect(candidate.get_by_role('textbox', name='草稿正文预览')).to_have_value(long_draft)

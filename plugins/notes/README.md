@@ -6,15 +6,17 @@ Notes plugin for the personal self-hosted Corilo direction. It uses the publishe
 
 This package supplies Markdown storage, model-facing tools and a **笔记** page inside the Harness Web shell. The page browses Markdown metadata in bounded pages, searches filenames and body text, reads and edits notes, and saves original words directly without AI. Harness supplies the conversation UI, model settings, default tools and permission/sandbox policy. No Pi runtime or second agent loop is mounted.
 
-The desktop page uses a persistent note list and a document editor with the title above the body. New titles are optional; `.md` is added when needed, and Markdown text is never rewritten. Already-saved notes save after a 1-second typing pause, including after switching to another Harness panel; typing can continue during the request without losing newer text. New notes require their first explicit save. Ctrl/Cmd+S uses the same versioned service. Auto-save can be disabled under **更多操作** while this Harness page remains open (including plugin switches; a full reload restores the default); failures, conflicts and unknown outcomes stop automatic writes, including after draft recovery. Restoring a draft alone never submits it.
+The desktop page is a note list beside a continuous document. Click **新笔记** to create a real empty Markdown note and start writing, or type directly into the initial page: auto-save creates a readable **未命名.md**, **未命名 2.md**, etc. with the initial text in one request. No filename form or first-submit step is required in the default flow. Click the document title to rename it inline; Enter or leaving the title confirms, Escape cancels.
 
-On phones, the editor and save action come first; **查找笔记** switches to browsing/search, with **返回正文** to return without losing input; opening a result returns to the editor. The list and editor are separate phone views. History/trash live under **更多操作**, while failures/conflicts remain visible. For both plugins together from a source checkout, use the [root setup/init/start flow](https://github.com/keanrain/corilo/blob/feat/cloud-notes/README.md#一起使用笔记和待办); the independent package commands below remain supported.
+Save status lives quietly in the toolbar. The default workflow does not keep a separate save form or a browser-draft explanation above the body. Notes save after a 1-second typing pause, including after switching to another Harness panel, and newer typing survives in-flight replies. Failures, conflicts and unknown outcomes stay visible and stop automatic writes; restoring a draft alone never submits it. Normal note switching waits for the current edit to save before reading the target. Unedited recovered drafts and manual mode use protected draft retention instead. After a failed or uncertain write, selecting a file for verification asks to retain the current draft first, then only reads the selected file; it never resends creation automatically. Ctrl/Cmd+S still uses the same versioned service. **更多操作** offers a manual mode for explicit save / exact-word capture; the preference survives plugin switches while this Harness page stays open, and a full reload restores the default.
+
+On phones, **查找笔记** switches to browsing/search and **返回正文** returns without losing input; opening a result or recovering a draft returns to the editor. The list, editor and preview are separate phone views. Recovery drafts live in the sidebar; history/trash and the manual setting live under **更多操作**. For both plugins from a source checkout, use the [root setup/init/start flow](https://github.com/keanrain/corilo/blob/feat/cloud-notes/README.md#一起使用笔记和待办); independent package commands remain supported.
 
 视觉使用 [Astryx Neutral](https://github.com/meta/astryx) 0.7.11 的 62 个静态设计 token，局部适配原生控件；浅深色与字体继承 Harness，主次按钮、焦点、列表与反馈保持一致。每包 token 子集约 3.6 KB，不载全局 reset 或网络字体。固定 Harness 的 React 实测为 18.3.1，Astryx React 组件要求 >=19，因此本包**没有接入其 React 组件**或另带 React。MIT 与来源哈希随代码记录，原功能和保存保护不变。
 
 Markdown preview uses pinned **markdown-it 15.0.3** and **DOMPurify 3.4.17**; raw HTML and active resources are disabled, images display only their alternative text, and links permit HTTP(S). Desktop shows source and preview together, phones switch views. Preview stops above 128×1024 UTF-16 code units with an explicit message; the full 1 MiB note remains editable and saveable.
 
-Saved notes can be renamed within their current directory after saving the body. Renaming checks the read version, never overwrites an existing destination and leaves earlier history discoverable by its anchored original path. It does not rewrite links or todo associations. A crash or partial failure can leave both names; the UI preserves the unresolved operation and offers explicit read-only verification, never automatic retry.
+Saved notes can be renamed directly in their title within the current directory after saving the body. Renaming checks the read version, never overwrites an existing destination and leaves earlier history discoverable by its anchored original path. It does not rewrite links or todo associations. A crash or partial failure can leave both names; the UI preserves the unresolved operation and offers explicit read-only verification, never automatic retry.
 
 ## Install and run
 
@@ -55,7 +57,7 @@ npm pack --pack-destination /absolute/existing/output-directory
 mkdir corilo-install
 cd corilo-install
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.3.1.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.4.0.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -75,7 +77,7 @@ and recovery-state formats.
 1. Save any browser drafts to files, stop this instance, and take a verified
    backup of its notes and state. A browser draft is not part of that backup.
 2. In a new installation directory, run `npm init -y` and
-   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.3.1.tgz`.
+   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.4.0.tgz`.
 3. From that **new** directory, generate a new overlay referring to the new
    installed package while keeping the original data paths:
 
@@ -114,6 +116,7 @@ when that release explicitly tests it; restoring a backup may then be necessary.
 | `corilo_notes_browse` | Browse a bounded metadata page without reading every note body; continue with the returned cursor |
 | `corilo_notes_search` | Literal filename/body search with bounded snippets and an explicit truncation flag |
 | `corilo_notes_read` | Read text and content version before editing |
+| `corilo_notes_create` | Create an empty or exact-initial-text note under an unoccupied readable untitled name; never overwrite |
 | `corilo_notes_save` | Save with the read version; `expected: null` creates only when absent |
 | `corilo_notes_rename` | Rename within one directory using the read version, only to an absent target; preserve exact bytes and earlier history |
 | `corilo_notes_capture` | Create a unique Markdown note containing the exact supplied non-empty text |

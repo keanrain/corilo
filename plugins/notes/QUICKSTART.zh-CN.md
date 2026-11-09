@@ -22,11 +22,11 @@ node plugins/notes/cli.mjs start --config /absolute/path/to/corilo-instance/note
 
 ## 收到独立安装包后启动
 
-收到 `corilo-dsh-notes-0.2.4.tgz` 后，在你选定的安装目录执行：
+收到 `corilo-dsh-notes-0.4.0.tgz` 后，在你选定的安装目录执行：
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.2.4.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.4.0.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -56,10 +56,11 @@ npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/n
 
 1. 打开终端打印的鉴权访问地址；不要分享其中的 token。
 2. 接受 Harness 的预览提示；如果出现 API Key 引导，关闭它即可。
-3. 点击侧栏 **笔记**，输入文字，点击 **仅保存原话**。
-4. 看到 **已保存** 后，正文已写入主机上的 Markdown 文件。浏览器“草稿已保存”只是本机浏览器的恢复副本。
+3. 点击侧栏 **笔记**，直接输入文字，或点击 **新笔记** 后开始写作。新建会选择未占用的“未命名.md”“未命名 2.md”等普通文件名。
+4. 工具栏显示 **已保存** 后，正文已写入主机上的 Markdown 文件；不需要再填写文件名或首次提交表单。
+5. 要改名，点击文档顶部标题，输入名称后按 Enter 或离开标题确认，Esc 取消。已保存正文的同目录改名不会覆盖已有文件，也不会自动改写笔记链接或待办关联。
 
-手机默认直接进入正文，“查找笔记”展开列表/搜索，打开后回到正文。文件名在正文后可选；“更多操作”提供历史与回收站。保存失败和冲突仍直接显示。
+手机默认显示文档，“查找笔记”切到列表／搜索，打开或恢复后回到正文。恢复草稿位于侧栏；更多操作提供历史、回收站与手动保存选项。正常记录只显示轻量保存状态，保存失败、版本冲突和未知结果仍直接显示。关闭自动保存后可按保存按钮／Ctrl／⌘S，原“仅保存原话”的手动入口仍保留；浏览器恢复副本不是主机文件或独立备份。
 
 停止服务用 `Ctrl+C`。以后重新执行相同的 `start --config ...` 即可；不是每次都执行 `init`。当前启动命令默认只监听主机回环地址；手机和其他电脑的远程访问仍需另行配置和实际验证。
 
@@ -97,7 +98,7 @@ node plugins/notes/cli.mjs maintain --config /absolute/path/to/corilo-instance/n
 | 提示客户端未构建 | 源码安装执行 `npm --prefix plugins/notes run build`；独立安装包应自带构建文件 |
 | 提示配置已存在 | 不会覆盖；直接 `check` 后 `start`，或另选配置文件 |
 | 提示状态目录属于其他知识库 | 使用匹配的正文与状态目录，或选择新的空状态目录；不要改写绑定标记 |
-| 保存失败／版本冲突 | 当前草稿保留；核对磁盘最新内容，或将草稿另存，避免盲目重试 |
+| 保存失败／版本冲突 | 当前内容保留；可点击列表中的文件，明确确认先保留草稿，再只读打开所选文件核对，或另存草稿；不要盲目重发创建 |
 | 浏览器草稿保护失败 | 先直接保存文件，确认落盘后再关页；不要依赖重载恢复 |
 
 历史与回收站是主机上的本地恢复能力，不是独立备份。停服后用 restic 备份已落盘的笔记、附件和历史，并先恢复到新目录，参见[备份恢复指南](BACKUP.zh-CN.md)；本地合成演练已覆盖逐文件比对与历史/回收站恢复，实际 NAS 与完整 Harness 实例备份仍待验收。详细边界、工具 API、打包与测试命令见 [README](README.md)。

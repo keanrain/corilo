@@ -10,7 +10,14 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const missing = error => error.code === 'ENOENT';
 const checkSignal = signal => { if (signal?.aborted) throw fail(409, '操作已取消'); };
 const changed = () => fail(409, '笔记已变化，请重新读取后保存');
+const occupied = () => Object.assign(changed(), { occupied: true });
 const defaults = { maxBytes: 1024 * 1024, maxEntries: 2000, maxTotalBytes: 8 * 1024 * 1024 };
+const textBytes = (text, maxBytes) => {
+  if (typeof text !== 'string' || Buffer.byteLength(text) > maxBytes) throw fail(413, '笔记超过大小限制或正文无效');
+  const bytes = Buffer.from(text);
+  if (bytes.toString('utf8') !== text) throw fail(400, '笔记不是有效 Unicode 文本');
+  return bytes;
+};
 
 // Portable Markdown storage, not a filesystem sandbox for other tools/processes.
 // Version checks coordinate this store's operations; independent editors must
@@ -125,6 +132,31 @@ export class NotesStore {
   }
   browse(options = {}) { return this.serial(() => listPage(this, options)); }
   search(options = {}) { return this.serial(() => searchNotes(this, options)); }
+  create({ text = '', signal } = {}) {
+    return this.serial(async () => {
+      checkSignal(signal);
+      textBytes(text, this.limits.maxBytes);
+      for (let number = 1; number <= 1000; number++) {
+        checkSignal(signal);
+        const input = number === 1 ? '未命名.md' : `未命名 ${number}.md`;
+        const filename = await this.location(input);
+        // Occupancy is metadata only: an existing large note, directory or
+        // unsafe link is skipped without reading its content or following it.
+        if (await fs.lstat(filename).then(() => true, error => { if (missing(error)) return false; throw error; })) continue;
+        try {
+          const result = await this.write(input, text, null, signal);
+          return { ...result, text };
+        } catch (error) {
+          if (error.committed === true) throw Object.assign(error, { path: input });
+          // Only exclusive-create collisions may choose another name. A
+          // cancellation or any other version/validation failure is final.
+          if (error.occupied === true && !signal?.aborted) continue;
+          throw error;
+        }
+      }
+      throw fail(409, '未命名笔记已达到 1000 个，请先重命名已有笔记再新建');
+    });
+  }
   save({ path: input, text, expected, signal } = {}) {
     return this.serial(() => this.write(input, text, expected, signal));
   }
@@ -188,12 +220,11 @@ export class NotesStore {
   async write(input, text, expected, signal, operation = 'save') {
     checkSignal(signal);
     this.parts(input);
-    if (typeof text !== 'string' || Buffer.byteLength(text) > this.limits.maxBytes) throw fail(413, '笔记超过大小限制或正文无效');
-    if (Buffer.from(text).toString('utf8') !== text) throw fail(400, '笔记不是有效 Unicode 文本');
+    const bytes = textBytes(text, this.limits.maxBytes);
     if (expected !== null && (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected))) throw fail(409, '创建需 expected=null，更新需提供读取版本');
-    const filename = await this.location(input, true), bytes = Buffer.from(text);
+    const filename = await this.location(input, true);
     const current = await this.readFile(filename).catch(error => { if (error.status === 404) return null; throw error; });
-    if ((current?.version ?? null) !== expected) throw changed();
+    if ((current?.version ?? null) !== expected) throw expected === null && current ? occupied() : changed();
     if (this.recovery) await this.recovery.check();
     if (current && this.recovery) await this.recovery.snapshot(input, current.text, 'before');
     checkSignal(signal);
@@ -204,7 +235,7 @@ export class NotesStore {
       checkSignal(signal);
       if (expected === null) {
         // Hard-link creation is exclusive and cannot overwrite a concurrent create.
-        try { await fs.link(temp, filename); } catch (error) { if (error.code === 'EEXIST') throw changed(); throw error; }
+        try { await fs.link(temp, filename); } catch (error) { if (error.code === 'EEXIST') throw occupied(); throw error; }
         committed = true;
         await fs.unlink(temp);
       } else {

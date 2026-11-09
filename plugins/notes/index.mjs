@@ -52,6 +52,12 @@ export function noteTools(store) {
       async execute({ path }, exec) { check(exec.signal); return store.read(path); },
     }),
     defineTool({
+      name: 'corilo_notes_create', description: 'Create a Markdown note with an available human-readable untitled name and optional exact initial text (empty by default). Use only when the user asks to create a note, never for ordinary discussion. Returns the new path, text and version for subsequent edits. A lost reply may follow creation: inspect the library before any retry.',
+      parameters: { text: { type: 'string', description: 'Optional initial Markdown, preserved without rewriting.' } },
+      output: output({ type: 'object', additionalProperties: false, properties: { path: string, text: string, version: string } }),
+      async execute(args, exec) { check(exec.signal); return store.create({ ...args, signal: exec.signal }); },
+    }),
+    defineTool({
       name: 'corilo_notes_save', description: 'Create or save a Markdown note. Pass the version returned by read; null creates only when the path is absent. A stale version is a conflict: read again rather than blindly overwrite.',
       parameters: {
         path: string, text: string,

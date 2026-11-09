@@ -40,6 +40,16 @@ def manual_saves(panel):
     panel.evaluate('(el) => el.scrollTo({top: 0})')
 
 
+def open_drafts(panel):
+    """Open the recovery drawer through visible navigation."""
+    if not panel.get_by_role('complementary', name='笔记列表').is_visible():
+        panel.get_by_role('button', name='查找笔记', exact=True).click()
+    details = panel.locator('.corilo-notes-drafts > details')
+    details.wait_for()
+    if details.get_attribute('open') is None:
+        details.locator('summary').first.click()
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='corilo-harness-browser-') as temp:
         base = pathlib.Path(temp)
@@ -116,12 +126,12 @@ def main():
                     assert any(x.read_text() == '冲突仍保留的草稿' for x in vault.rglob('*.md'))
                     assert note.read_text() == '外部较新版本\n'
                     panel.get_by_role('button', name='新笔记', exact=True).click()
-                    panel.get_by_role('textbox', name='笔记文件名', exact=True).fill('../非法.md')
+                    panel.get_by_role('textbox', name='笔记标题', exact=True).fill('../非法.md')
                     body.fill('失败草稿')
                     panel.get_by_role('button', name='保存笔记', exact=True).click()
                     expect(status).to_have_text('保存失败')
                     expect(body).to_have_value('失败草稿')
-                    panel.get_by_role('textbox', name='笔记文件名', exact=True).fill('连接测试.md')
+                    panel.get_by_role('textbox', name='笔记标题', exact=True).fill('连接测试.md')
                     page.route('**/api/corilo-notes/save', lambda route: route.abort())
                     panel.get_by_role('button', name='保存笔记', exact=True).click()
                     expect(status).to_have_text('保存失败')
@@ -141,6 +151,7 @@ def main():
                     second.get_by_role('button', name='Close', exact=True).click()
                     second.get_by_role('button', name='笔记', exact=True).click()
                     other = second.get_by_role('region', name='Corilo 笔记')
+                    manual_saves(other)
                     other.get_by_role('button', name='已有笔记.md', exact=True).click()
                     expect(other.get_by_role('textbox', name='笔记正文', exact=True)).to_have_value('外部较新版本\n')
                     other.get_by_role('textbox', name='笔记正文', exact=True).fill('另一页面保存')
@@ -192,11 +203,13 @@ def main():
                     # the keyboard uses exactly the same versioned host service.
                     panel.get_by_role('button', name='新笔记', exact=True).click()
                     expect(body).to_be_focused()
-                    panel.get_by_role('textbox', name='笔记文件名').fill('键盘记录')
+                    panel.get_by_role('textbox', name='笔记标题').fill('键盘记录')
                     body.fill('  标题和正文分别保存，原话不改写。  ')
                     panel.get_by_role('button', name='新笔记', exact=True).click()
                     expect(body).to_have_value('')
+                    open_drafts(panel)
                     titled_draft = panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='键盘记录')
+                    open_drafts(panel)
                     titled_draft.get_by_role('button', name='恢复草稿', exact=True).click()
                     expect(body).to_have_value('  标题和正文分别保存，原话不改写。  ')
                     body.dispatch_event('keydown', {'key': 's', 'ctrlKey': True, 'isComposing': True})
@@ -210,7 +223,7 @@ def main():
                     panel.get_by_role('button', name='返回正文', exact=True).click()
                     expect(body).to_be_visible()
                     panel.get_by_role('button', name='新笔记', exact=True).click()
-                    panel.get_by_role('textbox', name='笔记文件名').fill('已有格式.markdown')
+                    panel.get_by_role('textbox', name='笔记标题').fill('已有格式.markdown')
                     body.fill('保留原有 Markdown 扩展名')
                     body.press('Control+s')
                     expect(status).to_have_text('已保存')

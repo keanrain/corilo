@@ -5,10 +5,11 @@ import { hasUnsavedDraft } from '../client/drafts.mjs';
 
 const loaded = () => ({ path: '想法.md', text: '已保存', original: '已保存', expected: 'old-version', status: 'saved', autosave: 'ready' });
 
-test('autosave only accepts explicitly edited saved documents and pauses recovery and failures', () => {
+test('autosave accepts intentional document input and pauses recovery and failures', () => {
   const dirty = editedDraft(loaded(), '新的输入');
+  assert.equal(canAutosave({ ...dirty, path: '', expected: null }), true, 'typing may create its first document');
   assert.equal(canAutosave(dirty), true);
-  for (const draft of [{ ...dirty, expected: null }, { ...dirty, status: 'saving' }, { ...dirty, autosave: 'recovered' }, { ...dirty, status: 'conflict' }]) assert.equal(canAutosave(draft), false);
+  for (const draft of [{ ...dirty, status: 'saving' }, { ...dirty, autosave: 'recovered' }, { ...dirty, status: 'conflict' }]) assert.equal(canAutosave(draft), false);
   assert.equal(canAutosave(editedDraft({ ...dirty, autosave: 'recovered' }, '恢复后明确编辑')), true);
   const failure = failedDraft(dirty, new Error('回复丢失，结果未知'));
   assert.equal(canAutosave(editedDraft(failure, '失败后继续输入')), false);

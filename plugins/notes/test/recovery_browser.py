@@ -56,7 +56,7 @@ def main():
                     expect(panel.get_by_role('status')).to_have_text('已保存')
                     assert note.read_text() == '第二次保存的内容'
                     if panel.locator('details.corilo-notes-more').get_attribute('open') is None:
-                        panel.get_by_text('更多操作', exact=True).click()
+                        panel.locator('details.corilo-notes-more > summary').click()
                     panel.get_by_role('button', name='版本历史', exact=True).click()
                     listing = panel.get_by_role('region', name='版本历史列表')
                     first_hash = hashlib.sha256(first_text.encode()).hexdigest()[:8]
@@ -73,10 +73,14 @@ def main():
                     page.reload()
                     page.get_by_role('button', name='Close', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
+                    # Reload restores the default automatic workflow. This
+                    # scenario deliberately exercises manual stale mutations
+                    # and retaining the blocked version before reopening.
+                    manual_saves(panel)
                     panel.get_by_role('button', name='可恢复.md', exact=True).click()
                     expect(body).to_have_value('外部新增内容')
                     if panel.locator('details.corilo-notes-more').get_attribute('open') is None:
-                        panel.get_by_text('更多操作', exact=True).click()
+                        panel.locator('details.corilo-notes-more > summary').click()
                     panel.get_by_role('button', name='版本历史', exact=True).click()
                     listing.get_by_role('button').filter(has_text=first_hash).last.click()
                     panel.get_by_role('button', name='恢复此版本', exact=True).click()
@@ -91,6 +95,8 @@ def main():
                     assert note.read_text() == '不能被误删的外部版本'
                     panel.get_by_role('button', name='可恢复.md', exact=True).click()
                     expect(body).to_have_value('不能被误删的外部版本')
+                    if panel.locator('details.corilo-notes-more').get_attribute('open') is None:
+                        panel.locator('details.corilo-notes-more > summary').click()
                     page.once('dialog', lambda dialog: dialog.accept())
                     panel.get_by_role('button', name='移入回收站', exact=True).click()
                     expect(body).to_have_value('')

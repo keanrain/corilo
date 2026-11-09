@@ -1,7 +1,7 @@
 // Save metadata stays in the page's business state. Recovery records deliberately
 // do not inherit permission to write: adopting a draft is a separate user action.
-export const canAutosave = draft => Boolean(draft.path && draft.expected !== null
-  && draft.text !== draft.original && draft.status === 'dirty' && draft.autosave === 'ready');
+export const canAutosave = draft => Boolean(draft.status === 'dirty' && draft.autosave === 'ready'
+  && (draft.expected === null ? draft.text.trim().length > 0 : draft.path && draft.text !== draft.original));
 
 export function editedDraft(draft, text) {
   return { ...draft, text,
@@ -43,12 +43,13 @@ export function createNoteSaver({ getDraft, call, allowed, delay = 1000 }) {
     cancel(); inFlight = true;
     update({ ...submitted, status: 'saving', savingMode: automatic ? 'auto' : 'manual', error: '', latest: null });
     try {
-      const result = copy || !submitted.path
-        ? await call('capture', { text: submitted.text })
+      const result = !copy && (automatic || allowed()) && submitted.expected === null && !submitted.path
+        ? await call('create', { text: submitted.text })
+        : copy || !submitted.path ? await call('capture', { text: submitted.text })
         : await call('save', { path: submitted.expected === null ? markdownPath(submitted.path) : submitted.path, text: submitted.text, expected: submitted.expected });
       if (!disposed) { update(committedDraft(getDraft(), submitted, result)); notify?.(); }
     } catch (error) {
-      if (!disposed) update(failedDraft(getDraft(), error));
+      if (!disposed) { update(failedDraft(getDraft(), error)); notify?.(); }
     } finally { inFlight = false; sync(); }
   }
   return {

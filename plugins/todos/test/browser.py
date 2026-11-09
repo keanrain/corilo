@@ -28,6 +28,18 @@ def wait_for(check, timeout=45):
     raise AssertionError('Timed out waiting for real Harness evidence')
 
 
+def manual_saves(panel):
+    """Preserve explicit-save reliability scenarios via the visible setting."""
+    more = panel.locator('details.corilo-todos-more')
+    was_open = more.get_attribute('open') is not None
+    if not was_open:
+        more.locator('summary').first.click()
+    panel.get_by_role('checkbox', name='离开详情时保存', exact=True).uncheck()
+    if not was_open:
+        more.locator('summary').first.click()
+    panel.evaluate('(el) => el.scrollTo({top: 0})')
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='corilo-todos-browser-') as temp:
         base = pathlib.Path(temp)
@@ -80,6 +92,7 @@ def main():
                             target.wait_for_function("() => document.getAnimations().every(animation => animation.playState !== 'running')")
                         panel = target.get_by_role('region', name='Corilo 待办')
                         expect(panel).to_be_visible()
+                        manual_saves(panel)
                         return panel
 
                     panel = enter(page, first=True)
@@ -88,7 +101,11 @@ def main():
                     note_text = '这篇笔记由笔记页面保存，待办只关联它的相对路径。\n'
                     page.get_by_role('button', name='笔记', exact=True).click()
                     notes_panel = page.get_by_role('region', name='Corilo 笔记')
-                    notes_panel.get_by_role('textbox', name='笔记文件名', exact=True).fill('读书/第二章.md')
+                    notes_more = notes_panel.locator('details.corilo-notes-more > summary')
+                    notes_more.click()
+                    notes_panel.get_by_role('checkbox', name='自动保存', exact=True).uncheck()
+                    notes_more.click()
+                    notes_panel.get_by_role('textbox', name='笔记标题', exact=True).fill('读书/第二章.md')
                     notes_panel.get_by_role('textbox', name='笔记正文', exact=True).fill(note_text)
                     notes_panel.get_by_role('button', name='保存笔记', exact=True).click()
                     expect(notes_panel.get_by_role('status')).to_have_text('已保存')
@@ -136,7 +153,7 @@ def main():
                     first = created[0]
                     assert first['title'] == first_title and first['body'] == first_body and first['notePath'] == '读书/第二章.md'
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('未完成')
-                    panel.get_by_role('button', name='完成待办', exact=True).click()
+                    panel.get_by_role('checkbox', name='完成待办', exact=True).click()
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('已完成')
                     filtering.get_by_role('button', name='已完成', exact=True).click()
                     expect(library.locator('li')).to_have_count(1)
@@ -145,7 +162,7 @@ def main():
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('已取消')
                     filtering.get_by_role('button', name='已取消', exact=True).click()
                     expect(library.locator('li')).to_have_count(1)
-                    panel.get_by_role('button', name='重新打开待办', exact=True).click()
+                    panel.get_by_role('checkbox', name='重新打开待办', exact=True).click()
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('未完成')
                     filtering.get_by_role('button', name='未完成', exact=True).click()
                     expect(library.locator('li')).to_have_count(1)
@@ -274,7 +291,7 @@ def main():
                     assert len(intercepted_list_requests) == request_count + 2
                     request_count = len(intercepted_list_requests)
                     old_route, old_response = hold_list()
-                    panel.get_by_role('button', name='完成待办', exact=True).click()
+                    panel.get_by_role('checkbox', name='完成待办', exact=True).click()
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('已完成')
                     old_route.fulfill(response=old_response)
                     expect(delayed_item).to_have_count(0)
