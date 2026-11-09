@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const targetPath = (path, name) => {
   const filename = name.trim();
@@ -9,8 +9,9 @@ const targetPath = (path, name) => {
 export function RenameNote({ call, draft, locked, open, onOpen, onBegin, onEnd, onComplete, onFailure }) {
   const [name, setName] = useState(() => draft.renameRequest?.to.split('/').pop() || '');
   const [error, setError] = useState('');
-  const [unknown, setUnknown] = useState(() => draft.renameRequest || null);
+  const unknown = draft.renameRequest || null;
   const [found, setFound] = useState(null);
+  useEffect(() => { if (unknown) { setError(''); setFound(null); } }, [unknown?.path, unknown?.to, draft.expected]);
   const available = draft.path && draft.expected !== null && draft.text === draft.original && draft.status === 'saved' && draft.autosave !== 'blocked';
   async function rename(event) {
     event.preventDefault();
@@ -23,7 +24,6 @@ export function RenameNote({ call, draft, locked, open, onOpen, onBegin, onEnd, 
     catch (failure) {
       setError(failure.message);
       const uncertain = failure.unknown || failure.code === 'notes/503';
-      if (uncertain) setUnknown(request);
       onFailure(failure, uncertain ? request : null);
     } finally { onEnd(); }
   }
@@ -38,17 +38,17 @@ export function RenameNote({ call, draft, locked, open, onOpen, onBegin, onEnd, 
     } catch (failure) { setError(failure.message); }
     finally { onEnd(); }
   }
-  function adopt(note) { onComplete(note); setUnknown(null); setFound(null); onOpen(false); }
+  function adopt(note) { onComplete(note); setError(''); setFound(null); onOpen(false); }
   return <div className="corilo-notes-rename">
     {!open ? <button disabled={locked || !available} title={available ? '修改当前目录中的文件名' : '保存当前正文后即可重命名'} onClick={() => {
-      setName(draft.path.split('/').pop()); setError(''); setUnknown(null); setFound(null); onOpen(true);
+      setName(draft.path.split('/').pop()); setError(''); setFound(null); onOpen(true);
     }}>重命名笔记</button> : <form aria-label="重命名笔记" onSubmit={rename}>
-      <label>新文件名<input aria-label="新笔记名称" value={name} disabled={locked || Boolean(unknown)} autoFocus onChange={event => setName(event.target.value)} /></label>
+      <label>新文件名<input aria-label="新笔记名称" value={unknown ? unknown.to.split('/').pop() : name} disabled={locked || Boolean(unknown)} autoFocus onChange={event => setName(event.target.value)} /></label>
       <p className="corilo-notes-hint">只修改当前目录中的名称，不自动修改笔记链接或待办关联。</p>
       {!unknown && <div><button disabled={locked || !name.trim()} type="submit">确认重命名</button><button disabled={locked} type="button" onClick={() => onOpen(false)}>取消重命名</button></div>}
       {error && <p role="alert">{error}</p>}
       {unknown && <div>
-        <p>重命名结果待核对，自动保存已暂停，不会自动重试。</p>
+        <p>{locked ? '正在处理重命名，请稍候。' : '重命名结果待核对，自动保存已暂停，不会自动重试。'}</p>
         <button disabled={locked} type="button" onClick={verify}>核对新旧文件</button>
         {found && <div><p>原文件：{found.source ? '仍存在' : '不存在'}；新文件：{found.target ? '已存在' : '不存在'}。</p>
           {found.source && found.target && <p>两个文件均保留，请选择继续编辑的文件；此操作不会删除另一份。</p>}

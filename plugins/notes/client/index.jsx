@@ -3,7 +3,7 @@ import { defineStore } from '@deepseek-ai/dsh-client-store';
 import { createDraftRecovery, hasUnsavedDraft } from './drafts.mjs';
 import { RecoveryPanel } from './recovery.jsx';
 import { LibraryPanel } from './library.jsx';
-import { canAutosave, editedDraft, committedDraft, failedDraft } from './autosave.mjs';
+import { createNoteSaver, markdownPath, editedDraft, failedDraft } from './autosave.mjs';
 import { MarkdownPreview } from './preview.jsx';
 import { RenameNote } from './rename.jsx';
 import styles from './notes.css';
@@ -12,9 +12,7 @@ import tokens from './astryx-tokens.css';
 const fresh = () => ({ path: '', text: '', original: '', expected: null, status: 'clean', error: '', latest: null, notice: '', autosave: 'ready', savingMode: null, renameRequest: null });
 const dirty = hasUnsavedDraft;
 const labels = { clean: '开始记录', dirty: '未保存', saving: '保存中…', saved: '已保存', failed: '保存失败', conflict: '版本冲突' };
-const markdownPath = path => path && !/\.(md|markdown)$/i.test(path) ? `${path}.md` : path;
-
-function NotesPage({ useStore, actions, call, drafts, usePersistence, getDraft }) {
+function NotesPage({ useStore, actions, call, drafts, saves, usePersistence, getDraft }) {
   const d = useStore(s => s.draft);
   const persistence = usePersistence(s => s);
   const [libraryRevision, setLibraryRevision] = useState(0);
@@ -42,10 +40,14 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence, getDraft }
   }, []);
   useEffect(() => { setRenameOpen(Boolean(d.renameRequest)); }, [d.path]);
   useEffect(() => {
-    if (!autoSaveEnabled || busy || composing || !canAutosave(d)) return;
-    const timer = setTimeout(() => { void save(false, true); }, 1000);
-    return () => clearTimeout(timer);
-  }, [d.text, d.path, d.expected, d.status, d.autosave, busy, composing, autoSaveEnabled]);
+    saves.bind(actions.setDraft, refresh);
+  }, [saves, actions]);
+  useEffect(() => {
+    saves.pause(busy || composing);
+    // Keep an unfinished IME composition paused until the editor returns.
+    // Ordinary panel navigation releases UI-only locks, not the save timer.
+    return () => saves.pause(composing);
+  }, [saves, busy, composing]);
   async function retainCurrent() { return dirty(d) ? drafts.stash(d) : null; }
   async function newNote() {
     if (busy) return;
@@ -77,22 +79,9 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence, getDraft }
     } catch (error) { if (alive.current) actions.setDraft({ ...d, error: error.message }); }
     finally { if (alive.current) setLoading(false); }
   }
-  async function save(copy = false, automatic = false) {
-    const snapshot = { ...getDraft() };
-    if (busy || mutation.current || snapshot.status === 'saving' || !snapshot.path && !snapshot.text || composing) return;
-    if (automatic && !canAutosave(snapshot)) return;
-    mutation.current = 'save';
-    actions.setDraft({ ...snapshot, status: 'saving', savingMode: automatic ? 'auto' : 'manual', error: '', latest: null });
-    try {
-      // Never retry a mutation automatically: a lost reply may follow a commit.
-      const result = copy || !snapshot.path
-        ? await call('capture', { text: snapshot.text })
-        : await call('save', { path: snapshot.expected === null ? markdownPath(snapshot.path) : snapshot.path, text: snapshot.text, expected: snapshot.expected });
-      actions.setDraft(committedDraft(getDraft(), snapshot, result));
-      if (alive.current) void refresh();
-    } catch (error) {
-      actions.setDraft(failedDraft(getDraft(), error));
-    } finally { mutation.current = null; }
+  async function save(copy = false) {
+    if (busy || mutation.current || composing) return;
+    await saves.save(copy);
   }
   async function compare() {
     if (busy || !d.path) return;
@@ -240,18 +229,24 @@ export function apply(ctx) {
   };
   drafts = createDraftRecovery(() => call('identity', {}));
   let snapshot = fresh();
+  let autoSaveEnabled = true;
+  const saves = createNoteSaver({ getDraft: () => snapshot, call, allowed: () => {
+    const persistence = drafts.getSnapshot();
+    return autoSaveEnabled && persistence.ready && !persistence.rootChanged;
+  } });
   const store = defineStore({ init: () => ({ draft: snapshot, autoSaveEnabled: true }), actions: {
-    setAutoSaveEnabled(state, enabled) { state.autoSaveEnabled = enabled; },
-    setDraft(state, draft) { state.draft = draft; snapshot = draft; drafts.track(draft); },
+    setAutoSaveEnabled(state, enabled) { state.autoSaveEnabled = enabled; autoSaveEnabled = enabled; saves.sync(); },
+    setDraft(state, draft) { state.draft = draft; snapshot = draft; drafts.track(draft); saves.sync(); },
   } });
   ctx.effect(() => {
+    const unsubscribe = drafts.subscribe(() => saves.sync());
     void drafts.start();
     const guard = event => {
       if (drafts.needsLeaveWarning()) { event.preventDefault(); event.returnValue = ''; }
     };
     window.addEventListener('beforeunload', guard);
-    return () => { window.removeEventListener('beforeunload', guard); drafts.dispose(); };
+    return () => { window.removeEventListener('beforeunload', guard); unsubscribe(); saves.dispose(); drafts.dispose(); };
   });
-  ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'corilo-notes', store, inject: () => ({ call, drafts, getDraft: () => snapshot, hooks: { persistence: drafts } }) }, NotesPage));
+  ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'corilo-notes', store, inject: () => ({ call, drafts, saves, getDraft: () => snapshot, hooks: { persistence: drafts } }) }, NotesPage));
   ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist', id: 'corilo-notes', order: 5, label: '笔记' }, NotesIcon));
 }

@@ -22,7 +22,7 @@ npm run start:corilo -- --directory /absolute/corilo-instance
 
 | 插件 | 核心体验 | 次级能力 |
 |---|---|---|
-| [笔记](plugins/notes/README.md) v0.3.0 | Markdown 编辑／实时预览、已保存笔记自动保存、查找、原话保存和重命名 | 浏览器持久草稿、Git 历史／回收站、restic 笔记备份恢复 |
+| [笔记](plugins/notes/README.md) v0.3.1 | Markdown 编辑／实时预览、已保存笔记自动保存、查找、原话保存和重命名 | 浏览器持久草稿、Git 历史／回收站、restic 笔记备份恢复 |
 | [待办](plugins/todos/README.md) v0.2.3 | 快速连续新增、直接完成／撤销、刷新恢复草稿 | 编辑／取消、版本与幂等保护、JSON 导出 |
 
 页面与 Agent 工具共用各插件业务服务。视觉复用 Astryx Neutral 0.7.11 静态 token，使用宿主 React；不是 Astryx React 组件集成。

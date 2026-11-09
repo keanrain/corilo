@@ -130,6 +130,29 @@ def main():
                     panel.get_by_role('button', name='版本历史', exact=True).click()
                     panel.get_by_role('button', name='查看重命名前历史：新名字.md', exact=True).click()
                     expect(panel.get_by_role('button', name='查看重命名前历史：原名.md', exact=True)).to_be_visible()
+                    # Recover an unresolved rename after opening its source.
+                    # The same path keeps the child mounted, so initial local
+                    # state alone cannot represent the recovered request.
+                    panel.get_by_role('button', name='重命名笔记', exact=True).click()
+                    field.fill('中断的改名')
+                    page.route('**/api/corilo-notes/rename', lambda route: route.abort(), times=1)
+                    panel.get_by_role('button', name='确认重命名', exact=True).click()
+                    expect(verify).to_be_visible()
+                    page.once('dialog', lambda dialog: dialog.accept())
+                    page.reload()
+                    page.get_by_role('button', name='Close', exact=True).click()
+                    page.get_by_role('button', name='笔记', exact=True).click()
+                    panel.get_by_role('button', name='最终名字.md', exact=True).click()
+                    expect(body).to_be_enabled()
+                    panel.get_by_role('button', name='恢复草稿', exact=True).click()
+                    expect(verify).to_be_visible()
+                    expect(field).to_have_value('中断的改名.md')
+                    expect(panel.get_by_role('button', name='确认重命名', exact=True)).to_have_count(0)
+                    verify.click()
+                    panel.get_by_role('button', name='继续编辑原文件', exact=True).click()
+                    expect(body).to_be_enabled()
+                    assert (vault / '最终名字.md').read_bytes() == exact
+                    assert not (vault / '中断的改名.md').exists()
                     assert not errors, errors
                     assert not external, external
                     browser.close()

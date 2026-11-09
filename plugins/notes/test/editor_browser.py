@@ -54,6 +54,17 @@ def main():
 
                     panel.get_by_role('button', name='自动保存.md', exact=True).click()
                     expect(body).to_have_value('原始正文\n')
+                    # The timer belongs to the plugin, including while its page
+                    # is unmounted by navigation to another Harness panel.
+                    background = '切换其他页面后仍保存到主机'
+                    body.fill(background)
+                    page.get_by_role('button', name='Plugins', exact=True).click()
+                    wait_for(lambda: (page.wait_for_timeout(25), note.read_text() == background)[1], timeout=10)
+                    page.get_by_role('button', name='笔记', exact=True).click()
+                    expect(body).to_have_value(background)
+                    expect(panel.get_by_role('status')).to_have_text('已保存')
+                    body.fill('原始正文\n')
+                    expect(panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
                     # The manual-workflow preference survives leaving the
                     # plugin panel, without silently saving when it remounts.
                     panel.get_by_text('更多操作', exact=True).click()
@@ -89,7 +100,10 @@ def main():
                     wait_for(lambda: held or page.wait_for_timeout(20))
                     body.fill('提交快照 A，期间继续输入 B')
                     assert note.read_text() == '提交快照 A'
+                    page.get_by_role('button', name='Plugins', exact=True).click()
                     held[0][0].fulfill(response=held[0][1])
+                    wait_for(lambda: (page.wait_for_timeout(25), note.read_text() == '提交快照 A，期间继续输入 B')[1], timeout=10)
+                    page.get_by_role('button', name='笔记', exact=True).click()
                     expect(body).to_have_value('提交快照 A，期间继续输入 B')
                     expect(panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
                     assert note.read_text() == body.input_value()

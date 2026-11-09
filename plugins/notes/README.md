@@ -6,7 +6,7 @@ Notes plugin for the personal self-hosted Corilo direction. It uses the publishe
 
 This package supplies Markdown storage, model-facing tools and a **笔记** page inside the Harness Web shell. The page browses Markdown metadata in bounded pages, searches filenames and body text, reads and edits notes, and saves original words directly without AI. Harness supplies the conversation UI, model settings, default tools and permission/sandbox policy. No Pi runtime or second agent loop is mounted.
 
-The desktop page uses a persistent note list and a document editor with the title above the body. New titles are optional; `.md` is added when needed, and Markdown text is never rewritten. Already-saved notes save after a 1-second typing pause; typing can continue during the request without losing newer text. New notes require their first explicit save. Ctrl/Cmd+S uses the same versioned service. Auto-save can be disabled under **更多操作** while this Harness page remains open (including plugin switches; a full reload restores the default); failures, conflicts and unknown outcomes stop automatic writes, including after draft recovery. Restoring a draft alone never submits it.
+The desktop page uses a persistent note list and a document editor with the title above the body. New titles are optional; `.md` is added when needed, and Markdown text is never rewritten. Already-saved notes save after a 1-second typing pause, including after switching to another Harness panel; typing can continue during the request without losing newer text. New notes require their first explicit save. Ctrl/Cmd+S uses the same versioned service. Auto-save can be disabled under **更多操作** while this Harness page remains open (including plugin switches; a full reload restores the default); failures, conflicts and unknown outcomes stop automatic writes, including after draft recovery. Restoring a draft alone never submits it.
 
 On phones, the editor and save action come first; **查找笔记** switches to browsing/search, with **返回正文** to return without losing input; opening a result returns to the editor. The list and editor are separate phone views. History/trash live under **更多操作**, while failures/conflicts remain visible. For both plugins together from a source checkout, use the [root setup/init/start flow](https://github.com/keanrain/corilo/blob/feat/cloud-notes/README.md#一起使用笔记和待办); the independent package commands below remain supported.
 
@@ -55,7 +55,7 @@ npm pack --pack-destination /absolute/existing/output-directory
 mkdir corilo-install
 cd corilo-install
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.3.0.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.3.1.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -75,7 +75,7 @@ and recovery-state formats.
 1. Save any browser drafts to files, stop this instance, and take a verified
    backup of its notes and state. A browser draft is not part of that backup.
 2. In a new installation directory, run `npm init -y` and
-   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.3.0.tgz`.
+   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.3.1.tgz`.
 3. From that **new** directory, generate a new overlay referring to the new
    installed package while keeping the original data paths:
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canAutosave, editedDraft, committedDraft, failedDraft } from '../client/autosave.mjs';
+import { canAutosave, editedDraft, committedDraft, failedDraft, createNoteSaver } from '../client/autosave.mjs';
 import { hasUnsavedDraft } from '../client/drafts.mjs';
 
 const loaded = () => ({ path: '想法.md', text: '已保存', original: '已保存', expected: 'old-version', status: 'saved', autosave: 'ready' });
@@ -13,6 +13,36 @@ test('autosave only accepts explicitly edited saved documents and pauses recover
   const failure = failedDraft(dirty, new Error('回复丢失，结果未知'));
   assert.equal(canAutosave(editedDraft(failure, '失败后继续输入')), false);
   assert.equal(canAutosave(editedDraft(failedDraft(dirty, { code: 'notes/409', message: '外部更新' }), '冲突后继续输入')), false);
+});
+
+test('plugin-owned scheduling honors pause, failure and disposal without a mounted view', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let draft = editedDraft(loaded(), '待保存'), enabled = true;
+  const calls = [];
+  const saver = createNoteSaver({ getDraft: () => draft, allowed: () => enabled,
+    call: async (method, args) => { calls.push({ method, args }); throw Error('unknown commit'); } });
+  const update = value => { draft = value; saver.sync(); };
+  saver.bind(update);
+  t.after(() => saver.dispose());
+  saver.pause(true);
+  t.mock.timers.tick(2000);
+  assert.equal(calls.length, 0, 'a live editor operation blocks background saves');
+  saver.pause(false);
+  enabled = false; saver.sync();
+  t.mock.timers.tick(2000);
+  assert.equal(calls.length, 0, 'the user setting also applies offscreen');
+  enabled = true; saver.sync();
+  t.mock.timers.tick(1000);
+  await Promise.resolve();
+  assert.equal(calls.length, 1);
+  assert.equal(draft.autosave, 'blocked');
+  update(editedDraft(draft, '失败后继续输入'));
+  t.mock.timers.tick(5000);
+  assert.equal(calls.length, 1, 'unknown results never retry on a timer');
+  update({ ...draft, status: 'dirty', autosave: 'ready' });
+  saver.dispose();
+  t.mock.timers.tick(2000);
+  assert.equal(calls.length, 1, 'unloading the plugin cancels pending work');
 });
 
 test('an in-flight save advances only its submitted version and retains later typing', () => {
