@@ -171,6 +171,34 @@ def main():
                     if artifact_dir:
                         panel.evaluate('(el) => { el.scrollTop = 0; }')
                         page.screenshot(path=str(pathlib.Path(artifact_dir) / 'notes-narrow.png'), animations='disabled')
+                    # A normal title needs no Markdown suffix, and saving from
+                    # the keyboard uses exactly the same versioned host service.
+                    panel.get_by_role('button', name='新笔记', exact=True).click()
+                    expect(body).to_be_focused()
+                    panel.get_by_role('textbox', name='笔记文件名').fill('键盘记录')
+                    body.fill('  标题和正文分别保存，原话不改写。  ')
+                    panel.get_by_role('button', name='新笔记', exact=True).click()
+                    expect(body).to_have_value('')
+                    titled_draft = panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='键盘记录')
+                    titled_draft.get_by_role('button', name='恢复草稿', exact=True).click()
+                    expect(body).to_have_value('  标题和正文分别保存，原话不改写。  ')
+                    body.dispatch_event('keydown', {'key': 's', 'ctrlKey': True, 'isComposing': True})
+                    page.wait_for_timeout(80)
+                    assert not (vault / '键盘记录.md').exists(), 'IME composition must not submit'
+                    body.press('Control+s')
+                    expect(status).to_have_text('已保存')
+                    assert (vault / '键盘记录.md').read_text() == '  标题和正文分别保存，原话不改写。  '
+                    panel.get_by_role('button', name='查找笔记', exact=True).click()
+                    expect(body).not_to_be_visible()
+                    panel.get_by_role('button', name='返回正文', exact=True).click()
+                    expect(body).to_be_visible()
+                    panel.get_by_role('button', name='新笔记', exact=True).click()
+                    panel.get_by_role('textbox', name='笔记文件名').fill('已有格式.markdown')
+                    body.fill('保留原有 Markdown 扩展名')
+                    body.press('Control+s')
+                    expect(status).to_have_text('已保存')
+                    assert (vault / '已有格式.markdown').read_text() == '保留原有 Markdown 扩展名'
+                    assert not (vault / '已有格式.markdown.md').exists()
                     assert not errors, errors
                     assert not external, external
                     browser.close()

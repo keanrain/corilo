@@ -100,7 +100,7 @@ def main():
                     expect(body).to_have_value(original_a)
                     draft_a = 'A 的未保存完整草稿\n' + '后续正文。' * 30
                     body.fill(draft_a)
-                    panel.get_by_role('button', name='保留草稿并新建', exact=True).click()
+                    panel.get_by_role('button', name='新笔记', exact=True).click()
                     expect(body).to_have_value('')
                     candidate_a = panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='0000.md')
                     expect(candidate_a).to_have_count(1)

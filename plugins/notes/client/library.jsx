@@ -28,17 +28,22 @@ export function LibraryPanel({ call, onOpen, disabled, selectedPath, revision })
     return () => { request.current++; controller.current?.abort(); };
   }, [revision]);
   return <aside aria-label="笔记列表">
+    <div className="corilo-notes-library-heading"><h2>所有笔记</h2>
+      <button disabled={disabled || pending} type="button" aria-label="刷新列表" title="刷新列表" onClick={() => { setQuery(''); void load('browse'); }}>↻</button>
+    </div>
     <form className="corilo-notes-list-tools" onSubmit={event => { event.preventDefault(); void load(query.trim() ? 'search' : 'browse'); }}>
       <input aria-label="搜索笔记" placeholder="搜索文件名或正文" value={query} onChange={event => setQuery(event.target.value)} />
       <button disabled={disabled} type="submit">搜索</button>
-      <button disabled={disabled || pending} type="button" onClick={() => { setQuery(''); void load('browse'); }}>刷新列表</button>
     </form>
     {pending && <p aria-live="polite">{pendingKind === 'search' ? '正在搜索…' : '正在读取笔记…'}</p>}
     {error && <p role="alert">{error}</p>}
     {mode === 'search' && <p className="corilo-notes-hint">“{applied}”的文件名和正文结果</p>}
     {!pending && !page.items.length && !error && <p>{mode === 'search' ? '没有找到匹配内容。' : '还没有笔记。写下第一句话吧。'}</p>}
     <ul>{page.items.map(item => <li key={`${item.kind ?? 'path'}:${item.path}:${item.line ?? ''}`}>
-      <button disabled={disabled} aria-current={item.path === selectedPath ? 'page' : undefined} onClick={() => onOpen(item.path)}>{item.path}</button>
+      <button disabled={disabled} aria-label={item.path} title={item.path} aria-current={item.path === selectedPath ? 'page' : undefined} onClick={() => onOpen(item.path)}>
+        <span>{item.path.split('/').pop().replace(/\.(md|markdown)$/i, '')}</span>
+        {item.path.includes('/') && <small>{item.path.slice(0, item.path.lastIndexOf('/'))}</small>}
+      </button>
       {item.kind === 'content' && <p className="corilo-notes-search-snippet">第 {item.line} 行 · {item.text}</p>}
     </li>)}</ul>
     {mode === 'browse' && page.hasMore && <button disabled={disabled || pending} onClick={() => load('browse', page.nextCursor)}>加载更多笔记</button>}

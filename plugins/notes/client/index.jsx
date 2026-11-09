@@ -9,6 +9,7 @@ import tokens from './astryx-tokens.css';
 const fresh = () => ({ path: '', text: '', original: '', expected: null, status: 'clean', error: '', latest: null, notice: '' });
 const dirty = hasUnsavedDraft;
 const labels = { clean: '开始记录', dirty: '未保存', saving: '保存中…', saved: '已保存', failed: '保存失败', conflict: '版本冲突' };
+const markdownPath = path => path && !/\.(md|markdown)$/i.test(path) ? `${path}.md` : path;
 
 function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
   const d = useStore(s => s.draft);
@@ -19,6 +20,8 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [draftsOpen, setDraftsOpen] = useState(() => !window.matchMedia('(max-width: 700px)').matches);
   const page = useRef(null);
+  const body = useRef(null);
+  const focusBody = () => requestAnimationFrame(() => { body.current?.focus({ preventScroll: true }); });
   const alive = useRef(true);
   const busy = loading || d.status === 'saving' || !persistence.ready || persistence.rootChanged;
   const emptyCapture = !d.path && d.text.length === 0;
@@ -36,6 +39,7 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
       if (alive.current) {
         actions.setDraft({ ...fresh(), notice: kept ? '原草稿已保留，可从待恢复草稿继续编辑。' : '' });
         setLibraryOpen(false); page.current?.scrollTo({ top: 0 });
+        focusBody();
       }
     } catch (error) { if (alive.current) setNavigationError(error.message); }
     finally { if (alive.current) setLoading(false); }
@@ -50,6 +54,7 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
       if (alive.current) {
         actions.setDraft({ ...fresh(), ...note, original: note.text, expected: note.version, status: 'saved', notice: kept ? '原草稿已保留。' : '' });
         setLibraryOpen(false); page.current?.scrollTo({ top: 0 });
+        focusBody();
       }
     } catch (error) { if (alive.current) actions.setDraft({ ...d, error: error.message }); }
     finally { if (alive.current) setLoading(false); }
@@ -62,7 +67,7 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
       // Never retry a mutation automatically: a lost reply may follow a commit.
       const result = copy || !snapshot.path
         ? await call('capture', { text: snapshot.text })
-        : await call('save', { path: snapshot.path, text: snapshot.text, expected: snapshot.expected });
+        : await call('save', { path: snapshot.expected === null ? markdownPath(snapshot.path) : snapshot.path, text: snapshot.text, expected: snapshot.expected });
       actions.setDraft({ ...fresh(), path: result.path, text: snapshot.text, original: snapshot.text, expected: result.version, status: 'saved' });
       if (alive.current) void refresh();
     } catch (error) {
@@ -80,6 +85,7 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
     if (busy) return;
     setLoading(true);
     let recovered = { ...fresh(), ...record.draft, latest: null };
+    if (recovered.expected === null) recovered.path = markdownPath(recovered.path);
     try {
       if (recovered.path) {
         try {
@@ -101,10 +107,16 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
     } catch (error) { if (alive.current) setNavigationError(`草稿尚未恢复：${error.message}`); }
     finally { if (alive.current) setLoading(false); }
   }
-  return <section ref={page} className="corilo-notes" data-ui="astryx-neutral" data-note-state={d.status} aria-label="Corilo 笔记">
+  return <section ref={page} className={`corilo-notes${libraryOpen ? ' is-browsing' : ''}`} data-ui="astryx-neutral" data-note-state={d.status} aria-label="Corilo 笔记"
+    onKeyDown={event => {
+      if (event.target.closest('.corilo-notes-editor') && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's' && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+        event.preventDefault();
+        if (d.status !== 'conflict') void save();
+      }
+    }}>
     <header><h1>笔记</h1><div className="corilo-notes-primary-actions">
       <button className="corilo-notes-find" aria-controls="corilo-notes-library" aria-expanded={libraryOpen} onClick={() => setLibraryOpen(value => !value)}>{libraryOpen ? '返回正文' : '查找笔记'}</button>
-      <button disabled={busy} onClick={newNote}>{dirty(d) ? '保留草稿并新建' : '新笔记'}</button>
+      <button disabled={busy} onClick={newNote}>新笔记</button>
     </div></header>
     {persistence.candidates.length > 0 && <section className="corilo-notes-drafts" aria-label="待恢复草稿">
       <details open={draftsOpen} onToggle={event => setDraftsOpen(event.currentTarget.open)}>
@@ -125,15 +137,16 @@ function NotesPage({ useStore, actions, call, drafts, usePersistence }) {
         <LibraryPanel call={call} onOpen={open} disabled={busy} selectedPath={d.path} revision={libraryRevision} />
       </div>
       <div className="corilo-notes-editor">
-        <label className="corilo-notes-body">正文<textarea aria-label="笔记正文" disabled={busy} value={d.text} spellCheck={false} placeholder="此刻想留下什么？"
+        <label className="corilo-notes-filename"><span className="corilo-notes-sr-only">文件名</span><input aria-label="笔记文件名" disabled={busy || d.expected !== null} placeholder="未命名笔记" value={d.path}
+          title="标题可留空，保存时自动命名；填写标题时自动补 .md。也支持 文件夹/标题.md。已保存文件的名称在此只读。"
+          onChange={e => actions.setDraft({ ...d, path: e.target.value, status: 'dirty' })} /></label>
+        <p className="corilo-notes-document-hint">{d.path ? 'Markdown 笔记' : '直接写下正文，保存时自动命名。'}<span>Ctrl / ⌘ S 保存</span></p>
+        <label className="corilo-notes-body"><span className="corilo-notes-sr-only">正文</span><textarea ref={body} aria-label="笔记正文" disabled={busy} value={d.text} spellCheck={false} placeholder="此刻想留下什么？"
           onChange={e => actions.setDraft({ ...d, text: e.target.value, status: d.status === 'conflict' ? 'conflict' : 'dirty' })} /></label>
         <div className="corilo-notes-save"><span role="status" data-state={loading ? 'loading' : d.status}>{loading ? '读取中…' : labels[d.status]}</span>
           <button className="corilo-notes-primary" disabled={busy || emptyCapture || d.status === 'conflict'} onClick={() => save()}>{d.expected === null && !d.path ? '仅保存原话' : '保存笔记'}</button>
         </div>
-        <label className="corilo-notes-filename">文件名<input aria-label="笔记文件名" disabled={busy || d.expected !== null} placeholder="留空自动命名，或输入 文件名.md" value={d.path}
-          onChange={e => actions.setDraft({ ...d, path: e.target.value, status: 'dirty' })} /></label>
-
-        <p className="corilo-notes-hint corilo-notes-persistence" data-state={persistence.status} aria-live="polite" data-testid="draft-persistence">{persistence.status === 'loading' ? '正在读取浏览器草稿…' : persistence.status === 'pending' ? '正在保护草稿…' : persistence.status === 'stored' ? '草稿已保存在此浏览器，尚未保存到文件。' : persistence.status === 'failed' ? (persistence.ready ? '草稿保护失败，请保存文件后再关闭。' : '知识库身份未确认，操作已暂停。') : '浏览器草稿保护已就绪。'}</p>
+        <p className="corilo-notes-hint corilo-notes-persistence" data-state={persistence.status} aria-live="polite" data-testid="draft-persistence">{persistence.status === 'loading' ? '正在读取浏览器草稿…' : persistence.status === 'pending' ? '正在保护草稿…' : persistence.status === 'stored' ? '草稿已保存在此浏览器，尚未保存到文件。' : persistence.status === 'failed' ? (persistence.ready ? '草稿保护失败，请保存文件后再关闭。' : '知识库身份未确认，操作已暂停。') : ''}</p>
         {d.error && <p className="corilo-notes-error" role="alert">{d.error}</p>}
         {d.notice && <p className="corilo-notes-notice" aria-live="polite">{d.notice}</p>}
         {d.status === 'conflict' && <div className="corilo-notes-conflict">

@@ -62,7 +62,7 @@ def main():
                         expect(region).to_have_attribute('data-ui', 'astryx-neutral')
                         field = region.get_by_role('textbox', name='快速新增待办', exact=True)
                         expect(field).to_be_enabled()
-                        region.get_by_role('combobox', name='待办状态筛选').select_option('all')
+                        region.get_by_role('group', name='待办状态筛选').get_by_role('button', name='全部', exact=True).click()
                         pg.wait_for_function("() => document.getAnimations().every(animation => animation.playState !== 'running')")
                         return ctx, pg, region, field
                     context, page, panel, quick = open_context('light', 1280, 900)

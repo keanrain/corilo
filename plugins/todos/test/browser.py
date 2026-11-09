@@ -122,7 +122,7 @@ def main():
                     note = panel.get_by_role('textbox', name='关联笔记路径', exact=True)
                     status = panel.get_by_role('status')
                     library = panel.get_by_role('complementary', name='待办列表')
-                    filtering = library.get_by_role('combobox', name='待办状态筛选')
+                    filtering = library.get_by_role('group', name='待办状态筛选')
                     first_title = '准备周末读书会'
                     first_body = '带上中文笔记，讨论第二章。\n不需要模型或提醒服务。'
                     title.fill(first_title)
@@ -138,22 +138,21 @@ def main():
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('未完成')
                     panel.get_by_role('button', name='完成待办', exact=True).click()
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('已完成')
-                    filtering.select_option('done')
+                    filtering.get_by_role('button', name='已完成', exact=True).click()
                     expect(library.locator('li')).to_have_count(1)
                     expect(library.locator('li')).to_contain_text(first_title)
                     panel.get_by_role('button', name='取消待办', exact=True).click()
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('已取消')
-                    filtering.select_option('cancelled')
+                    filtering.get_by_role('button', name='已取消', exact=True).click()
                     expect(library.locator('li')).to_have_count(1)
                     panel.get_by_role('button', name='重新打开待办', exact=True).click()
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('未完成')
-                    filtering.select_option('open')
+                    filtering.get_by_role('button', name='未完成', exact=True).click()
                     expect(library.locator('li')).to_have_count(1)
                     title.fill(first_title + '（已确认）')
-                    panel.get_by_role('button', name='保存待办', exact=True).click()
+                    title.press('Control+s')
                     expect(status).to_have_text('已保存')
                     assert api('get', {'id': first['id']})['title'] == first_title + '（已确认）'
-                    library.locator('summary').filter(has_text='搜索待办').click()
                     library.get_by_role('textbox', name='搜索待办').fill('读书会')
                     library.get_by_role('button', name='搜索', exact=True).click()
                     expect(library.locator('li')).to_have_count(1)
@@ -239,7 +238,7 @@ def main():
                             held.append((route, route.fetch()))
                         page.route('**/api/corilo-todos/list', handler, times=1)
                         library.get_by_role('button', name='刷新待办', exact=True).click()
-                        expect(filtering).to_be_disabled()
+                        expect(filtering.get_by_role('button').first).to_be_disabled()
                         deadline = time.monotonic() + 5
                         while not held and time.monotonic() < deadline:
                             page.wait_for_timeout(25)
@@ -256,13 +255,13 @@ def main():
                     old_route.fulfill(response=old_response)
                     delayed_item = library.locator('li').filter(has_text=delayed_title)
                     expect(delayed_item).to_have_count(1)
-                    expect(filtering).to_be_enabled()
+                    expect(filtering.get_by_role('button').first).to_be_enabled()
                     old_route, old_response = hold_list()
                     panel.get_by_role('button', name='完成待办', exact=True).click()
                     expect(panel.get_by_test_id('todo-record-state')).to_contain_text('已完成')
                     old_route.fulfill(response=old_response)
                     expect(delayed_item).to_have_count(0)
-                    expect(filtering).to_be_enabled()
+                    expect(filtering.get_by_role('button').first).to_be_enabled()
                     library.locator('li').filter(has_text=lost_title).get_by_role('button', name=lost_title, exact=True).click()
                     expect(body).to_have_value(local_draft)
 
@@ -275,12 +274,25 @@ def main():
                     assert len(exported['items']) == 4
                     assert any(item['id'] == first['id'] and item['notePath'] == '读书/第二章.md' for item in exported['items'])
 
-                    # A dirty editor refuses silent record switching. Explicit
-                    # discard is the only way to replace the current input.
+                    # Switching preserves a dirty editor as an explicit recovery
+                    # draft. No save or model request occurs during navigation.
                     body.fill('未保存的短草稿')
                     panel.get_by_role('button', name='新待办', exact=True).click()
+                    expect(body).to_have_value('')
+                    expect(title).to_be_focused()
+                    saved_drafts = panel.locator('.corilo-todos-drafts')
+                    saved_drafts.locator('summary').first.click()
+                    short_draft = saved_drafts.locator('li').filter(has_text='未保存的短草稿')
+                    short_draft.get_by_role('button', name='恢复草稿', exact=True).click()
                     expect(body).to_have_value('未保存的短草稿')
-                    expect(panel.get_by_role('alert')).to_contain_text('当前修改尚未保存')
+                    assert api('get', {'id': lost_id})['body'] == local_draft
+                    # A failed IndexedDB transaction blocks navigation and keeps
+                    # the current editor; it must never claim the draft was kept.
+                    page.evaluate("() => { window.originalDraftAdd=IDBObjectStore.prototype.add; IDBObjectStore.prototype.add=function(){throw Error('synthetic stash failure');}; }")
+                    panel.get_by_role('button', name='新待办', exact=True).click()
+                    expect(body).to_have_value('未保存的短草稿')
+                    expect(panel.get_by_role('alert').last).to_be_visible()
+                    page.evaluate('IDBObjectStore.prototype.add=window.originalDraftAdd; delete window.originalDraftAdd;')
                     page.once('dialog', lambda dialog: dialog.accept())
                     panel.get_by_role('button', name='放弃修改', exact=True).click()
                     expect(body).to_have_value(local_draft)
@@ -305,6 +317,8 @@ def main():
                         target.mkdir(parents=True, exist_ok=True)
                         phone.screenshot(path=str(target / 'todos-mobile-core.png'))
                     mobile_panel.get_by_role('complementary', name='待办列表').locator('li').filter(has_text=lost_title).get_by_role('button').tap()
+                    expect(mobile_panel.get_by_role('complementary', name='待办列表')).not_to_be_visible()
+                    expect(mobile_title).not_to_be_visible()
                     mobile_panel.get_by_role('textbox', name='待办说明').fill('手机尺寸编辑的中文说明')
                     save = mobile_panel.get_by_role('button', name='保存待办', exact=True)
                     save.scroll_into_view_if_needed()
@@ -317,6 +331,9 @@ def main():
                         target = pathlib.Path(artifact_dir)
                         target.mkdir(parents=True, exist_ok=True)
                         phone.screenshot(path=str(target / 'todos-mobile.png'))
+                    mobile_panel.get_by_role('button', name='返回列表', exact=True).tap()
+                    expect(mobile_title).to_be_visible()
+                    expect(mobile_panel.get_by_role('complementary', name='待办列表')).to_be_visible()
                     mobile.close()
 
                     # An old page must freeze after a store identity mismatch,
@@ -369,13 +386,13 @@ def main():
                     assert api('get', {'id': first_core['id']})['status'] == 'open'
                     second_check = core_list.get_by_role('checkbox', name='完成：' + core_titles[1], exact=True)
                     second_check.click()
-                    core_filter = core_list.get_by_role('combobox', name='待办状态筛选')
-                    core_filter.select_option('done')
+                    core_filter = core_list.get_by_role('group', name='待办状态筛选')
+                    core_filter.get_by_role('button', name='已完成', exact=True).click()
                     expect(second_check).to_be_checked()
                     second_check.click()
                     expect(second_check).to_have_count(0)
                     assert api('get', {'id': second_core['id']})['status'] == 'open'
-                    core_filter.select_option('open')
+                    core_filter.get_by_role('button', name='未完成', exact=True).click()
 
                     # Completing an unrelated item never replaces editor input.
                     core_list.get_by_role('button', name=lost_title, exact=True).click()
@@ -405,7 +422,7 @@ def main():
                     expect(core.get_by_role('button', name='重试列表操作', exact=True)).to_be_visible()
                     committed_row = api('get', {'id': second_core['id']})
                     assert committed_row['status'] == 'done'
-                    core_filter.select_option('done')
+                    core_filter.get_by_role('button', name='已完成', exact=True).click()
                     core.get_by_role('button', name='重试列表操作', exact=True).click()
                     expect(core.get_by_role('button', name='重试列表操作', exact=True)).to_have_count(0)
                     assert api('get', {'id': second_core['id']})['version'] == committed_row['version']
