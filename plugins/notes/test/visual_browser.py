@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
+from editor_support import expect_editor_value
 from browser import ROOT, wait_for, manual_saves
 
 
@@ -63,14 +64,15 @@ def main():
                         assert page.evaluate('getComputedStyle(document.body).getPropertyValue("--ax-color-accent")') == '', 'Plugin tokens leaked to host body'
                         assert panel.evaluate('(el) => getComputedStyle(el).backgroundColor') == ('rgb(255, 255, 255)' if scheme == 'light' else 'rgb(38, 38, 38)')
                         panel.get_by_role('button', name='每周记录.md', exact=True).click()
-                        expect(body).to_have_value(note.read_text())
+                        expect_editor_value(body, note.read_text())
                         primary = panel.get_by_role('button', name='保存笔记', exact=True)
                         expect(primary).to_be_enabled()
                         expected_primary = 'rgb(27, 27, 27)' if scheme == 'light' else 'rgb(241, 241, 241)'
                         wait_for(lambda: primary.evaluate('(el) => getComputedStyle(el).backgroundColor') == expected_primary)
                         body.focus()
-                        assert body.evaluate('(el) => getComputedStyle(el).boxShadow') != 'none'
-                        assert body.evaluate('(el) => getComputedStyle(el).boxShadow').startswith('rgb(')
+                        expect(panel.locator('.cm-editor')).to_have_class(re.compile(r'\bcm-focused\b'))
+                        assert panel.locator('.cm-cursor').first.evaluate('(el) => getComputedStyle(el).borderLeftColor') != 'rgba(0, 0, 0, 0)'
+                        assert panel.locator('.corilo-format-tools').evaluate('(el) => getComputedStyle(el).borderBottomColor') != panel.evaluate('(el) => getComputedStyle(el).backgroundColor')
                         page.screenshot(path=str(artifact_dir / f'notes-{scheme}-desktop.png'), animations='disabled')
                         page.set_viewport_size({'width': 390, 'height': 844})
                         panel.evaluate('(el) => el.scrollTo({top:0})')
@@ -86,7 +88,7 @@ def main():
                         page.route('**/api/corilo-notes/save', lambda route: route.abort())
                         primary.click()
                         expect(panel.get_by_role('status')).to_have_text('保存失败')
-                        expect(body).to_have_value('一段尚未保存的中文。')
+                        expect_editor_value(body, '一段尚未保存的中文。')
                         assert panel.get_by_role('status').evaluate('(el) => getComputedStyle(el).color') != panel.evaluate('(el) => getComputedStyle(el).color')
                         page.screenshot(path=str(artifact_dir / f'notes-{scheme}-failure.png'), animations='disabled')
                         assert page.evaluate('({bg:getComputedStyle(document.body).backgroundColor, scheme:document.documentElement.style.colorScheme})') == host_style

@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 from playwright.sync_api import sync_playwright, expect
+from editor_support import expect_editor_value
 from browser import ROOT, wait_for, open_drafts
 
 
@@ -81,15 +82,15 @@ def main():
                     assert not (vault / '取消的标题.md').exists()
                     body.fill('离开前尚未到防抖时间的修改')
                     panel.get_by_role('button', name='自动保存.md', exact=True).click()
-                    expect(body).to_have_value('原始正文\n')
+                    expect_editor_value(body, '原始正文\n')
                     assert (vault / '读书札记.md').read_text() == '离开前尚未到防抖时间的修改'
                     panel.get_by_role('button', name='读书札记.md', exact=True).click()
-                    expect(body).to_have_value('离开前尚未到防抖时间的修改')
+                    expect_editor_value(body, '离开前尚未到防抖时间的修改')
                     body.fill(words)
                     panel.get_by_role('button', name='读书札记.md', exact=True).click()
                     expect(panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
                     expect(body).to_be_enabled()
-                    expect(body).to_have_value(words)
+                    expect_editor_value(body, words)
                     assert (vault / '读书札记.md').read_text() == words
                     panel.get_by_role('button', name='实时预览', exact=True).click()
                     expect(panel.get_by_role('region', name='Markdown 实时预览')).to_contain_text('一个观察')
@@ -122,7 +123,7 @@ def main():
                     mobile = phone.get_by_role('region', name='Corilo 笔记')
                     mobile.get_by_role('button', name='查找笔记', exact=True).tap()
                     mobile.get_by_role('button', name='读书札记.md', exact=True).tap()
-                    expect(mobile.get_by_role('textbox', name='笔记正文')).to_have_value(words)
+                    expect_editor_value(mobile.get_by_role('textbox', name='笔记正文'), words)
                     expect(mobile.get_by_role('complementary', name='笔记列表')).not_to_be_visible()
                     assert mobile.evaluate('(el) => el.scrollWidth <= el.clientWidth + 1')
                     mobile.get_by_role('button', name='实时预览', exact=True).tap()
@@ -157,7 +158,7 @@ def main():
                     check_page.once('dialog', lambda dialog: dialog.accept())
                     check_panel.get_by_role('button', name=creates[0], exact=True).click()
                     expect(check_panel.get_by_role('status')).to_have_text('已保存')
-                    expect(check_body).to_have_value('首次保存已落盘但回复丢失，仍能核对。')
+                    expect_editor_value(check_body, '首次保存已落盘但回复丢失，仍能核对。')
                     assert len(creates) == 1
                     check_page.close()
                     assert not errors, errors

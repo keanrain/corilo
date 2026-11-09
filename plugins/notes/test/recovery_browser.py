@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 from playwright.sync_api import sync_playwright, expect
+from editor_support import expect_editor_value
 from browser import wait_for, manual_saves
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -50,7 +51,7 @@ def main():
                     manual_saves(panel)
                     panel.get_by_role('button', name='可恢复.md', exact=True).click()
                     body = panel.get_by_role('textbox', name='笔记正文', exact=True)
-                    expect(body).to_have_value(first_text)
+                    expect_editor_value(body, first_text)
                     body.fill('第二次保存的内容')
                     panel.get_by_role('button', name='保存笔记', exact=True).click()
                     expect(panel.get_by_role('status')).to_have_text('已保存')
@@ -67,7 +68,7 @@ def main():
                     note.write_text('外部新增内容')
                     panel.get_by_role('button', name='恢复此版本', exact=True).click()
                     expect(panel.get_by_role('status')).to_have_text('版本冲突')
-                    expect(body).to_have_value('第二次保存的内容')
+                    expect_editor_value(body, '第二次保存的内容')
                     assert note.read_text() == '外部新增内容'
                     # Reload a clean editor, preview again, restore through the UI.
                     page.reload()
@@ -78,14 +79,14 @@ def main():
                     # and retaining the blocked version before reopening.
                     manual_saves(panel)
                     panel.get_by_role('button', name='可恢复.md', exact=True).click()
-                    expect(body).to_have_value('外部新增内容')
+                    expect_editor_value(body, '外部新增内容')
                     if panel.locator('details.corilo-notes-more').get_attribute('open') is None:
                         panel.locator('details.corilo-notes-more > summary').click()
                     panel.get_by_role('button', name='版本历史', exact=True).click()
                     listing.get_by_role('button').filter(has_text=first_hash).last.click()
                     panel.get_by_role('button', name='恢复此版本', exact=True).click()
                     expect(panel.get_by_role('status')).to_have_text('已保存')
-                    expect(body).to_have_value(first_text)
+                    expect_editor_value(body, first_text)
                     assert note.read_text() == first_text
                     # Stale deletion fails as well; then re-read by reopening.
                     note.write_text('不能被误删的外部版本')
@@ -94,12 +95,12 @@ def main():
                     expect(panel.get_by_role('status')).to_have_text('版本冲突')
                     assert note.read_text() == '不能被误删的外部版本'
                     panel.get_by_role('button', name='可恢复.md', exact=True).click()
-                    expect(body).to_have_value('不能被误删的外部版本')
+                    expect_editor_value(body, '不能被误删的外部版本')
                     if panel.locator('details.corilo-notes-more').get_attribute('open') is None:
                         panel.locator('details.corilo-notes-more > summary').click()
                     page.once('dialog', lambda dialog: dialog.accept())
                     panel.get_by_role('button', name='移入回收站', exact=True).click()
-                    expect(body).to_have_value('')
+                    expect_editor_value(body, '')
                     assert not note.exists()
                     panel.get_by_role('button', name='回收站', exact=True).click()
                     trash = panel.get_by_role('region', name='回收站列表')

@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
+from editor_support import editor_value, expect_editor_value
 from browser import ROOT, wait_for, manual_saves, open_drafts
 
 
@@ -68,13 +69,13 @@ def main():
                     library.get_by_role('button', name='加载更多笔记', exact=True).click()
                     expect(library.locator('ul > li')).to_have_count(200)
                     library.get_by_role('button', name='0100.md', exact=True).click()
-                    expect(body).to_have_value('合成笔记 100\n')
+                    expect_editor_value(body, '合成笔记 100\n')
 
                     library.get_by_text('按路径打开', exact=True).click()
                     library.get_by_role('textbox', name='要打开的笔记路径', exact=True).fill('z-large-08.md')
                     library.get_by_role('button', name='打开路径', exact=True).click()
                     expect(panel.get_by_role('textbox', name='笔记标题', exact=True)).to_have_value('z-large-08')
-                    assert body.input_value() == large_text
+                    assert editor_value(body) == large_text
 
                     # Ordinary capture remains zero-model even in a library
                     # beyond the legacy list count/aggregate-body budgets.
@@ -93,16 +94,16 @@ def main():
                     expect(library.locator('ul > li')).to_have_count(1)
                     expect(library.get_by_text(re.compile('第 1 行 ·'))).to_be_visible()
                     library.get_by_role('button', name=capture_path, exact=True).click()
-                    expect(body).to_have_value(capture_text)
+                    expect_editor_value(body, capture_text)
                     assert len(captures) == 1
 
                     library.get_by_role('button', name='刷新列表', exact=True).click()
                     library.get_by_role('button', name='0000.md', exact=True).click()
-                    expect(body).to_have_value(original_a)
+                    expect_editor_value(body, original_a)
                     draft_a = 'A 的未保存完整草稿\n' + '后续正文。' * 30
                     body.fill(draft_a)
                     panel.get_by_role('button', name='新笔记', exact=True).click()
-                    expect(body).to_have_value('')
+                    expect_editor_value(body, '')
                     open_drafts(panel)
                     candidate_a = panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='0000.md')
                     expect(candidate_a).to_have_count(1)
@@ -116,12 +117,12 @@ def main():
                     assert (vault / 'B.md').read_text() == 'B 已保存正文'
                     open_drafts(panel)
                     candidate_a.get_by_role('button', name='恢复草稿', exact=True).click()
-                    expect(body).to_have_value(draft_a)
+                    expect_editor_value(body, draft_a)
                     assert note_a.read_text() == original_a
 
                     # Clicking another file must also retain the active draft.
                     library.get_by_role('button', name='0001.md', exact=True).click()
-                    expect(body).to_have_value('合成笔记 1\n')
+                    expect_editor_value(body, '合成笔记 1\n')
                     draft_c = 'C 当前编辑草稿，刷新后仍保留'
                     body.fill(draft_c)
                     expect(panel.get_by_test_id('draft-persistence')).to_have_text('草稿已保存在此浏览器，尚未保存到文件。')
@@ -137,11 +138,11 @@ def main():
                     expect(candidate_a.get_by_role('textbox', name='草稿正文预览', exact=True)).to_have_value(draft_a)
                     open_drafts(panel)
                     candidate_c.get_by_role('button', name='恢复草稿', exact=True).click()
-                    expect(body).to_have_value(draft_c)
+                    expect_editor_value(body, draft_c)
                     # Restoring A while C is unsaved retains C as a candidate.
                     open_drafts(panel)
                     candidate_a.get_by_role('button', name='恢复草稿', exact=True).click()
-                    expect(body).to_have_value(draft_a)
+                    expect_editor_value(body, draft_a)
                     expect(candidates.locator('li').filter(has_text='0001.md')).to_have_count(1)
                     assert note_a.read_text() == original_a
                     assert (vault / '0001.md').read_text() == '合成笔记 1\n'

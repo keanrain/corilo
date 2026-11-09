@@ -9,6 +9,7 @@ import tempfile
 from urllib.parse import urlsplit
 
 from playwright.sync_api import sync_playwright, expect
+from editor_support import expect_editor_value
 from browser import ROOT, wait_for, manual_saves, open_drafts
 
 
@@ -86,17 +87,17 @@ def main():
                 assert 'beforeunload' in dialogs, 'Unsaved warning must survive switching away from notes'
                 open_drafts(panel)
                 expect(panel.get_by_role('region', name='待恢复草稿')).to_be_visible()
-                expect(body).to_have_value('')
+                expect_editor_value(body, '')
                 open_drafts(panel)
                 panel.get_by_role('button', name='恢复草稿', exact=True).click()
-                expect(body).to_have_value('浏览器持久草稿\n尚未写磁盘')
+                expect_editor_value(body, '浏览器持久草稿\n尚未写磁盘')
                 assert note.read_text() == '原始磁盘内容\n'
                 expect(panel.get_by_test_id('draft-persistence')).to_contain_text('草稿已保存在此浏览器')
                 note.write_text('磁盘已由其他设备更新\n')
                 panel = enter(page, url)
                 open_drafts(panel)
                 panel.get_by_role('button', name='恢复草稿', exact=True).click()
-                expect(body).to_have_value('浏览器持久草稿\n尚未写磁盘')
+                expect_editor_value(body, '浏览器持久草稿\n尚未写磁盘')
                 expect(panel.get_by_role('status')).to_have_text('版本冲突')
                 assert note.read_text() == '磁盘已由其他设备更新\n'
                 panel.get_by_role('button', name='草稿另存为新笔记', exact=True).click()
@@ -122,7 +123,7 @@ def main():
                 expect(writer_panel.get_by_test_id('draft-persistence')).to_contain_text('草稿已保存在此浏览器')
                 open_drafts(observer_panel)
                 observer_panel.get_by_role('button', name='恢复草稿', exact=True).click()
-                expect(observer_panel.get_by_role('textbox', name='笔记正文', exact=True)).to_have_value('旧草稿 A1')
+                expect_editor_value(observer_panel.get_by_role('textbox', name='笔记正文', exact=True), '旧草稿 A1')
                 expect(observer_panel.get_by_role('alert')).to_contain_text('较新版本已保留')
                 open_drafts(observer_panel)
                 expect(observer_panel.get_by_role('region', name='待恢复草稿')).to_be_visible()
@@ -154,9 +155,9 @@ def main():
                 other_url = launch(second_root, port)
                 panel = enter(page, other_url)
                 expect(panel.get_by_role('region', name='待恢复草稿')).to_have_count(0)
-                expect(body).to_have_value('')
+                expect_editor_value(body, '')
                 panel.get_by_role('button', name='已有笔记.md', exact=True).click()
-                expect(body).to_have_value('另一个知识库\n')
+                expect_editor_value(body, '另一个知识库\n')
                 stop()
                 original_url = launch(first_root, port)
                 panel = enter(page, original_url)
@@ -164,7 +165,7 @@ def main():
                 expect(panel.get_by_role('region', name='待恢复草稿')).to_be_visible()
                 open_drafts(panel)
                 panel.get_by_role('button', name='恢复草稿', exact=True).click()
-                expect(body).to_have_value('属于第一个知识库的私有草稿')
+                expect_editor_value(body, '属于第一个知识库的私有草稿')
                 expect(panel.get_by_test_id('draft-persistence')).to_contain_text('草稿已保存在此浏览器')
                 # Browser storage rejection must stay visible while ordinary file
                 # saving remains usable. This is a browser fault, not a fake Host.

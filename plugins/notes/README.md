@@ -8,6 +8,8 @@ This package supplies Markdown storage, model-facing tools and a **笔记** page
 
 The desktop page is a note list beside a continuous document. Click **新笔记** to create a real empty Markdown note and start writing, or type directly into the initial page: auto-save creates a readable **未命名.md**, **未命名 2.md**, etc. with the initial text in one request. No filename form or first-submit step is required in the default flow. Click the document title to rename it inline; Enter or leaving the title confirms, Escape cancels.
 
+The body uses **CodeMirror 6**, with styled Markdown headings/emphasis/inline code, delimiters revealed on the active line, list continuation, undo/redo, and a localized document search/replace panel. A compact format toolbar and Ctrl/Cmd+B, I and F work directly in the document. This is Markdown editing, not a private rich-text document format; tables, attachments and embedded blocks are not full WYSIWYG widgets. Save acknowledgements retain cursor and undo history; opening another document starts a separate history.
+
 Save status lives quietly in the toolbar. The default workflow does not keep a separate save form or a browser-draft explanation above the body. Notes save after a 1-second typing pause, including after switching to another Harness panel, and newer typing survives in-flight replies. Failures, conflicts and unknown outcomes stay visible and stop automatic writes; restoring a draft alone never submits it. Normal note switching waits for the current edit to save before reading the target. Unedited recovered drafts and manual mode use protected draft retention instead. After a failed or uncertain write, selecting a file for verification asks to retain the current draft first, then only reads the selected file; it never resends creation automatically. Ctrl/Cmd+S still uses the same versioned service. **更多操作** offers a manual mode for explicit save / exact-word capture; the preference survives plugin switches while this Harness page stays open, and a full reload restores the default.
 
 On phones, **查找笔记** switches to browsing/search and **返回正文** returns without losing input; opening a result or recovering a draft returns to the editor. The list, editor and preview are separate phone views. Recovery drafts live in the sidebar; history/trash and the manual setting live under **更多操作**. For both plugins from a source checkout, use the [root setup/init/start flow](https://github.com/keanrain/corilo/blob/feat/cloud-notes/README.md#一起使用笔记和待办); independent package commands remain supported.
@@ -57,7 +59,7 @@ npm pack --pack-destination /absolute/existing/output-directory
 mkdir corilo-install
 cd corilo-install
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.4.0.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.5.0.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -77,7 +79,7 @@ and recovery-state formats.
 1. Save any browser drafts to files, stop this instance, and take a verified
    backup of its notes and state. A browser draft is not part of that backup.
 2. In a new installation directory, run `npm init -y` and
-   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.4.0.tgz`.
+   `npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.5.0.tgz`.
 3. From that **new** directory, generate a new overlay referring to the new
    installed package while keeping the original data paths:
 
@@ -131,7 +133,7 @@ Filename/body search reuses pinned `@vscode/ripgrep`; npm supplies its platform 
 
 The storage service serializes its own operations and rejects stale content versions. It does not provide an atomic filesystem transaction against arbitrary independent editors or default shell tools. Cancellation is checked before queued writes and before commit; an already committed file is not rolled back. This is storage behavior, not a replacement for Harness's permission or sandbox policies.
 
-The capture tool preserves the text passed to it, including BOM, CRLF and surrounding whitespace. Invoking it through an Agent still involves a model turn. The page calls the same store directly through the Host and never requests a model. Browser textarea editing follows browser newline normalization; it is not a byte-preserving editor for arbitrary original file encodings.
+The capture tool preserves the text passed to it, including BOM, CRLF and surrounding whitespace. Invoking it through an Agent still involves a model turn. The page calls the same store directly through the Host and never requests a model. The editor maps logical changes back onto the original text, preserving untouched BOM, line endings and whitespace. Inserted newlines follow the document’s CRLF/CR/LF convention; edited or deleted ranges are intentional changes. This is not an arbitrary-encoding binary editor.
 
 ## Local history and trash
 

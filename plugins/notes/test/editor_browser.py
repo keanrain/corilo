@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 from playwright.sync_api import sync_playwright, expect
+from editor_support import editor_value, expect_editor_value
 from browser import ROOT, wait_for, open_drafts
 
 
@@ -46,7 +47,7 @@ def main():
                     page.get_by_role('button', name='Close', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
                     panel = page.get_by_role('region', name='Corilo 笔记')
-                    body = panel.get_by_role('textbox', name='笔记正文', exact=True)
+                    body = panel.get_by_role('textbox', name='笔记正文', exact=True, include_hidden=True)
                     expect(body).to_be_enabled()
                     body.fill('直接开始写作，自动建立文档')
                     expect(panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
@@ -54,7 +55,7 @@ def main():
                     assert mutations == ['create']
 
                     panel.get_by_role('button', name='自动保存.md', exact=True).click()
-                    expect(body).to_have_value('原始正文\n')
+                    expect_editor_value(body, '原始正文\n')
                     # The timer belongs to the plugin, including while its page
                     # is unmounted by navigation to another Harness panel.
                     background = '切换其他页面后仍保存到主机'
@@ -62,7 +63,7 @@ def main():
                     page.get_by_role('button', name='Plugins', exact=True).click()
                     wait_for(lambda: (page.wait_for_timeout(25), note.read_text() == background)[1], timeout=10)
                     page.get_by_role('button', name='笔记', exact=True).click()
-                    expect(body).to_have_value(background)
+                    expect_editor_value(body, background)
                     expect(panel.get_by_role('status')).to_have_text('已保存')
                     body.fill('原始正文\n')
                     expect(panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
@@ -75,7 +76,7 @@ def main():
                     before = len(mutations)
                     page.get_by_role('button', name='Plugins', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
-                    expect(body).to_have_value('关闭自动保存后的未保存输入')
+                    expect_editor_value(body, '关闭自动保存后的未保存输入')
                     page.wait_for_timeout(1400)
                     assert len(mutations) == before and note.read_text() == '原始正文\n'
                     panel.locator('details.corilo-notes-more > summary').click()
@@ -85,9 +86,9 @@ def main():
                     panel.locator('details.corilo-notes-more > summary').click()
                     body.fill('  自动保存保持原话\r\n第二行  ')
                     expect(panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
-                    # Textarea normalizes browser input line endings; the host
-                    # receives precisely its current value, without formatting.
-                    assert note.read_text() == body.input_value()
+                    # Browser fill normalizes new input. The separate editor
+                    # acceptance also verifies untouched mixed file line endings.
+                    assert note.read_text() == editor_value(body)
 
                     # Hold a committed response, then keep typing. The first
                     # reply must never replace the newer in-memory text.
@@ -105,9 +106,9 @@ def main():
                     held[0][0].fulfill(response=held[0][1])
                     wait_for(lambda: (page.wait_for_timeout(25), note.read_text() == '提交快照 A，期间继续输入 B')[1], timeout=10)
                     page.get_by_role('button', name='笔记', exact=True).click()
-                    expect(body).to_have_value('提交快照 A，期间继续输入 B')
+                    expect_editor_value(body, '提交快照 A，期间继续输入 B')
                     expect(panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
-                    assert note.read_text() == body.input_value()
+                    assert note.read_text() == editor_value(body)
 
                     # IME composition defers automatic writes until it ends.
                     before = len(mutations)
@@ -132,7 +133,7 @@ def main():
                     page.get_by_role('button', name='笔记', exact=True).click()
                     open_drafts(panel)
                     panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='自动保存.md').get_by_role('button', name='恢复草稿', exact=True).click()
-                    expect(body).to_have_value('失败后继续输入，暂停标记不能消失')
+                    expect_editor_value(body, '失败后继续输入，暂停标记不能消失')
                     before = len(mutations)
                     body.fill('恢复后继续输入，仍需明确保存')
                     page.wait_for_timeout(1400)
@@ -145,7 +146,7 @@ def main():
                     # Commit A, type the original O while the reply is held,
                     # then lose that reply. O still needs recovery even though
                     # it equals the pre-request original; disk may now contain A.
-                    original = body.input_value()
+                    original = editor_value(body)
                     held = []
                     page.route('**/api/corilo-notes/save', hold_save, times=1)
                     body.fill('服务已提交但回复丢失')
@@ -162,13 +163,13 @@ def main():
                     page.get_by_role('button', name='笔记', exact=True).click()
                     open_drafts(panel)
                     panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='自动保存.md').get_by_role('button', name='恢复草稿', exact=True).click()
-                    expect(body).to_have_value(original)
+                    expect_editor_value(body, original)
                     expect(panel.get_by_role('status')).to_have_text('版本冲突')
                     before = len(mutations)
                     body.fill('失败后继续写，等待人工核对')
                     page.wait_for_timeout(1400)
                     assert len(mutations) == before
-                    expect(body).to_have_value('失败后继续写，等待人工核对')
+                    expect_editor_value(body, '失败后继续写，等待人工核对')
 
                     # Reload/recover keeps the original expected version and
                     # does not write. Stale recovery reports conflict.
@@ -179,7 +180,7 @@ def main():
                     page.get_by_role('button', name='笔记', exact=True).click()
                     open_drafts(panel)
                     panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='自动保存.md').get_by_role('button', name='恢复草稿', exact=True).click()
-                    expect(body).to_have_value('失败后继续写，等待人工核对')
+                    expect_editor_value(body, '失败后继续写，等待人工核对')
                     expect(panel.get_by_role('status')).to_have_text('版本冲突')
                     before = len(mutations)
                     page.wait_for_timeout(1400)
@@ -202,7 +203,7 @@ def main():
                     expect(safe_link).to_have_attribute('target', '_blank')
                     expect(safe_link).to_have_attribute('rel', 'noopener noreferrer')
                     assert page.evaluate('window.previewAttack') is None
-                    expect(body).to_have_value(sample)
+                    expect_editor_value(body, sample)
                     assert len(mutations) == before
                     artifact_dir = os.environ.get('CORILO_BROWSER_ARTIFACT_DIR')
                     if artifact_dir:
@@ -223,11 +224,11 @@ def main():
                     body.fill(large)
                     panel.get_by_role('button', name='实时预览', exact=True).click()
                     expect(preview).to_contain_text('超过 128 Ki 字符')
-                    assert panel.locator('textarea[aria-label="笔记正文"]').input_value() == large
+                    assert editor_value(body) == large
                     assert len(mutations) == before
                     panel.get_by_role('button', name='新笔记', exact=True).click()
                     expect(panel.get_by_role('alert').filter(has_text='请先核对').first).to_be_visible()
-                    assert panel.locator('textarea[aria-label="笔记正文"]').input_value() == large
+                    assert editor_value(body) == large
                     assert len(mutations) == before
                     assert not errors, errors
                     assert not external, external

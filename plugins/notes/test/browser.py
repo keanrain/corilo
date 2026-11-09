@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import time
 from playwright.sync_api import sync_playwright, expect
+from editor_support import expect_editor_value
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -102,7 +103,7 @@ def main():
                     assert len(captured) == 1 and captured[0].read_text() == text
                     assert len(writes) == 1
                     panel.get_by_role('button', name='已有笔记.md', exact=True).click()
-                    expect(body).to_have_value('磁盘初稿\n')
+                    expect_editor_value(body, '磁盘初稿\n')
                     body.fill('浏览器修改\n')
                     # Pause the real host response to prove pending state/duplicate prevention.
                     page.route('**/api/corilo-notes/save', lambda route: (time.sleep(.4), route.continue_()))
@@ -116,11 +117,11 @@ def main():
                     note.write_text('外部较新版本\n')
                     panel.get_by_role('button', name='保存笔记', exact=True).click()
                     expect(status).to_have_text('版本冲突')
-                    expect(body).to_have_value('冲突仍保留的草稿')
+                    expect_editor_value(body, '冲突仍保留的草稿')
                     assert note.read_text() == '外部较新版本\n'
                     panel.get_by_role('button', name='查看最新内容', exact=True).click()
                     expect(panel.get_by_role('textbox', name='磁盘最新内容', exact=True)).to_have_value('外部较新版本\n')
-                    expect(body).to_have_value('冲突仍保留的草稿')
+                    expect_editor_value(body, '冲突仍保留的草稿')
                     panel.get_by_role('button', name='草稿另存为新笔记', exact=True).click()
                     expect(status).to_have_text('已保存')
                     assert any(x.read_text() == '冲突仍保留的草稿' for x in vault.rglob('*.md'))
@@ -130,20 +131,20 @@ def main():
                     body.fill('失败草稿')
                     panel.get_by_role('button', name='保存笔记', exact=True).click()
                     expect(status).to_have_text('保存失败')
-                    expect(body).to_have_value('失败草稿')
+                    expect_editor_value(body, '失败草稿')
                     panel.get_by_role('textbox', name='笔记标题', exact=True).fill('连接测试.md')
                     page.route('**/api/corilo-notes/save', lambda route: route.abort())
                     panel.get_by_role('button', name='保存笔记', exact=True).click()
                     expect(status).to_have_text('保存失败')
-                    expect(body).to_have_value('失败草稿')
+                    expect_editor_value(body, '失败草稿')
                     assert not (vault / '连接测试.md').exists()
                     page.unroute('**/api/corilo-notes/save')
                     # Refreshing the list must not replace the pending draft.
                     panel.get_by_role('button', name='刷新列表', exact=True).click()
-                    expect(body).to_have_value('失败草稿')
+                    expect_editor_value(body, '失败草稿')
                     page.get_by_role('button', name='Plugins', exact=True).click()
                     page.get_by_role('button', name='笔记', exact=True).click()
-                    expect(body).to_have_value('失败草稿')
+                    expect_editor_value(body, '失败草稿')
                     expect(status).to_have_text('保存失败')
                     # A second real browser page updates the same disk through the same host.
                     second = context.new_page()
@@ -153,7 +154,7 @@ def main():
                     other = second.get_by_role('region', name='Corilo 笔记')
                     manual_saves(other)
                     other.get_by_role('button', name='已有笔记.md', exact=True).click()
-                    expect(other.get_by_role('textbox', name='笔记正文', exact=True)).to_have_value('外部较新版本\n')
+                    expect_editor_value(other.get_by_role('textbox', name='笔记正文', exact=True), '外部较新版本\n')
                     other.get_by_role('textbox', name='笔记正文', exact=True).fill('另一页面保存')
                     other.get_by_role('button', name='保存笔记', exact=True).click()
                     expect(other.get_by_role('status')).to_have_text('已保存')
@@ -167,7 +168,7 @@ def main():
                     page.get_by_role('button', name='笔记', exact=True).click()
                     manual_saves(panel)
                     panel.get_by_role('button', name='连接测试.md', exact=True).click()
-                    expect(body).to_have_value('失败草稿')
+                    expect_editor_value(body, '失败草稿')
                     # Authenticated requests with a hostile Origin still fail before file access.
                     rejected = context.request.post(origin + '/api/corilo-notes/list', headers={'Origin': 'https://untrusted.invalid'}, data={'type': 'client-request', 'rpcId': 'origin-test', 'method': 'list', 'payload': {}})
                     assert rejected.status == 403
@@ -206,12 +207,12 @@ def main():
                     panel.get_by_role('textbox', name='笔记标题').fill('键盘记录')
                     body.fill('  标题和正文分别保存，原话不改写。  ')
                     panel.get_by_role('button', name='新笔记', exact=True).click()
-                    expect(body).to_have_value('')
+                    expect_editor_value(body, '')
                     open_drafts(panel)
                     titled_draft = panel.get_by_role('region', name='待恢复草稿').locator('li').filter(has_text='键盘记录')
                     open_drafts(panel)
                     titled_draft.get_by_role('button', name='恢复草稿', exact=True).click()
-                    expect(body).to_have_value('  标题和正文分别保存，原话不改写。  ')
+                    expect_editor_value(body, '  标题和正文分别保存，原话不改写。  ')
                     body.dispatch_event('keydown', {'key': 's', 'ctrlKey': True, 'isComposing': True})
                     page.wait_for_timeout(80)
                     assert not (vault / '键盘记录.md').exists(), 'IME composition must not submit'

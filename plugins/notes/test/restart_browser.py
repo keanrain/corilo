@@ -13,6 +13,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
+from editor_support import expect_editor_value
 from browser import ROOT, wait_for, manual_saves, open_drafts
 
 
@@ -131,7 +132,7 @@ def main():
                 expect(candidate.get_by_role('textbox', name='草稿正文预览')).to_have_value(draft)
                 open_drafts(panel)
                 candidate.get_by_role('button', name='恢复草稿', exact=True).click()
-                expect(body).to_have_value(draft)
+                expect_editor_value(body, draft)
                 assert captured[0].read_text() == saved_text, 'Draft recovery must not write a file'
                 if panel.locator('details.corilo-notes-more').get_attribute('open') is None:
                     panel.locator('details.corilo-notes-more > summary').click()

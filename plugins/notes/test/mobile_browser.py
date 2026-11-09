@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
+from editor_support import expect_editor_value
 from browser import ROOT, wait_for, manual_saves, open_drafts
 
 
@@ -82,7 +83,7 @@ def main():
                         no_overflow(panel)
                         expect(panel.get_by_role('textbox', name='搜索笔记')).not_to_be_visible()
                         first_body = body.bounding_box()
-                        assert first_body and first_body['y'] < 300 and first_body['height'] >= 150, 'Core editor must be visible immediately on mobile'
+                        assert first_body and first_body['y'] < 300 and first_body['height'] >= 150, f'Core editor must be visible immediately on mobile: {device} {first_body}'
                         artifact_dir = os.environ.get('CORILO_BROWSER_ARTIFACT_DIR')
                         if artifact_dir:
                             pathlib.Path(artifact_dir).mkdir(parents=True, exist_ok=True)
@@ -119,7 +120,7 @@ def main():
                         library.get_by_role('textbox', name='搜索笔记').fill('MobileNeedle')
                         library.get_by_role('button', name='搜索', exact=True).tap()
                         library.get_by_role('button', name=capture_path, exact=True).tap()
-                        expect(body).to_have_value(text)
+                        expect_editor_value(body, text)
                         expect(library).not_to_be_visible()
                         body.fill('')
                         expect(panel.get_by_role('button', name='保存笔记', exact=True)).to_be_enabled()
@@ -131,7 +132,7 @@ def main():
                         page.route('**/api/corilo-notes/save', lambda route: route.abort())
                         panel.get_by_role('button', name='保存笔记', exact=True).tap()
                         expect(status).to_have_text('保存失败')
-                        expect(body).to_have_value(long_draft)
+                        expect_editor_value(body, long_draft)
                         assert captured[0].read_text() == text
                         page.unroute('**/api/corilo-notes/save')
                         page.once('dialog', lambda dialog: dialog.accept())
@@ -143,7 +144,7 @@ def main():
                         expect(candidate.get_by_role('textbox', name='草稿正文预览')).to_have_value(long_draft)
                         no_overflow(panel)
                         candidate.get_by_role('button', name='恢复草稿', exact=True).tap()
-                        expect(body).to_have_value(long_draft)
+                        expect_editor_value(body, long_draft)
                         assert captured[0].read_text() == text
                         for width in [320, 390, 700]:
                             page.set_viewport_size({'width': width, 'height': 600})

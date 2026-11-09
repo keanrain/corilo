@@ -22,11 +22,11 @@ node plugins/notes/cli.mjs start --config /absolute/path/to/corilo-instance/note
 
 ## 收到独立安装包后启动
 
-收到 `corilo-dsh-notes-0.4.0.tgz` 后，在你选定的安装目录执行：
+收到 `corilo-dsh-notes-0.5.0.tgz` 后，在你选定的安装目录执行：
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.4.0.tgz
+npm install --ignore-scripts /absolute/path/to/corilo-dsh-notes-0.5.0.tgz
 npx --no-install corilo-notes init --directory /absolute/path/to/corilo-instance
 npx --no-install corilo-notes check --config /absolute/path/to/corilo-instance/notes.patch.json
 npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/notes.patch.json
@@ -59,6 +59,8 @@ npx --no-install corilo-notes start --config /absolute/path/to/corilo-instance/n
 3. 点击侧栏 **笔记**，直接输入文字，或点击 **新笔记** 后开始写作。新建会选择未占用的“未命名.md”“未命名 2.md”等普通文件名。
 4. 工具栏显示 **已保存** 后，正文已写入主机上的 Markdown 文件；不需要再填写文件名或首次提交表单。
 5. 要改名，点击文档顶部标题，输入名称后按 Enter 或离开标题确认，Esc 取消。已保存正文的同目录改名不会覆盖已有文件，也不会自动改写笔记链接或待办关联。
+
+正文现在使用 CodeMirror 6：标题、加粗、斜体和行内代码直接呈现样式，离开当前行后收起相应标记，返回该行时可编辑 Markdown。选中文字后可使用上方格式按钮或 Ctrl／⌘B、I；Ctrl／⌘F 查找正文，Ctrl／⌘Z 撤销，Ctrl／⌘Shift＋Z 重做。列表回车自动续写，文件格式和自动保存规则不变。
 
 手机默认显示文档，“查找笔记”切到列表／搜索，打开或恢复后回到正文。恢复草稿位于侧栏；更多操作提供历史、回收站与手动保存选项。正常记录只显示轻量保存状态，保存失败、版本冲突和未知结果仍直接显示。关闭自动保存后可按保存按钮／Ctrl／⌘S，原“仅保存原话”的手动入口仍保留；浏览器恢复副本不是主机文件或独立备份。
 

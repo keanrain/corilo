@@ -5,6 +5,7 @@ import { RecoveryPanel } from './recovery.jsx';
 import { LibraryPanel } from './library.jsx';
 import { createNoteSaver, markdownPath, editedDraft, failedDraft } from './autosave.mjs';
 import { MarkdownPreview } from './preview.jsx';
+import { MarkdownEditor } from './editor.jsx';
 import { RenameNote } from './rename.jsx';
 import styles from './notes.css';
 import tokens from './astryx-tokens.css';
@@ -37,7 +38,7 @@ function NotesPage({ useStore, actions, call, drafts, saves, usePersistence, get
   useEffect(() => {
     if (focusRequested && !bodyDisabled && !previewOpen) {
       body.current?.focus({ preventScroll: true });
-      if (document.activeElement === body.current) setFocusRequested(false);
+      if (body.current?.hasFocus()) setFocusRequested(false);
     }
   }, [focusRequested, bodyDisabled, previewOpen, d.path]);
   async function refresh() { actions.refreshLibrary(); }
@@ -236,9 +237,9 @@ function NotesPage({ useStore, actions, call, drafts, saves, usePersistence, get
         </div>}
 
         <div className={`corilo-notes-writing${previewOpen ? ' with-preview' : ''}`}>
-          <label className="corilo-notes-body"><span className="corilo-notes-sr-only">正文</span><textarea ref={body} aria-label="笔记正文" disabled={bodyDisabled} value={d.text} spellCheck={false} placeholder="开始写作…"
-            onCompositionStart={() => setComposing(true)} onCompositionEnd={() => setComposing(false)}
-            onChange={e => actions.setDraft(editedDraft(getDraft(), e.target.value))} /></label>
+          <div className="corilo-notes-body"><MarkdownEditor ref={body} text={d.text} documentId={d.path} disabled={bodyDisabled}
+            onCompositionChange={setComposing}
+            onChange={text => actions.setDraft(editedDraft(getDraft(), text))} /></div>
           {previewOpen && <MarkdownPreview text={d.text} />}
         </div>
         <p className={`corilo-notes-persistence${persistence.status === 'failed' ? '' : ' corilo-notes-sr-only'}`} data-state={persistence.status} data-testid="draft-persistence">{persistence.status === 'loading' ? '正在读取浏览器草稿…' : persistence.status === 'pending' ? '正在保护草稿…' : persistence.status === 'stored' ? '草稿已保存在此浏览器，尚未保存到文件。' : persistence.status === 'failed' ? (persistence.ready ? '草稿保护失败，请保存文件后再关闭。' : '知识库身份未确认，操作已暂停。') : ''}</p>
