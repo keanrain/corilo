@@ -122,3 +122,85 @@
 @media (prefers-reduced-motion: reduce) {
   .corilo-todos *, .corilo-todos *::before, .corilo-todos *::after { transition: none !important; }
 }
+/* List workspace: persistent shell, quiet capture row, and a distinct detail
+   pane. Icons and textarea sizing come from Lucide/react-textarea-autosize. */
+.corilo-todos { padding: 0; }
+.corilo-todos .corilo-todos-header { position: sticky; top: 0; z-index: 4; width: 100%; max-width: none; min-height: 58px; padding: 8px 20px; padding-inline-start: max(20px, var(--dsh-frame-leading-clearance, 0px)); border-bottom: 1px solid var(--ax-color-border); background: var(--ax-color-background-surface); }
+.corilo-todos-heading, .corilo-todos-header-actions { display: flex; align-items: center; gap: 10px; }
+.corilo-todos .corilo-todos-header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0; }
+.corilo-todos-header-actions > button { display: grid; place-items: center; width: 36px; min-height: 36px; padding: 0; border-color: transparent; }
+.corilo-todos-more > summary { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; list-style: none; padding: 8px; min-height: 36px; }
+.corilo-todos-more > summary::-webkit-details-marker { display: none; }
+.corilo-todos-more[open] > summary { margin-bottom: 0; }
+.corilo-todos-more[open] > .corilo-todos-popover { position: absolute; top: calc(100% + 8px); inset-inline-end: 0; width: min(300px, calc(100vw - 32px)); z-index: 5; padding: 16px; border: 1px solid var(--ax-color-border); border-radius: 10px; background: var(--ax-color-background-surface); box-shadow: 0 8px 30px #0002; text-align: start; }
+.corilo-todos-popover button { display: flex; align-items: center; gap: 8px; width: 100%; margin: 6px 0 0; border-color: transparent; font-size: 13px; text-align: start; }
+.corilo-todos .corilo-todos-shortcuts { margin: 12px 0 0; color: var(--ax-color-text-secondary); font-size: 11px; }
+.corilo-todos .corilo-todos-grid { max-width: 840px; margin-top: 0; padding: 30px clamp(20px, 3vw, 40px) 48px; gap: 0; }
+.corilo-todos .corilo-todos-grid.has-editor { max-width: 1200px; grid-template-columns: minmax(0, 1fr) minmax(320px, 380px); }
+.corilo-todos-grid.has-editor > aside { padding-inline-end: 28px; }
+.corilo-todos .corilo-todos-browser-toolbar { gap: 10px; margin: 0 0 12px; }
+.corilo-todos-list-tools { flex: 1 1 300px; gap: 0; }
+.corilo-todos-tabs { flex-wrap: nowrap; }
+.corilo-todos .corilo-todos-tabs button { padding-inline: 10px; white-space: nowrap; font-size: 13px; }
+.corilo-todos .corilo-todos-tabs button:hover:not([aria-pressed="true"]) { border-color: transparent; }
+.corilo-todos .corilo-todos-tabs button[aria-pressed="true"]:hover { border-color: transparent; border-bottom-color: var(--ax-color-accent); }
+.corilo-todos .corilo-todos-search { flex: 1 1 190px; }
+.corilo-todos .corilo-todos-search input { font-size: 13px; border: 1px solid var(--ax-color-border); background: transparent; padding: 8px 10px; min-height: 36px; }
+.corilo-todos .corilo-todos-search button { display: grid; place-items: center; min-width: 36px; padding: 8px; }
+.corilo-todos .corilo-todos-quick { gap: 8px; margin: 10px 0 16px; border: 1px solid var(--ax-color-border); border-radius: 8px; padding-inline: 12px 5px; background: transparent; }
+.corilo-todos-quick:focus-within { border-color: var(--ax-color-text-info); }
+.corilo-todos-quick-icon { flex-shrink: 0; color: var(--ax-color-text-secondary); }
+.corilo-todos .corilo-todos-quick input { font-size: 14px; font-weight: 400; border: 0; background: transparent; padding-inline: 0; min-height: 46px; text-overflow: ellipsis; }
+.corilo-todos .corilo-todos-quick input:focus { box-shadow: none; outline: none; }
+.corilo-todos .corilo-todos-quick > button { display: grid; place-items: center; width: 36px; min-height: 36px; height: 36px; padding: 0; border: 0; border-radius: 6px; }
+.corilo-todos .corilo-todos-quick > button:disabled { background: transparent; }
+.corilo-todos-search-result { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ax-color-text-secondary); font-size: 12px; overflow-wrap: anywhere; }
+.corilo-todos-search-result button { flex-shrink: 0; border: 0; font-size: 12px; min-height: 36px; padding: 6px; }
+.corilo-todos .corilo-todos-items { border-top: 0; margin: 0 0 16px; max-height: 64vh; }
+.corilo-todos .corilo-todos-items > li { min-height: 58px; padding: 5px 0; border-color: var(--ax-color-border); border-radius: 6px; }
+.corilo-todos-items .corilo-todos-item-title > span { line-height: 1.6; font-size: 15px; }
+.corilo-todos-items .corilo-todos-item-title > small { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.corilo-todos-items .corilo-todos-check::before { width: 19px; height: 19px; border-radius: 50%; }
+.corilo-todos-items .corilo-todos-check[aria-checked="true"]::after { content: none; }
+.corilo-todos-items .corilo-todos-check svg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1; color: var(--ax-color-on-accent); }
+.corilo-todos-row-state { flex-shrink: 0; font-size: 11px; color: var(--ax-color-text-secondary); padding-inline-end: 8px; }
+.corilo-todos .corilo-todos-empty { display: flex; flex-direction: column; align-items: center; padding: 48px 16px; gap: 12px; text-align: center; }
+.corilo-todos .corilo-todos-empty p { margin: 0; font-size: 13px; }
+.corilo-todos .corilo-todos-editor { padding-inline-start: 28px; gap: 22px; }
+.corilo-todos .corilo-todos-editor-heading { position: sticky; top: 58px; z-index: 2; min-height: 44px; background: var(--ax-color-background-surface); margin: 0; gap: 6px; }
+.corilo-todos .corilo-todos-detail-check { display: grid; place-items: center; border: 0; }
+.corilo-todos-detail-circle { display: block; width: 21px; height: 21px; border: 1.5px solid var(--ax-color-text-secondary); border-radius: 50%; }
+.corilo-todos .corilo-todos-editor-heading > button:last-child { display: grid; place-items: center; width: 36px; min-height: 36px; padding: 0; }
+.corilo-todos .corilo-todos-title textarea { min-height: 0; padding: 0; border: 0; border-radius: 0; font-size: 24px; font-weight: 600; line-height: 1.5; resize: none; background: transparent; }
+.corilo-todos .corilo-todos-description { gap: 10px; }
+.corilo-todos-description-label { color: var(--ax-color-text-secondary); font-size: 12px; font-weight: 500; }
+.corilo-todos .corilo-todos-description textarea { min-height: 0; padding: 0; border: 0; border-radius: 0; font-size: 14px; line-height: 1.8; resize: none; background: transparent; }
+.corilo-todos .corilo-todos-title textarea:focus, .corilo-todos .corilo-todos-description textarea:focus { box-shadow: none; outline: none; }
+.corilo-todos-description:focus-within .corilo-todos-description-label { color: var(--ax-color-text-info); }
+.corilo-todos .corilo-todos-extra { margin-top: auto; font-size: 12px; }
+.corilo-todos-extra > summary { font-size: 12px; }
+.corilo-todos .corilo-todos-undo { padding: 8px 24px; margin-block: 0; border-bottom: 1px solid var(--ax-color-border); }
+.corilo-todos-undo button { display: inline-flex; align-items: center; gap: 5px; }
+.corilo-todos-mobile-back { display: none; }
+@media (max-width: 1050px) {
+  .corilo-todos .corilo-todos-grid.has-editor { grid-template-columns: minmax(0, 1fr); }
+  .corilo-todos.is-editing .corilo-todos-grid > aside { display: none; }
+  .corilo-todos .corilo-todos-grid.has-editor .corilo-todos-editor { border: 0; padding-inline-start: 0; }
+}
+@media (max-width: 700px) {
+  .corilo-todos .corilo-todos-header { padding: 8px 16px; padding-top: max(8px, var(--dsh-frame-top-clearance, 0px)); }
+  .corilo-todos-header-actions > button, .corilo-todos-more > summary { min-width: 44px; min-height: 44px; }
+  .corilo-todos .corilo-todos-grid { padding: 16px 18px 36px; }
+  .corilo-todos .corilo-todos-grid.has-editor { padding-top: max(12px, var(--dsh-frame-top-clearance, 0px)); }
+  .corilo-todos-grid.has-editor > aside { padding-inline-end: 0; }
+  .corilo-todos .corilo-todos-quick input, .corilo-todos .corilo-todos-search input, .corilo-todos .corilo-todos-description textarea { font-size: 16px; }
+  .corilo-todos .corilo-todos-quick > button { width: 44px; min-height: 44px; height: 44px; }
+  .corilo-todos .corilo-todos-search button { min-width: 44px; min-height: 44px; }
+  .corilo-todos .corilo-todos-items { max-height: none; }
+  .corilo-todos .corilo-todos-editor { gap: 20px; }
+  .corilo-todos .corilo-todos-editor-heading { top: 0; padding: 0 0 8px; border-bottom: 1px solid var(--ax-color-border); }
+  .corilo-todos .corilo-todos-editor-heading > button:last-child { min-width: 44px; min-height: 44px; order: -1; }
+  .corilo-todos .corilo-todos-editor-heading > .corilo-todos-detail-check { order: 1; }
+  .corilo-todos-mobile-back { display: block; }
+  .corilo-todos-desktop-close { display: none; }
+}

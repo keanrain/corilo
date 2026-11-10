@@ -40,6 +40,12 @@ def manual_saves(panel):
     panel.evaluate('(el) => el.scrollTo({top: 0})')
 
 
+def open_more(panel):
+    more = panel.locator('details.corilo-todos-more')
+    if more.get_attribute('open') is None:
+        more.locator('summary').click()
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix='corilo-todos-browser-') as temp:
         base = pathlib.Path(temp)
@@ -133,6 +139,7 @@ def main():
                     assert api('list', {'status': 'all'})['items'] == []
 
                     panel.get_by_text('更多操作', exact=True).click()
+                    open_more(panel)
                     panel.get_by_role('button', name='新待办', exact=True).click()
                     title = panel.get_by_role('textbox', name='待办标题', exact=True)
                     body = panel.get_by_role('textbox', name='待办说明', exact=True)
@@ -178,6 +185,7 @@ def main():
 
                     # Let the real server commit, then lose just its response.
                     # The explicit retry must reuse the same requestId/payload.
+                    open_more(panel)
                     panel.get_by_role('button', name='新待办', exact=True).click()
                     lost_title = '提交响应丢失也只创建一次'
                     title.fill(lost_title)
@@ -229,6 +237,7 @@ def main():
 
                     # A service-level 503 can also follow a committed mutation.
                     # Keep the same request key when the user confirms a retry.
+                    open_more(panel)
                     panel.get_by_role('button', name='新待办', exact=True).click()
                     title.fill('服务503结果未知只创建一次')
                     def committed_503(route):
@@ -278,6 +287,7 @@ def main():
 
                     request_count = len(intercepted_list_requests)
                     old_route, old_response = hold_list()
+                    open_more(panel)
                     panel.get_by_role('button', name='新待办', exact=True).click()
                     delayed_title = '旧列表响应期间新建仍然可见'
                     title.fill(delayed_title)
@@ -302,6 +312,7 @@ def main():
 
                     # Export a portable versioned public format via the actual UI.
                     with page.expect_download() as download_event:
+                        open_more(panel)
                         panel.get_by_role('button', name='导出待办 JSON', exact=True).click()
                     download = download_event.value
                     exported = json.loads(pathlib.Path(download.path()).read_text())
@@ -312,6 +323,7 @@ def main():
                     # Switching preserves a dirty editor as an explicit recovery
                     # draft. No save or model request occurs during navigation.
                     body.fill('未保存的短草稿')
+                    open_more(panel)
                     panel.get_by_role('button', name='新待办', exact=True).click()
                     expect(body).to_have_value('')
                     expect(title).to_be_focused()
@@ -324,6 +336,7 @@ def main():
                     # A failed IndexedDB transaction blocks navigation and keeps
                     # the current editor; it must never claim the draft was kept.
                     page.evaluate("() => { window.originalDraftAdd=IDBObjectStore.prototype.add; IDBObjectStore.prototype.add=function(){throw Error('synthetic stash failure');}; }")
+                    open_more(panel)
                     panel.get_by_role('button', name='新待办', exact=True).click()
                     expect(body).to_have_value('未保存的短草稿')
                     expect(panel.get_by_role('alert').last).to_be_visible()

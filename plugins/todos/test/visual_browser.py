@@ -101,6 +101,10 @@ def main():
                             expect(checked).to_be_visible()
                             expect(unchecked).to_be_visible()
                             checked.hover()
+                            inactive_filter = panel.get_by_role('group', name='待办状态筛选').get_by_role('button', name='已完成', exact=True)
+                            inactive_filter.hover()
+                            page.wait_for_function("() => document.getAnimations().every(animation => animation.playState !== 'running')")
+                            assert inactive_filter.evaluate('(el) => getComputedStyle(el).borderBottomColor') == 'rgba(0, 0, 0, 0)', 'Hover must not look like a second selected filter'
                             quick.focus()
                             expect(quick).to_be_focused()
                             page.wait_for_function("() => { const el=document.querySelector('.corilo-todos-quick input'); const r=el.getBoundingClientRect(); return document.elementFromPoint(r.x+5,r.y+r.height/2)===el && document.getAnimations().every(animation => animation.playState !== 'running'); }")
@@ -130,8 +134,8 @@ def main():
                                   placeholderOpacity: getComputedStyle(q,'::placeholder').opacity,
                                   checkedBorderRatio: ratio(getComputedStyle(check,'::before').borderTopColor,surface),
                                   uncheckedBorderRatio: ratio(getComputedStyle(unchecked,'::before').borderTopColor,getComputedStyle(unchecked,'::before').backgroundColor),
-                                  checkMarkRatio: ratio(getComputedStyle(check,'::after').color,getComputedStyle(check,'::before').backgroundColor), state,
-                                  outline: getComputedStyle(q).outlineStyle };
+                                  checkMarkRatio: ratio(getComputedStyle(check.querySelector('svg')).color,getComputedStyle(check,'::before').backgroundColor), state,
+                                  quickFocusRatio: ratio(getComputedStyle(q.closest('.corilo-todos-quick')).borderTopColor,surface) };
                             }'''
                             colors = panel.evaluate(measure_colors)
                             assert colors['secondaryRatio'] >= 4.5, colors
@@ -140,7 +144,7 @@ def main():
                             assert colors['checkMarkRatio'] >= 4.5, colors
                             assert colors['focusRatio'] >= 3, colors
                             assert colors['placeholderOpacity'] == '1', colors
-                            assert colors['outline'] != 'none', colors
+                            assert colors['quickFocusRatio'] >= 3, colors
                             assert all(value >= 4.5 for value in colors['state'].values()), colors
                             unchecked.hover()
                             page.wait_for_function("() => document.getAnimations().every(animation => animation.playState !== 'running')")

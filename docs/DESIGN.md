@@ -1,6 +1,6 @@
 # Corilo 可里交互设计
 
-v0.29 · 2026-11-10。当前业务规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，模块与实际验收见 [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)。本轮解决整体像表单、操作零碎的问题；不能用控件存在或测试总数替代完整流程与实际画面的检查。
+v0.30 · 2026-11-10。当前业务规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，模块与实际验收见 [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)。本轮解决整体像表单、操作零碎的问题；不能用控件存在或测试总数替代完整流程与实际画面的检查。
 
 保留 Harness 的对话、会话、模型设置和默认工具。Corilo 增加笔记与待办入口，继续使用宿主 React 18 和 Astryx Neutral 0.7.11 静态 token，不嵌套旧应用或引入第二个 Agent／模型配置系统。参考 [Obsidian 笔记管理](https://obsidian.md/help/manage-notes)、[文件列表](https://obsidian.md/help/plugins/file-explorer)及滴答清单的[快速添加](https://help.ticktick.com/articles/7055782422935240704)、[任务详情](https://help.ticktick.com/articles/7055782408586526720)，采用常见操作结构。
 
@@ -22,9 +22,15 @@ v0.29 · 2026-11-10。当前业务规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)�
 
 ## 待办：记下一件事，做完就勾
 
+参考开源 [Vikunja 的快速添加](https://github.com/go-vikunja/vikunja/blob/main/frontend/src/components/tasks/AddTask.vue)、[任务行](https://github.com/go-vikunja/vikunja/blob/main/frontend/src/components/tasks/partials/SingleTaskInProject.vue)与[详情说明](https://github.com/go-vikunja/vikunja/blob/main/frontend/src/components/tasks/partials/Description.vue)，以及 [Super Productivity](https://github.com/super-productivity/super-productivity) 的清单与键盘操作（对照其官方演示 `docs/screens/reel.gif`）。复用常见交互模式，不嵌入整套 Vue／Angular 应用，也不引入项目管理或时间追踪流程。
+
 默认入口为一个快速输入框和清单。输入标题后回车新增，成功清空并继续聚焦输入框；列表勾选直接完成，反馈可撤销。状态切换和搜索清楚可见，标题／首行说明组成行内容，不重复每行同一状态文案。
 
-点标题按需查看详情。桌面在列表旁打开内容面板，手机进入独立详情并能返回；标题和说明直接编辑，顶部保留完成勾选、轻量状态和关闭操作。正常已有事项不再显示独立的保存／完成按钮区或多层表单标题。
+快速录入行位于清单内，状态和搜索位于其上方；从已完成／已取消视图新增后回未完成，从全部视图新增保持全部，成功新增会清除当前搜索，让新事项可见。清除搜索提供直接入口。更多操作使用不挤动内容的浮层，外部点击或 Esc 关闭；导出和详细新建仍是次级入口。
+
+列表聚焦时 N 回到快速输入，/ 聚焦搜索，上下方向键移动任务标题焦点，Enter 打开；输入框内不截获字符，组字期间不导航或提交。Esc 从详情保存后返回；冲突、失败和未知结果仍阻止离开。
+
+点标题按需查看详情。桌面在列表旁打开内容面板，手机进入独立详情并能返回；标题和说明直接编辑，顶部保留完成勾选、轻量状态和关闭操作。正常已有事项不再显示独立的保存／完成按钮区或多层表单标题。标题自动换行，说明按内容伸缩，有行数上限以保留其他操作空间；短说明不常驻大文本框。图标使用 Lucide，伸缩复用 react-textarea-autosize，均使用宿主 React。
 
 默认在离开编辑区域、切到另一事项或返回列表时保存已修改详情，再继续目标操作。插件内动作统一安排保存与后续请求，第一次点击不能因为 blur 触发保存而被吞掉。组字期间不提交；失败／冲突留在原内容，未知结果保留原 UUID 供明确重试，不能自动换号或重发。草稿恢复本身不提交；用户明确继续编辑／保存后仍检查原版本。
 

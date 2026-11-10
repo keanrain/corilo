@@ -1,6 +1,6 @@
 {
   "name": "@corilo/dsh-todos",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -40,6 +40,8 @@
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1",
     "esbuild": "0.25.12",
+    "lucide-react": "1.70.0",
+    "react-textarea-autosize": "8.5.9",
     "uuid": "11.1.0"
   },
   "dsh": {
@@ -51,5 +53,8 @@
         "@deepseek-ai/dsh-client-connection"
       ]
     }
+  },
+  "overrides": {
+    "react": "18.3.1"
   }
 }

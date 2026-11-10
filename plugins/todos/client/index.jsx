@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { defineStore } from '@deepseek-ai/dsh-client-store';
 import { v4 as uuidv4 } from 'uuid';
+import TextareaAutosize from 'react-textarea-autosize';
+import { ArrowLeft, Check, CheckCheck, CircleCheck, Download, ListTodo, MoreHorizontal, Plus, RefreshCw, Search, Undo2, X } from 'lucide-react';
 import { createTodoDraftRecovery, hasUnsavedTodoDraft, snapshotTodoDraft, restoreTodoDraft } from './drafts.mjs';
 import styles from './todos.css';
 import tokens from './astryx-tokens.css';
@@ -24,14 +26,21 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
   const model = useStore(state => state.model);
   const persistence = usePersistence(state => state);
   const quickInput = useRef(null);
+  const searchInput = useRef(null);
   const page = useRef(null);
   const titleInput = useRef(null);
+  const bodyInput = useRef(null);
   const quickComposing = useRef(false);
   const detailComposing = useRef(false);
   const set = change => actions.replace({ ...getState(), ...change });
   const unavailable = !model.ready || model.changed || persistence.rootChanged;
   const busy = model.loading || hasPending(model) || unavailable;
   const dirty = hasChanges(model);
+  function closeMenu() { const menu = page.current?.querySelector('.corilo-todos-more'); if (menu) menu.open = false; }
+  async function focusQuick() {
+    if (getState().editorOpen) { await leaveEditor(); if (getState().editorOpen) return; }
+    quickInput.current?.focus();
+  }
 
   async function list({ more = false, filter, query } = {}) {
     const previous = getState();
@@ -166,7 +175,11 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
       await call(request.method, request.args);
       set({ quickTitle: '', quickPending: null, quickSaveState: 'saved', quickError: '', notice: '已添加，可以继续记录。' });
       requestAnimationFrame(() => quickInput.current?.focus());
-      await list();
+      // A new open task must be visible even when it was added from completed
+      // results or a search that would otherwise hide its successful creation.
+      const selected = getState().filter;
+      set({ query: '' });
+      await list({ filter: selected === 'all' ? 'all' : 'open', query: '' });
     } catch (error) {
       set({ quickPending: error.unknown ? request : null, quickSaveState: error.unknown ? 'unknown' : 'failed', quickError: error.message });
     }
@@ -247,22 +260,35 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
     finally { set({ loading: false }); }
   }
   const edit = (key, value) => set({ draft: { ...getState().draft, [key]: value }, saveState: 'dirty', notice: '', leaveSaveReady: true });
-  return <section ref={page} className={`corilo-todos${model.editorOpen ? ' is-editing' : ''}`} data-ui="astryx-neutral" aria-label="Corilo 待办"
+  return <section ref={page} tabIndex={-1} className={`corilo-todos${model.editorOpen ? ' is-editing' : ''}`} data-ui="astryx-neutral" aria-label="Corilo 待办"
+    onPointerDownCapture={event => {
+      const menu = page.current?.querySelector('.corilo-todos-more[open]');
+      if (menu && !menu.contains(event.target)) closeMenu();
+    }}
     onKeyDown={event => {
+      if (event.nativeEvent.isComposing || event.keyCode === 229 || detailComposing.current || quickComposing.current) return;
+      if (event.key === 'Escape') {
+        if (page.current?.querySelector('.corilo-todos-more[open]')) { closeMenu(); event.preventDefault(); event.stopPropagation(); return; }
+        if (model.editorOpen) { event.preventDefault(); event.stopPropagation(); void leaveEditor(); return; }
+      }
+      const typing = event.target.closest('input, textarea, select, [contenteditable="true"]');
+      if (!typing && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        if (event.key.toLowerCase() === 'n') { event.preventDefault(); event.stopPropagation(); void focusQuick(); }
+        if (event.key === '/' && !model.editorOpen) { event.preventDefault(); event.stopPropagation(); searchInput.current?.focus(); }
+        if (event.target.closest('.corilo-todos-item-title') && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
+          const rows = [...page.current.querySelectorAll('.corilo-todos-item-title:not(:disabled)')];
+          const index = rows.indexOf(event.target.closest('.corilo-todos-item-title'));
+          rows[Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))]?.focus();
+          event.preventDefault(); event.stopPropagation();
+        }
+      }
       if (event.target.closest('.corilo-todos-editor') && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's' && model.editorOpen && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); event.stopPropagation(); save(); }
     }}>
-    <header><h1>待办</h1><details className="corilo-todos-more"><summary>更多操作</summary>
+    <header className="corilo-todos-header"><div className="corilo-todos-heading"><ListTodo size={19} aria-hidden="true" /><h1>待办</h1></div><div className="corilo-todos-header-actions"><button aria-label="新增待办" title="新增待办" disabled={busy} onClick={focusQuick}><Plus size={18} aria-hidden="true" /></button><details className="corilo-todos-more"><summary><MoreHorizontal size={18} aria-hidden="true" /><span>更多操作</span></summary><div className="corilo-todos-popover">
       <label className="corilo-todos-auto-option"><input type="checkbox" aria-label="离开详情时保存" checked={model.saveOnLeave} onChange={event => set({ saveOnLeave: event.target.checked })} />离开详情时保存修改</label>
-      <button disabled={busy} onClick={() => leaveEditor(true)}>新待办</button><button disabled={busy} onClick={exportTodos}>导出待办 JSON</button>
-    </details></header>
-    <form className="corilo-todos-quick" aria-label="快速新增待办" onSubmit={addQuick}>
-      <label><span className="corilo-todos-sr-only">快速新增待办</span><input ref={quickInput} aria-label="快速新增待办" maxLength={200}
-        disabled={busy} placeholder="添加一件要做的事" value={model.quickTitle}
-        onCompositionStart={() => { quickComposing.current = true; }} onCompositionEnd={() => { quickComposing.current = false; }}
-        onKeyDown={event => { if (event.key === 'Enter' && (quickComposing.current || event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault(); }}
-        onChange={event => set({ quickTitle: event.target.value, quickSaveState: 'dirty', quickError: '', notice: '' })} /></label>
-      <button className="corilo-todos-primary" disabled={busy || !model.quickTitle.trim()} aria-label="添加" title="回车添加">{model.quickSaveState === 'saving' ? '…' : '+'}</button>
-    </form>
+      <button disabled={busy} onClick={() => { closeMenu(); void leaveEditor(true); }}><Plus size={16} aria-hidden="true" />新待办</button><button disabled={busy} onClick={() => { closeMenu(); void exportTodos(); }}><Download size={16} aria-hidden="true" />导出待办 JSON</button>
+      <p className="corilo-todos-shortcuts">列表中 N 新增 · / 查找 · Esc 返回</p>
+    </div></details></div></header>
     {model.quickError && <p role="alert">{model.quickError}</p>}
     {model.quickPending && model.quickSaveState === 'unknown' && <div className="corilo-todos-resolution" data-tone="warning"><p>新增结果待确认，输入已保留。</p>
       <button disabled={model.changed} onClick={() => submitQuick(model.quickPending)}>重试新增</button></div>}
@@ -281,36 +307,48 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
     {model.rowPending && model.rowSaveState === 'unknown' && <div className="corilo-todos-resolution" data-tone="warning"><p>这次完成或撤销的结果待确认，未自动重发。</p>
       <button disabled={model.changed} onClick={() => submitRow(model.rowPending)}>重试列表操作</button></div>}
     {model.rowError && <p role="alert">{model.rowError}</p>}
-    {model.lastRow && <p className="corilo-todos-undo">已完成：{model.lastRow.title} <button disabled={busy} onClick={() => toggleRow(model.lastRow)}>撤销完成</button></p>}
+    {model.lastRow && <p className="corilo-todos-undo" aria-live="polite"><CircleCheck size={16} aria-hidden="true" />已完成：{model.lastRow.title} <button disabled={busy} onClick={() => toggleRow(model.lastRow)}><Undo2 size={15} aria-hidden="true" />撤销完成</button></p>}
     {model.notice && !['已添加，可以继续记录。', '已撤销完成。'].includes(model.notice) && <p className="corilo-todos-notice" aria-live="polite">{model.notice}</p>}
     <div className={`corilo-todos-grid ${model.editorOpen ? 'has-editor' : ''}`}>
       <aside aria-label="待办列表">
         <div className="corilo-todos-browser-toolbar"><div className="corilo-todos-list-tools"><div className="corilo-todos-tabs" role="group" aria-label="待办状态筛选">
           {['open', 'done', 'all', 'cancelled'].map(status => <button key={status} aria-pressed={model.filter === status} disabled={unavailable || model.listing}
             onClick={() => list({ filter: status })}>{labels[status] || '全部'}</button>)}
-          </div><button disabled={unavailable || model.listing} aria-label="刷新待办" title="刷新待办" onClick={() => list()}>↻</button></div>
+          </div><button disabled={unavailable || model.listing} aria-label="刷新待办" title="刷新待办" onClick={() => list()}><RefreshCw size={17} aria-hidden="true" /></button></div>
         <form className="corilo-todos-search" role="search" onSubmit={event => { event.preventDefault(); void list({ query: model.query }); }}>
-          <label><span className="corilo-todos-sr-only">搜索待办</span><input aria-label="搜索待办" placeholder="搜索待办" value={model.query} onChange={event => set({ query: event.target.value })} /></label>
-          <button disabled={unavailable || model.listing} aria-label="搜索" title="搜索">⌕</button></form></div>
+          <label><span className="corilo-todos-sr-only">搜索待办</span><input ref={searchInput} aria-label="搜索待办" placeholder="搜索待办" value={model.query} onChange={event => set({ query: event.target.value })} /></label>
+          <button disabled={unavailable || model.listing} aria-label="搜索" title="搜索"><Search size={17} aria-hidden="true" /></button></form></div>
+        <form className="corilo-todos-quick" aria-label="快速新增待办" onSubmit={addQuick}>
+          <Plus size={18} aria-hidden="true" className="corilo-todos-quick-icon" />
+          <label><span className="corilo-todos-sr-only">快速新增待办</span><input ref={quickInput} aria-label="快速新增待办" maxLength={200}
+            disabled={busy} placeholder="添加一件要做的事，按 Enter 确认" value={model.quickTitle}
+            onCompositionStart={() => { quickComposing.current = true; }} onCompositionEnd={() => { quickComposing.current = false; }}
+            onKeyDown={event => { if (event.key === 'Enter' && (quickComposing.current || event.nativeEvent.isComposing || event.keyCode === 229)) event.preventDefault(); }}
+            onChange={event => set({ quickTitle: event.target.value, quickSaveState: 'dirty', quickError: '', notice: '' })} /></label>
+          <button className="corilo-todos-primary" disabled={busy || !model.quickTitle.trim()} aria-label="添加" title="回车添加">{model.quickSaveState === 'saving' ? '…' : <Plus size={18} aria-hidden="true" />}</button>
+        </form>
+        <span className="corilo-todos-sr-only" aria-live="polite">{model.quickSaveState === 'saved' ? '已添加，可以继续记录。' : ''}</span>
+        {model.search && <div className="corilo-todos-search-result"><span>搜索：{model.search}</span><button disabled={unavailable || model.listing} onClick={() => { set({ query: '' }); void list({ query: '' }); }}>清除搜索</button></div>}
         {model.listError && <p role="alert">{model.listError}</p>}{model.listing && <p aria-live="polite">正在读取待办…</p>}
-        {!model.listing && model.ready && !model.items.length && <p className="corilo-todos-empty">{model.search ? '没有找到匹配的待办，试试其他关键词。' : model.filter === 'open' ? '暂时没有待办，在上方记下一件事。' : `暂无${labels[model.filter] || ''}待办。`}</p>}
+        {!model.listing && model.ready && !model.items.length && <div className="corilo-todos-empty"><CheckCheck size={30} strokeWidth={1.4} aria-hidden="true" /><p>{model.search ? '没有找到匹配的待办，试试其他关键词。' : model.filter === 'open' ? '暂时没有待办，记下一件要做的事。' : `暂无${labels[model.filter] || ''}待办。`}</p></div>}
         <ul className="corilo-todos-items">{model.items.map(item => <li key={item.id} data-status={item.status} data-selected={model.item?.id === item.id || undefined}>
           <button role="checkbox" aria-checked={item.status === 'done'} aria-label={`${item.status === 'cancelled' ? '重新打开' : '完成'}：${item.title}`}
-            className="corilo-todos-check" disabled={busy || (!model.saveOnLeave && model.item?.id === item.id && dirty)} onClick={() => toggleRow(item)}>{item.status === 'done' ? '✓' : '○'}</button>
+            className="corilo-todos-check" disabled={busy || (!model.saveOnLeave && model.item?.id === item.id && dirty)} onClick={() => toggleRow(item)}>{item.status === 'done' && <Check size={14} aria-hidden="true" />}</button>
           <button className="corilo-todos-item-title" aria-label={item.title} aria-current={model.item?.id === item.id ? 'page' : undefined}
-            disabled={busy} onClick={() => open(item.id)}><span>{item.title}</span>{item.body && <small>{item.body.split('\n')[0].slice(0, 80)}</small>}</button>
+            disabled={busy} onClick={() => open(item.id)}><span>{item.title}</span>{item.body && <small>{item.body.split('\n')[0].slice(0, 80)}</small>}</button>{item.status === 'cancelled' && <span className="corilo-todos-row-state">已取消</span>}
         </li>)}</ul>
         {model.hasMore && <button disabled={model.listing || unavailable} onClick={() => list({ more: true })}>加载更多待办</button>}
       </aside>
       {model.editorOpen && <div className="corilo-todos-editor" onBlur={leaveDetail} onCompositionStart={() => { detailComposing.current = true; }} onCompositionEnd={() => { detailComposing.current = false; }}>
         <div className="corilo-todos-editor-heading">
-          {model.item ? <button className="corilo-todos-detail-check" role="checkbox" aria-checked={model.item.status === 'done'} aria-label={model.item.status === 'open' ? '完成待办' : '重新打开待办'} disabled={busy || model.conflict || model.leaveSaveBlocked || (!model.saveOnLeave && dirty)} onClick={() => changeStatus(model.item.status === 'open' ? 'done' : 'open')}>{model.item.status === 'done' ? '☑' : '□'}</button> : <h2>新建待办</h2>}
+          {model.item ? <button className="corilo-todos-detail-check" role="checkbox" aria-checked={model.item.status === 'done'} aria-label={model.item.status === 'open' ? '完成待办' : '重新打开待办'} disabled={busy || model.conflict || model.leaveSaveBlocked || (!model.saveOnLeave && dirty)} onClick={() => changeStatus(model.item.status === 'open' ? 'done' : 'open')}>{model.item.status === 'done' ? <CircleCheck size={22} aria-hidden="true" /> : <span className="corilo-todos-detail-circle" />}</button> : <h2>新建待办</h2>}
           <span className="corilo-todos-record-state" data-testid="todo-record-state">{model.item ? labels[model.item.status] : ''}</span>
           <span className="corilo-todos-save-state" role="status" data-state={model.conflict ? 'conflict' : model.saveState}>{model.loading ? '读取中…' : model.saveState === 'saving' ? '保存中…' : model.saveState === 'unknown' ? '保存结果待确认' : model.conflict ? '版本冲突' : model.saveState === 'failed' ? '保存失败' : dirty ? '未保存' : model.item ? '已保存' : ''}</span>
-          <button disabled={busy} aria-label="返回列表" title="返回列表" onClick={() => leaveEditor()}>×</button>
+          <button disabled={busy} aria-label="返回列表" title="返回列表（Esc）" onClick={() => leaveEditor()}><ArrowLeft size={18} className="corilo-todos-mobile-back" aria-hidden="true" /><X size={18} className="corilo-todos-desktop-close" aria-hidden="true" /></button>
         </div>
-        <label className="corilo-todos-title"><span className="corilo-todos-sr-only">标题</span><input ref={titleInput} aria-label="待办标题" maxLength={200} disabled={busy} value={model.draft.title} placeholder="要做什么？" onChange={event => edit('title', event.target.value)} /></label>
-        <label className="corilo-todos-description"><span className="corilo-todos-sr-only">说明</span><textarea aria-label="待办说明" maxLength={20000} disabled={busy} value={model.draft.body} placeholder="添加说明…" onChange={event => edit('body', event.target.value)} /></label>
+        <label className="corilo-todos-title"><span className="corilo-todos-sr-only">标题</span><TextareaAutosize ref={titleInput} aria-label="待办标题" minRows={1} maxRows={5} maxLength={200} disabled={busy} value={model.draft.title} placeholder="要做什么？" onChange={event => edit('title', event.target.value)}
+          onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); event.stopPropagation(); bodyInput.current?.focus(); } }} /></label>
+        <label className="corilo-todos-description"><span className="corilo-todos-description-label">说明</span><TextareaAutosize ref={bodyInput} aria-label="待办说明" minRows={3} maxRows={18} maxLength={20000} disabled={busy} value={model.draft.body} placeholder="添加说明…" onChange={event => edit('body', event.target.value)} /></label>
         {(!model.item || !model.saveOnLeave || model.leaveSaveBlocked || model.saveState === 'failed' || (dirty && !model.leaveSaveReady)) && <div className="corilo-todos-save">
           <button className="corilo-todos-primary" disabled={busy || model.conflict || !model.draft.title.trim()} onClick={save}>{model.item ? '保存待办' : '创建待办'}</button></div>}
         {model.error && <p role="alert">{model.error}</p>}
