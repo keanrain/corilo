@@ -1,26 +1,29 @@
-// Save metadata stays in the page's business state. Recovery records deliberately
-// do not inherit permission to write: adopting a draft is a separate user action.
+let session = 0;
+export const freshNote = () => ({ sessionId: ++session, path: '', text: '', original: '', expected: null,
+  status: 'clean', error: '', latest: null, autosave: 'ready', savingMode: null, renameRequest: null, unknown: false, libraryChanged: false });
+export const hasUnsavedNote = note => note.text !== note.original || note.expected === null && note.text !== ''
+  || note.autosave === 'blocked' || note.status === 'saving';
+
+// One in-memory document and one versioned save pipeline. No browser draft DB.
 export const canAutosave = draft => Boolean(draft.status === 'dirty' && draft.autosave === 'ready'
-  && (draft.expected === null ? draft.text.trim().length > 0 : draft.path && draft.text !== draft.original));
+  && (draft.expected === null ? draft.text.length > 0 : draft.path && draft.text !== draft.original));
 
 export function editedDraft(draft, text) {
+  const pending = draft.status === 'saving' || draft.status === 'conflict' || draft.autosave === 'blocked';
   return { ...draft, text,
-    status: draft.status === 'saving' || draft.status === 'conflict' ? draft.status : 'dirty',
-    autosave: draft.autosave === 'recovered' ? 'ready' : draft.autosave || 'ready' };
+    status: pending ? draft.status : text === draft.original ? draft.expected === null ? 'clean' : 'saved' : 'dirty' };
 }
 
 export function committedDraft(current, submitted, result) {
   return { ...current, path: result.path, original: submitted.text, expected: result.version,
     status: current.text === submitted.text ? 'saved' : 'dirty', savingMode: null,
-    autosave: 'ready', error: '', latest: null, notice: '' };
+    autosave: 'ready', unknown: false, error: '', latest: null };
 }
 
 export function failedDraft(current, error) {
   return { ...current, status: error.code === 'notes/409' ? 'conflict' : 'failed',
-    savingMode: null, autosave: 'blocked', error: error.message, latest: null };
+    savingMode: null, autosave: 'blocked', unknown: Boolean(error.unknown), libraryChanged: current.libraryChanged || error.code === 'notes/library-changed', error: error.message, latest: null };
 }
-
-export const markdownPath = path => path && !/\.(md|markdown)$/i.test(path) ? `${path}.md` : path;
 
 // Owned by the plugin, not the mounted page. Harness keeps the bound store
 // actions alive across panel switches, so a pending save can finish offscreen.
@@ -38,16 +41,15 @@ export function createNoteSaver({ getDraft, call, allowed, delay = 1000 }) {
   }
   async function save(copy = false, automatic = false) {
     const submitted = { ...getDraft() };
-    if (disposed || !update || inFlight || submitted.status === 'saving' || !submitted.path && !submitted.text) return;
+    if (disposed || !update || !allowed() || inFlight || submitted.status === 'saving' || !copy && !submitted.path && !submitted.text) return;
     if (automatic && !eligible()) return;
     cancel(); inFlight = true;
     update({ ...submitted, status: 'saving', savingMode: automatic ? 'auto' : 'manual', error: '', latest: null });
     try {
-      const result = !copy && (automatic || allowed()) && submitted.expected === null && !submitted.path
+      const result = copy || submitted.expected === null && !submitted.path
         ? await call('create', { text: submitted.text })
-        : copy || !submitted.path ? await call('capture', { text: submitted.text })
-        : await call('save', { path: submitted.expected === null ? markdownPath(submitted.path) : submitted.path, text: submitted.text, expected: submitted.expected });
-      if (!disposed) { update(committedDraft(getDraft(), submitted, result)); notify?.(); }
+        : await call('save', { path: submitted.path, text: submitted.text, expected: submitted.expected });
+      if (!disposed) { update(committedDraft(copy ? { ...getDraft(), sessionId: ++session } : getDraft(), submitted, result)); notify?.(); }
     } catch (error) {
       if (!disposed) { update(failedDraft(getDraft(), error)); notify?.(); }
     } finally { inFlight = false; sync(); }

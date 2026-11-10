@@ -1,8 +1,7 @@
-# Advanced composition: replace all three absolute paths before using this overlay.
+# Advanced composition: replace both absolute paths before using this overlay.
 # Or generate a private overlay with corilo-notes init (see corilo-notes --help).
 - insert:
     - id: corilo-notes
       name: /absolute/path/to/corilo/plugins/notes/index.mjs
       config:
         root: /absolute/path/to/knowledge
-        stateRoot: /absolute/path/to/corilo-state

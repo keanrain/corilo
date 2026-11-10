@@ -37,7 +37,7 @@ test('CLI creates a private reviewable overlay without touching notes and reject
   await assert.rejects(access(stateRoot), { code: 'ENOENT' });
   const original = await readFile(configPath, 'utf8');
   assert.equal(JSON.parse(original)[0].insert[0].config.stateRoot, stateRoot);
-  assert.equal((await inspect(configPath)).state, 'initializes-on-start');
+  assert.equal((await inspect(configPath)).state, 'unused');
   await assert.rejects(initialize({ root, stateRoot, configPath }), /already exists/);
   assert.equal(await readFile(configPath, 'utf8'), original);
   await assert.rejects(initialize({ root, stateRoot: path.join(root, 'state'), configPath: path.join(base, 'nested.json') }), /non-overlapping/);
@@ -66,10 +66,15 @@ test('single-directory setup preserves existing configuration and maintenance pr
   await assert.rejects(maintain(result.configPath), /not been initialized/);
   await assert.rejects(initializeDirectory(path.join(base, 'instance')), /already exists/);
   assert.equal(await readFile(result.configPath, 'utf8'), original);
-  const store = await NotesStore.open(result.root, {}, { stateRoot: result.stateRoot });
+  assert.equal(result.state, 'disabled');
+  assert.equal(result.stateRoot, undefined);
+  const legacyConfig = path.join(instance, 'legacy.patch.json');
+  const legacyState = path.join(instance, 'old-state');
+  await initialize({ root: result.root, stateRoot: legacyState, configPath: legacyConfig });
+  const store = await NotesStore.open(result.root, {}, { stateRoot: legacyState });
   await store.save({ path: 'keep.md', text: 'all versions remain', expected: null });
   const before = await store.history('keep.md');
-  assert.deepEqual(await maintain(result.configPath), { packed: true, historyPruned: false });
+  assert.deepEqual(await maintain(legacyConfig), { packed: true, historyPruned: false });
   assert.deepEqual(await store.history('keep.md'), before);
   assert.equal((await store.read('keep.md')).text, 'all versions remain');
 });

@@ -274,7 +274,7 @@ function TodosPage({ useStore, actions, call, getState, drafts, usePersistence }
       const typing = event.target.closest('input, textarea, select, [contenteditable="true"]');
       if (!typing && !event.ctrlKey && !event.metaKey && !event.altKey) {
         if (event.key.toLowerCase() === 'n') { event.preventDefault(); event.stopPropagation(); void focusQuick(); }
-        if (event.key === '/' && !model.editorOpen) { event.preventDefault(); event.stopPropagation(); searchInput.current?.focus(); }
+        if (event.key === '/' && searchInput.current?.getClientRects().length) { event.preventDefault(); event.stopPropagation(); searchInput.current?.focus(); }
         if (event.target.closest('.corilo-todos-item-title') && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
           const rows = [...page.current.querySelectorAll('.corilo-todos-item-title:not(:disabled)')];
           const index = rows.indexOf(event.target.closest('.corilo-todos-item-title'));

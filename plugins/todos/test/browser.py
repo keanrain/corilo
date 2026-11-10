@@ -107,15 +107,9 @@ def main():
                     note_text = '这篇笔记由笔记页面保存，待办只关联它的相对路径。\n'
                     page.get_by_role('button', name='笔记', exact=True).click()
                     notes_panel = page.get_by_role('region', name='Corilo 笔记')
-                    notes_more = notes_panel.locator('details.corilo-notes-more > summary')
-                    notes_more.click()
-                    notes_panel.get_by_role('checkbox', name='自动保存', exact=True).uncheck()
-                    notes_more.click()
-                    notes_panel.get_by_role('textbox', name='笔记标题', exact=True).fill('读书/第二章.md')
                     notes_panel.get_by_role('textbox', name='笔记正文', exact=True).fill(note_text)
-                    notes_panel.get_by_role('button', name='保存笔记', exact=True).click()
-                    expect(notes_panel.get_by_role('status')).to_have_text('已保存')
-                    assert (base / 'notes/读书/第二章.md').read_text() == note_text
+                    expect(notes_panel.get_by_role('status')).to_have_text('已保存', timeout=10000)
+                    assert (base / 'notes/未命名.md').read_text() == note_text
                     page.get_by_role('button', name='待办', exact=True).click()
                     identity = context.request.post(origin + '/api/corilo-todos/identity', data={}).json()['value']['id']
                     headers = {'x-corilo-todos-id': identity}
@@ -395,7 +389,7 @@ def main():
                     expect(body).to_have_value('库切换后不能提交的输入')
                     assert api('get', {'id': lost_id})['body'] == '手机尺寸编辑的中文说明'
                     assert len(creates) == 6
-                    assert (base / 'notes/读书/第二章.md').read_text() == note_text
+                    assert (base / 'notes/未命名.md').read_text() == note_text
 
 
                     # Core flow starts with one field, supports consecutive

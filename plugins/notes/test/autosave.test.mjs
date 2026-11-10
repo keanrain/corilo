@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { canAutosave, editedDraft, committedDraft, failedDraft, createNoteSaver } from '../client/autosave.mjs';
-import { hasUnsavedDraft } from '../client/drafts.mjs';
+import { hasUnsavedNote as hasUnsavedDraft } from '../client/autosave.mjs';
 
 const loaded = () => ({ path: '想法.md', text: '已保存', original: '已保存', expected: 'old-version', status: 'saved', autosave: 'ready' });
 
-test('autosave accepts intentional document input and pauses recovery and failures', () => {
+test('autosave accepts intentional document input and pauses in-flight saves and failures', () => {
   const dirty = editedDraft(loaded(), '新的输入');
   assert.equal(canAutosave({ ...dirty, path: '', expected: null }), true, 'typing may create its first document');
   assert.equal(canAutosave(dirty), true);
-  for (const draft of [{ ...dirty, status: 'saving' }, { ...dirty, autosave: 'recovered' }, { ...dirty, status: 'conflict' }]) assert.equal(canAutosave(draft), false);
-  assert.equal(canAutosave(editedDraft({ ...dirty, autosave: 'recovered' }, '恢复后明确编辑')), true);
+  assert.equal(editedDraft(dirty, dirty.original).status, 'saved', 'undoing an unsubmitted edit restores the confirmed status');
+  for (const draft of [{ ...dirty, status: 'saving' }, { ...dirty, status: 'conflict' }]) assert.equal(canAutosave(draft), false);
   const failure = failedDraft(dirty, new Error('回复丢失，结果未知'));
   assert.equal(canAutosave(editedDraft(failure, '失败后继续输入')), false);
   assert.equal(canAutosave(editedDraft(failedDraft(dirty, { code: 'notes/409', message: '外部更新' }), '冲突后继续输入')), false);

@@ -43,12 +43,14 @@ async function directory(input, label, { writable = true } = {}) {
 
 async function locations(root, stateRoot, configPath) {
   root = await directory(root, 'Notes root');
-  stateRoot = await directory(stateRoot, 'State root');
-  if (within(root, stateRoot) || within(stateRoot, root)) fail('Notes root and state root must be separate, non-overlapping directories.');
+  if (stateRoot !== undefined) {
+    stateRoot = await directory(stateRoot, 'State root');
+    if (within(root, stateRoot) || within(stateRoot, root)) fail('Notes root and state root must be separate, non-overlapping directories.');
+  }
   if (!path.isAbsolute(configPath) || configPath.includes('\0')) fail('Config must be an absolute path.');
   configPath = path.resolve(configPath);
   await directory(path.dirname(configPath), 'Config parent');
-  if (within(root, configPath) || within(stateRoot, configPath)) fail('Keep the config outside the notes and state directories.');
+  if (within(root, configPath) || stateRoot && within(stateRoot, configPath)) fail('Keep the config outside the notes and state directories.');
   return { root, stateRoot, configPath };
 }
 
@@ -58,7 +60,7 @@ async function homes({ root, stateRoot }) {
   const harnessHome = await directory(await canonicalizeWatchPath(resolveDshHome()), 'Harness home');
   const agentsHome = await directory(await canonicalizeWatchPath(resolveAgentsHome()), 'Shared agents home', { writable: false });
   for (const [label, home] of [['Harness home', harnessHome], ['Shared agents home', agentsHome]]) {
-    if ([root, stateRoot].some(data => within(data, home) || within(home, data))) {
+    if ([root, stateRoot].filter(Boolean).some(data => within(data, home) || within(home, data))) {
       fail(`${label} must be separate from notes and recovery data. Set DSH_HOME and DSH_AGENTS_HOME to separate private directories.`);
     }
   }
@@ -98,7 +100,6 @@ async function readConfig(configPath, { allowPreviousPackage = false } = {}) {
       !entry.config || Object.keys(entry.config).some(key => !['root', 'stateRoot'].includes(key))) {
     fail('This command accepts a single Corilo notes overlay for this installed package. Use corilo-notes rebind to create a new overlay after moving installations.');
   }
-  if (!entry.config.stateRoot) fail('Config needs an external stateRoot for history and recovery. Regenerate a new overlay with --state-root.');
   return locations(entry.config.root, entry.config.stateRoot, configPath);
 }
 
@@ -137,9 +138,8 @@ export async function initialize({ root, stateRoot, configPath }) {
   await runtime();
   const resolved = await locations(root, stateRoot, configPath);
   await homes(resolved);
-  await gitVersion();
-  await stateBinding(resolved.root, resolved.stateRoot);
-  const overlay = [{ insert: [{ id: 'corilo-notes', name: path.join(packageRoot, 'index.mjs'), config: { root: resolved.root, stateRoot: resolved.stateRoot } }] }];
+  if (resolved.stateRoot) await stateBinding(resolved.root, resolved.stateRoot);
+  const overlay = [{ insert: [{ id: 'corilo-notes', name: path.join(packageRoot, 'index.mjs'), config: { root: resolved.root, ...(resolved.stateRoot ? { stateRoot: resolved.stateRoot } : {}) } }] }];
   await writeFile(resolved.configPath, JSON.stringify(overlay, null, 2) + '\n', { flag: 'wx', mode: 0o600 }).catch(error => {
     if (error.code === 'EEXIST') fail('Config already exists; it was not changed. Choose another --config path.');
     fail('Could not create config. Its parent directory must already exist and be writable.');
@@ -157,24 +157,25 @@ export async function rebind(configPath, outputPath) {
 }
 
 export async function initializeDirectory(input) {
-  await runtime(); await gitVersion();
+  await runtime();
   const instance = await directory(input, 'Instance directory');
   await mkdir(instance, { recursive: true, mode: 0o700 });
-  return initialize({ root: path.join(instance, 'notes'), stateRoot: path.join(instance, 'state'), configPath: path.join(instance, 'notes.patch.json') });
+  return initialize({ root: path.join(instance, 'notes'), configPath: path.join(instance, 'notes.patch.json') });
 }
 
 export async function inspect(configPath) {
   const installed = await runtime();
   const resolved = await readConfig(configPath);
   const resolvedHomes = await homes(resolved);
-  const git = await gitVersion();
-  const state = await stateBinding(resolved.root, resolved.stateRoot);
-  return { ...resolved, ...resolvedHomes, workingDirectory: process.cwd(), node: installed.node, harness: installed.harness, git, state, client: 'built', entry: installed.entry };
+  const state = resolved.stateRoot ? await stateBinding(resolved.root, resolved.stateRoot) : 'disabled';
+  return { ...resolved, ...resolvedHomes, workingDirectory: process.cwd(), node: installed.node, harness: installed.harness,
+    state: state === 'initializes-on-start' ? 'unused' : state, client: 'built', entry: installed.entry };
 }
 
 export async function maintain(configPath) {
   const checked = await inspect(configPath);
-  if (checked.state !== 'bound') fail('History has not been initialized. Start this instance before maintaining it.');
+  if (checked.state !== 'bound') fail('Legacy history has not been initialized; current notes do not create history.');
+  await gitVersion();
   for (const input of [checked.root, path.join(checked.stateRoot, 'history.git')]) {
     const stat = await lstat(input).catch(() => null);
     if (!stat?.isDirectory() || stat.isSymbolicLink()) fail('Existing notes and recovery directories are required; maintenance creates no library.');
@@ -204,7 +205,7 @@ async function start(configPath, port) {
   }
 }
 
-const usage = `Corilo 可里笔记 (Harness ${pinnedHarness})\n\n无需模型密钥即可直接记笔记。最短初始化：\ncorilo-notes init --directory /absolute/corilo-instance\ncorilo-notes check --config /absolute/corilo-instance/notes.patch.json\ncorilo-notes start --config /absolute/corilo-instance/notes.patch.json [--port 3000]\n\n已有目录可显式指定：\ncorilo-notes init --root /absolute/notes --state-root /absolute/state --config /absolute/notes.patch.json\n\n安装到新目录后生成新配置（保留原配置以便回退）：\ncorilo-notes rebind --config /absolute/previous.patch.json --output /absolute/next.patch.json\n\n停止该实例服务后整理本机历史（保留所有版本）：\ncorilo-notes maintain --config /absolute/corilo-instance/notes.patch.json\n\n初始化不覆盖配置、不迁移笔记。启动后使用 Harness 打印的鉴权地址；首次提示中的 API Key 配置可关闭。\n`;
+const usage = `Corilo 可里笔记 (Harness ${pinnedHarness})\n\n无需模型密钥即可直接记笔记。最短初始化：\ncorilo-notes init --directory /absolute/corilo-instance\ncorilo-notes check --config /absolute/corilo-instance/notes.patch.json\ncorilo-notes start --config /absolute/corilo-instance/notes.patch.json [--port 3000]\n\n已有目录可显式指定：\ncorilo-notes init --root /absolute/notes --config /absolute/notes.patch.json\n\n安装到新目录后生成新配置（保留原配置以便回退）：\ncorilo-notes rebind --config /absolute/previous.patch.json --output /absolute/next.patch.json\n\n初始化不覆盖配置、不迁移笔记。启动后使用 Harness 打印的鉴权地址；首次提示中的 API Key 配置可关闭。\n`;
 
 export async function main(args) {
   if (!args.length || args.length === 1 && ['--help', '-h'].includes(args[0])) { process.stdout.write(usage); return; }
@@ -226,7 +227,7 @@ export async function main(args) {
   if (!options['--config']) fail('--config is required and must be an absolute path.');
   if (options['--port'] !== undefined && (!/^\d+$/.test(options['--port']) || Number(options['--port']) > 65535)) fail('--port must be an integer from 0 through 65535.');
   if (command === 'init') {
-    if (!options['--root'] || !options['--state-root']) fail('init requires --root and --state-root absolute paths.');
+    if (!options['--root']) fail('init requires --root as an absolute path.');
     const result = await initialize({ root: options['--root'], stateRoot: options['--state-root'], configPath: options['--config'] });
     process.stdout.write(`Created notes overlay: ${result.configPath}\nRun corilo-notes check --config ${quoteArgument(result.configPath)} before starting.\n`);
   } else if (command === 'rebind') {

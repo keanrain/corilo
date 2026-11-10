@@ -70,7 +70,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({ text, documen
   }, []);
   useLayoutEffect(() => {
     const view = editor.current;
-    const changedDocument = identity.current !== documentId && Boolean(identity.current);
+    const changedDocument = identity.current !== documentId;
     identity.current = documentId;
     if (changedDocument || normalizedText(text) !== view.state.doc.toString()) {
       // Reading another file or adopting a conflict version starts a separate

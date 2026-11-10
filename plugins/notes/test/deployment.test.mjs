@@ -18,18 +18,19 @@ test('deployment preflight reports native homes without creating them and reject
   const run = (args, overrides = {}) => exec(process.execPath, [cli, ...args], { cwd: base, env: { ...env, ...overrides } });
   await run(['init', '--directory', instance]);
   const before = await readFile(config);
+  const withoutGit = JSON.parse((await run(['check', '--config', config], { PATH: path.join(base, 'no-executables') })).stdout);
+  assert.equal(withoutGit.state, 'disabled', 'core notes preflight needs no Git binary');
   const report = JSON.parse((await run(['check', '--config', config])).stdout);
   assert.equal(report.harnessHome, env.DSH_HOME);
   assert.equal(report.agentsHome, env.DSH_AGENTS_HOME);
   assert.equal(report.workingDirectory, base);
-  assert.equal(report.state, 'initializes-on-start');
+  assert.equal(report.state, 'disabled');
   for (const directory of [env.DSH_HOME, env.DSH_AGENTS_HOME, path.join(instance, 'notes'), path.join(instance, 'state')]) {
     await assert.rejects(access(directory), { code: 'ENOENT' });
   }
   for (const overrides of [
     { DSH_HOME: path.join(instance, 'notes', 'host') },
     { DSH_HOME: instance },
-    { DSH_AGENTS_HOME: path.join(instance, 'state', 'agents') },
     { DSH_AGENTS_HOME: instance },
   ]) {
     await assert.rejects(run(['check', '--config', config], overrides), /must be separate/);

@@ -72,7 +72,12 @@ test('one-directory setup and read-only preflight preserve data and reject alter
   await writeFile(notes, initialNotes);
   await mkdir(path.join(instance, 'state'));
   await writeFile(path.join(instance, 'state/corilo-notes-state.json'), JSON.stringify({ format: 'corilo-notes-state-v1', rootId: '0'.repeat(64) }));
+  await run('check'); // New configs do not inspect or alter unused legacy state.
+  const legacyCombined = JSON.parse(initial); legacyCombined[0].insert[0].config.stateRoot = path.join(instance, 'state');
+  const legacyNotes = JSON.parse(initialNotes); legacyNotes[0].insert[0].config.stateRoot = path.join(instance, 'state');
+  await writeFile(combined, JSON.stringify(legacyCombined)); await writeFile(notes, JSON.stringify(legacyNotes));
   await assert.rejects(run('check'), /different notes root/);
+  await writeFile(combined, initial); await writeFile(notes, initialNotes);
   await assert.rejects(run('init', checkout), /源码仓库分开/);
   await assert.rejects(run('init', 'relative'), /绝对路径/);
   const linked = path.join(base, 'linked-instance');
@@ -136,5 +141,5 @@ for (const entry of [cli, legacyCli]) test(`${entry === cli ? 'canonical' : 'leg
   await access(path.join(instance, 'todos/todos.sqlite'));
   await access(path.join(instance, 'runtime/harness/.credentials.yaml'));
   await assert.rejects(access(env.DSH_HOME), { code: 'ENOENT' });
-  assert.equal(JSON.parse((await run('check')).stdout).noteState, 'bound');
+  assert.equal(JSON.parse((await run('check')).stdout).noteState, 'disabled');
 });

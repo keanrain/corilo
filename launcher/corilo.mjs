@@ -45,8 +45,8 @@ async function layout(input, existing = false) {
   return result;
 }
 const environment = locations => ({ ...process.env, DSH_HOME: locations.harness, DSH_AGENTS_HOME: locations.agents });
-const overlay = locations => [{ insert: [
-  { id: 'corilo-notes', name: path.join(notesRoot, 'index.mjs'), config: { root: locations.notes, stateRoot: locations.state } },
+const overlay = (locations, legacy = false) => [{ insert: [
+  { id: 'corilo-notes', name: path.join(notesRoot, 'index.mjs'), config: { root: locations.notes, ...(legacy ? { stateRoot: locations.state } : {}) } },
   { id: 'corilo-todos', name: path.join(todosRoot, 'index.mjs'), config: { root: locations.todos, notesRoot: locations.notes } },
 ] }, { id: 'workspace-controller', config: { documentsDirectory: locations.workspace } }];
 async function bundledClient(packageRoot, name) {
@@ -68,14 +68,14 @@ async function runNotes(command, locations) {
     return await exec(process.execPath, [notesCli, command, ...(command === 'init' ? ['--directory', locations.instance] : ['--config', locations.notesConfig])], {
       cwd: locations.instance, env: environment(locations), maxBuffer: 1024 * 1024,
     });
-  } catch (error) { fail(error.stderr?.trim() || '笔记预检失败，请按插件快速指南检查 Node、Git 和目录。'); }
+  } catch (error) { fail(error.stderr?.trim() || '笔记预检失败，请按插件快速指南检查 Node 和目录。'); }
 }
 async function config(locations) {
   const stat = await lstat(locations.config).catch(() => fail('缺少组合配置，请先运行 init；已有实例不会自动迁移。'));
   if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 65536) fail('组合配置必须是普通独立文件，且不超过 64 KiB。');
   let data;
   try { data = JSON.parse(await readFile(locations.config, 'utf8')); } catch { fail('组合配置无效，请保留原文件并核对。'); }
-  if (!isDeepStrictEqual(data, overlay(locations))) fail('组合配置与当前源码/实例路径不匹配；不自动迁移或执行其他插件。');
+  if (!isDeepStrictEqual(data, overlay(locations)) && !isDeepStrictEqual(data, overlay(locations, true))) fail('组合配置与当前源码/实例路径不匹配；不自动迁移或执行其他插件。');
 }
 
 export async function initialize(input) {
@@ -93,7 +93,7 @@ export async function inspect(input) {
   const locations = await layout(input, true);
   await dependencies(); await config(locations);
   const checked = JSON.parse((await runNotes('check', locations)).stdout);
-  if (checked.root !== locations.notes || checked.stateRoot !== locations.state || checked.harnessHome !== locations.harness || checked.agentsHome !== locations.agents) {
+  if (checked.root !== locations.notes || checked.stateRoot && checked.stateRoot !== locations.state || checked.harnessHome !== locations.harness || checked.agentsHome !== locations.agents) {
     fail('笔记配置路径与统一实例不匹配，请保留原配置并核对。');
   }
   const todo = JSON.parse(await readFile(path.join(todosRoot, 'package.json'), 'utf8'));

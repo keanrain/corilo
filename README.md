@@ -6,7 +6,7 @@
 
 ## 一起使用笔记和待办
 
-需要 Node.js ≥24.9.0、Git ≥2.36。在仓库根目录执行下面三步，实例目录选在**仓库之外**，使用绝对路径：
+需要 Node.js ≥24.9.0。在仓库根目录执行下面三步，实例目录选在**仓库之外**，使用绝对路径：
 
 ```sh
 npm run setup:corilo
@@ -22,8 +22,8 @@ npm run start:corilo -- --directory /absolute/corilo-instance
 
 | 插件 | 核心体验 | 次级能力 |
 |---|---|---|
-| [笔记](plugins/notes/README.md) v0.5.0 | 新建即写、标题内改名、自动保存、Markdown 编辑／预览与查找 | 浏览器持久草稿、Git 历史／回收站、restic 笔记备份恢复 |
-| [待办](plugins/todos/README.md) v0.4.0 | 清单内连续新增、行内完成／撤销、伸缩详情与键盘导航 | 编辑／取消、版本与幂等保护、JSON 导出 |
+| [笔记](plugins/notes/README.md) v0.6.0 | 新建即写、标题内改名、自动保存、Markdown 编辑／预览与查找 | 失败保留当前输入、未保存关闭提醒；旧恢复资料保留 |
+| [待办](plugins/todos/README.md) v0.4.1 | 清单内连续新增、行内完成／撤销、伸缩详情与键盘导航 | 编辑／取消、版本与幂等保护、JSON 导出 |
 
 页面与 Agent 工具共用各插件业务服务。视觉复用 Astryx Neutral 0.7.11 静态 token，使用宿主 React；不是 Astryx React 组件集成。
 
@@ -42,7 +42,7 @@ android/ prototype/ p0/   保留的历史工程与证据
 
 两个插件独立安装、构建、打包，不依赖根应用发布；安装与 tarball 分发入口见[插件导航](plugins/README.md)。当前 npm 包仍为 `private`，尚未公开发布 npm。本仓库统一启动器用于源码组合使用，不是第三个已发布包。
 
-实例与源码分开：`notes/` 存正文，`state/` 存笔记历史，`todos/` 存 SQLite；`runtime/{harness,agents}` 存 Harness 原生配置／会话，`workspace/` 为默认工具工作目录。整个实例包含敏感状态，不能当作无凭据的资料导出。
+实例与源码分开：`notes/` 存正文，`todos/` 存 SQLite；旧实例的 `state/` 原样保留，新版不生成笔记历史；`runtime/{harness,agents}` 存 Harness 原生配置／会话，`workspace/` 为默认工具工作目录。整个实例包含敏感状态，不能当作无凭据的资料导出。
 
 ## 使用边界
 
