@@ -9,7 +9,7 @@ import tempfile
 import uuid
 
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for
+from core_browser import ROOT, wait_for
 
 
 def main():
@@ -134,6 +134,9 @@ def main():
                         mobile_page.screenshot(path=str(destination / 'todos-natural-mobile.png'), animations='disabled')
                     phone.close()
 
+                    # Refresh after another browser changed the record.
+                    panel.get_by_role('button', name='刷新待办', exact=True).click()
+                    expect(library.get_by_role('button', name='准备周末出游清单', exact=True)).to_be_visible()
                     # Unknown automatic result never navigates or changes UUID.
                     library.get_by_role('button', name='准备周末出游清单', exact=True).click()
                     expect(body).to_have_value('手机上也能直接改，返回即保存。')
@@ -145,7 +148,7 @@ def main():
                     page.route('**/api/corilo-todos/update', lose_reply, times=1)
                     before = len(updates)
                     panel.get_by_role('button', name='返回列表', exact=True).click()
-                    retry = panel.get_by_role('button', name='重试同一请求', exact=True)
+                    retry = panel.get_by_role('button', name='重试保存', exact=True)
                     expect(retry).to_be_visible()
                     expect(body).to_have_value('保存响应丢失，仍保留当前详情。')
                     page.wait_for_timeout(250)
@@ -230,18 +233,10 @@ def main():
                     detail = '\n'.join(f'第 {n} 条阅读想法' for n in range(8))
                     body.fill(detail)
                     wait_for(lambda: body.bounding_box()['height'] > short_height)
-                    menu = panel.locator('details.corilo-todos-more')
                     library.locator('.corilo-todos-item-title').first.focus()
                     library.locator('.corilo-todos-item-title').first.press('/')
                     expect(search).to_be_focused()
                     expect(body).to_have_value(detail)
-                    old_y = library.bounding_box()['y']
-                    menu.locator('summary').click()
-                    expect(menu).to_have_attribute('open', '')
-                    assert abs(library.bounding_box()['y'] - old_y) < 1, 'More actions must not shift the list'
-                    menu.locator('summary').press('Escape')
-                    expect(menu).not_to_have_attribute('open', '')
-                    expect(body).to_be_visible()
                     body.press('Escape')
                     expect(body).to_have_count(0)
                     library.get_by_role('button', name=long_title, exact=True).click()
@@ -284,7 +279,7 @@ def main():
                     browser.close()
                 host.terminate()
                 assert host.wait(timeout=10) == 0
-                print('Harness todo natural-flow passed: quick entry, one-click save-and-switch/complete/close, host navigation save, phone detail return, isolated drafts and explicit same-UUID retry; zero model/external requests.')
+                print('Harness todo natural-flow passed: quick entry, one-click save-and-switch/complete/close, host navigation save, phone detail return, independent edits and explicit same-UUID retry; zero model/external requests.')
             finally:
                 if host.poll() is None:
                     host.kill(); host.wait()

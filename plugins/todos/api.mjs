@@ -1,10 +1,12 @@
+import { coreTodos } from './core.mjs';
+
 // Public Connection Fetch routes inherit Harness auth, Host/Origin and owner
 // checks. A persistent database identity protects pages across root changes.
 const fields = {
   identity: { required: [], optional: [] },
   list: { required: [], optional: ['status', 'cursor', 'query'] },
   get: { required: ['id'], optional: [] },
-  create: { required: ['requestId', 'title'], optional: ['body', 'notePath'] },
+  create: { required: ['requestId', 'title'], optional: ['body'] },
   update: { required: ['requestId', 'id', 'expected', 'patch'], optional: [] },
   export: { required: [], optional: [] },
 };
@@ -15,8 +17,8 @@ function valid(method, args) {
   for (const [key, value] of Object.entries(args)) {
     if (key === 'expected') { if (!Number.isSafeInteger(value) || value < 1) return false; }
     else if (key === 'patch') {
-      if (!object(value) || !Object.keys(value).length || Object.keys(value).some(field => !['title', 'body', 'notePath', 'status'].includes(field) || (field === 'notePath' ? value[field] !== null && typeof value[field] !== 'string' : typeof value[field] !== 'string'))) return false;
-    } else if (key === 'cursor' || key === 'notePath') { if (value !== null && typeof value !== 'string') return false; }
+      if (!object(value) || !Object.keys(value).length || Object.keys(value).some(field => !['title', 'body', 'status'].includes(field) || typeof value[field] !== 'string')) return false;
+    } else if (key === 'cursor') { if (value !== null && typeof value !== 'string') return false; }
     else if (typeof value !== 'string') return false;
   }
   return true;
@@ -24,7 +26,8 @@ function valid(method, args) {
 const failure = (code, message) => ({ ok: false, error: { code, message, details: {} } });
 const json = value => Response.json(value, { headers: { 'cache-control': 'no-store' } });
 
-export function registerTodosApi(ctx, store) {
+export function registerTodosApi(ctx, rawStore) {
+  const store = coreTodos(rawStore);
   for (const method of Object.keys(fields)) {
     ctx.effect(() => ctx.connection.fetch.register({
       path: `/api/corilo-todos/${method}`, methods: ['POST'], requestBody: 'buffered',

@@ -1,12 +1,12 @@
 # Corilo 个人待办 for DeepSeek Harness
 
-独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.4.1，目前没有发布到 npm。
+独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.5.0，目前没有发布到 npm。
 
-页面直接创建、查看、编辑、完成、取消或重新打开待办，不需要模型密钥；Agent 工具使用同一持久化服务。个人待办与 Harness 的 Agent 执行计划分开。首版不包含日期、日历、提醒调度或通知，创建待办不代表安排通知。
+页面直接创建、查看、编辑、完成或撤销待办，不需要模型密钥；Agent 工具使用同一持久化服务。个人待办与 Harness 的 Agent 执行计划分开。首版不包含日期、日历、提醒调度或通知，创建待办不代表安排通知。
 
-当前主流程是回车连续新增、列表直接完成/撤销、点标题直接编辑。已存详情默认在离开编辑区、切换待办或返回列表时保存，无需重复点保存；首次点击会先保存修改再完成目标操作。新待办主要从清单内单行录入，辅助入口保留在更多操作。
+当前主流程是回车连续新增、列表直接完成/撤销、点标题直接编辑。已存详情默认在离开编辑区、切换待办或返回列表时保存，无需重复点保存；首次点击会先保存修改再完成目标操作。新待办主要从清单内单行录入，不再提供重复的详细新建表单。
 
-0.4.0 参考 [Vikunja](https://github.com/go-vikunja/vikunja) 与 [Super Productivity](https://github.com/super-productivity/super-productivity) 的清单／详情分工：标题自动换行，说明按内容伸缩，更多操作浮层不挤动页面。从完成或取消列表新增后回到未完成；新增成功会清除搜索，让新事项可见。清单聚焦时 N 快速录入、/ 查找、上下键移动任务焦点、Enter 打开，详情 Esc 保存后返回。输入与组字不触发导航，错误与未知结果仍保留原请求。
+交互参考 [Vikunja](https://github.com/go-vikunja/vikunja) 与 [Super Productivity](https://github.com/super-productivity/super-productivity) 的清单／详情分工：标题自动换行，说明按内容伸缩，导出使用页头轻量按钮。从完成列表新增后回到未完成；新增成功会清除搜索，让新事项可见。清单聚焦时 N 快速录入、/ 查找、上下键移动任务焦点、Enter 打开，详情 Esc 保存后返回。输入与组字不触发导航，错误与未知结果仍保留原请求。
 
 图标复用 **Lucide React 1.70.0**，字段伸缩复用 **react-textarea-autosize 8.5.9**；两者为构建依赖，已打入客户端，沿用宿主 React。构建 peer 通过 override 固定为与宿主一致的 React 18.3.1，React 本身始终 external；独立生产安装不需要这些构建依赖。许可证随包保留。
 
@@ -40,7 +40,6 @@ cd plugins/todos
       name: /absolute/corilo-install/node_modules/@corilo/dsh-notes/index.mjs
       config:
         root: /absolute/corilo-instance/notes
-        stateRoot: /absolute/corilo-instance/state
     - id: corilo-todos
       name: /absolute/corilo-install/node_modules/@corilo/dsh-todos/index.mjs
       config:
@@ -52,19 +51,18 @@ cd plugins/todos
 
 ## 页面与可靠性
 
-- 首页只填标题即可连续新增，成功后清空并聚焦输入框。列表行可直接完成/撤销，完成后的提示也提供撤销入口；行操作不覆盖其他待办的编辑草稿。
-- 状态按钮直接切换未完成、已完成、全部或已取消，搜索始终可见，支持标题/详情的字面搜索及每页 100 条的继续加载。SQLite 原生搜索对 ASCII 英文字母忽略大小写，中文逐字匹配。
-- 点标题在桌面侧栏、手机独立详情视图编辑；“返回列表”或切换前先按读取版本保存已明确编辑的详情，失败／冲突停留原处；恢复草稿本身不触发保存，未编辑恢复内容仍可再次归档。关闭更多操作内的“离开详情时保存”后可沿用显式保存与导航草稿。详情草稿只归档当前事项，恢复不覆盖独立快速输入或带回已新增的旧输入；归档与导航之间也保留完整崩溃恢复副本。恢复仍需明确操作，不自动写主机。结果未知的请求必须先处理，不能通过切换丢弃。编辑区 Ctrl／⌘S 复用显式保存。输入法组字期间不提交；未知结果及失败暂停自动保存，保留原请求和浏览器恢复副本。
-- 修改使用读取时的整数版本；其他页面已修改时拒绝陈旧写入，并保留编辑内容供核对。完成、取消和重新打开也遵循相同版本保护。
-- 每个写请求携带 UUID v4。SQLite 将变更和幂等回执放在一个事务中；丢失响应后明确重试同一个请求不会重复创建。相同 UUID 改成其他内容会被拒绝。原请求重试返回当时的提交结果，后续修改须重新读取当前版本。
-- 页面复用 idb 保护详细编辑、快速输入和结果未知的完整请求。刷新后明确恢复/丢弃，保留原版本和 UUID，不自动重发；多标签通过事务与内容校验保护较新草稿，按持久 SQLite 身份隔离。浏览器副本不等于主机已保存；存储失败明显提示，直接保存仍可用，清除站点数据或更换浏览器来源会失去恢复副本。
-- 关联笔记保存相对 `.md`/`.markdown` 路径，页面显示路径供在笔记“按路径打开”中使用；不验证文件存在、不自动移动笔记，也不承诺重命名后自动修复关联。
+- 清单内只填标题，回车连续新增；成功清空并保持焦点。列表直接完成／撤销，行操作不会覆盖另一事项的未保存输入。
+- 未完成、已完成、全部和搜索直接可见，每页 100 条，支持继续加载。搜索标题／说明，中文逐字匹配，ASCII 英文忽略大小写。
+- 点击标题在桌面侧栏、手机独立视图编辑，详情只有标题和说明。离开编辑区、切换事项或返回列表先保存修改，成功再继续，第一次点击不被 blur 吞掉。Ctrl／⌘S 立即保存，Esc 保存后返回，组字期间不提交。
+- 失败／冲突保留当前输入，结果未知保留同一 UUID 请求，仅明确重试才发送。修改、完成及撤销均检查实际读取版本；SQLite 将变更和幂等回执放在同一事务，丢响应重试不重复创建。旧页面遇到资料库身份改变时暂停写入。
+- 不提供草稿库、恢复／丢弃、手动模式、笔记关联或取消功能，不访问待办 IndexedDB。输入仅在当前插件会话内保留，未保存／未知请求关闭页面时提醒；不承诺刷新／崩溃恢复。
+- 旧 SQLite 和浏览器草稿不迁移、不删除。旧取消记录不进入当前清单，关联字段不在当前详情或工具返回中展示；完整 JSON 导出仍保留这些原有资料。
 
 ## 存储与资料带走
 
 专用目录包含 `todos.sqlite`，运行时可能有 `-wal` 与 `-shm`。SQLite WAL、FULL 同步和事务负责本地持久化及并发，写锁等待最多 2 秒；默认同一主机本地文件系统，不将未经验证的网络共享目录当工作数据库。未知 schema、危险链接、特殊文件或无关目录内容会拒绝打开，不自动迁移/覆盖已有数据库。
 
-待办含 `id`、`title`、`body`、`notePath`、`status`、`version`、`createdAt` 和 `updatedAt`。标题去掉首尾空白后 1–200 字符，详情最多 20000 字符，关联路径最多 1024 字节。完成/取消保留记录，不作物理删除。请求回执随数据库持久保存，尚未设置自动清理或磁盘配额。
+当前记录使用 `id`、`title`、`body`、`status`、`version`、`createdAt` 和 `updatedAt`，状态为 open／done。标题去掉首尾空白后 1–200 字符，说明最多 20000 字符。底层原始 v1 格式仍兼容旧 `notePath` 与 cancelled，当前插件不再提供这些操作。`./store` 是原始格式兼容接口；页面和 Agent 工具共用 `core.mjs` 的当前业务边界。请求回执随数据库持久保存，尚未设置自动清理或磁盘配额。
 
 页面和 `corilo_todos_export` 可导出公开 `corilo-todos-v1` JSON，含所有状态的业务记录，最多 10000 条/8 MiB；超限报错，不能把部分导出叫完整。JSON 不含凭据、Harness 会话或幂等回执；首版不提供 JSON 导入，不把它称作等价数据库灾备。
 
@@ -77,7 +75,7 @@ cd plugins/todos
 | `corilo_todos_list` | 筛选、字面搜索、分页列出个人待办 |
 | `corilo_todos_read` | 读取内容和当前版本 |
 | `corilo_todos_create` | 带请求 UUID 新建待办 |
-| `corilo_todos_update` | 检查版本后修改、完成、取消或重新打开 |
+| `corilo_todos_update` | 检查版本后修改、完成或撤销 |
 | `corilo_todos_export` | 导出版本化 JSON |
 
 在 Agent 对话中使用工具仍涉及模型轮次；直接页面操作没有模型请求。调用只在用户明确要求记录/修改个人事项时使用，不把普通讨论或 Agent 执行步骤自动写成个人待办。
@@ -89,7 +87,7 @@ cd plugins/todos
 npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.4.1.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
+收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.5.0.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
 
 源码验证：
 
@@ -98,4 +96,8 @@ npm run test:todos
 npm --prefix plugins/todos run test:browser
 ```
 
-浏览器共存检查还需已安装、构建 `plugins/notes`；浏览器依赖沿用根目录 `requirements-dev.txt` 和 Chromium。测试使用临时资料与合成凭据，不调用模型。真实模型、物理手机、NAS 与目标设备部署证据分别记录在主技术设计中，不能由工具或 Chromium 测试代替。
+样式共存检查还需已安装、构建 `plugins/notes`；浏览器依赖沿用根目录 `requirements-dev.txt` 和 Chromium。测试使用临时资料与合成凭据，不调用模型。真实模型、物理手机、NAS 与目标设备部署证据分别记录在主技术设计中，不能由工具或 Chromium 测试代替。
+
+## 从旧版升级
+
+升级前先保存当前页面输入，再停止服务并备份整个待办目录。安装 0.5.0 包、沿用现有资料目录并重新启动 Harness；浏览器重新加载客户端。没有数据库迁移或数据清理。旧浏览器草稿只可用旧版本读取，新版不承诺恢复；不要清除站点数据后再寻找旧草稿。取消记录和关联字段仍包含在 JSON 导出中。

@@ -32,7 +32,7 @@ test('published Harness Web loads the todo plugin and persists real pipeline mut
           const result=await pipeline.complete(p.exec,p.kind==='dispatch'?await pipeline.dispatch(p.exec):p);
           if(result.isError)throw new Error('Personal todo tool failed');return result.value;
         };
-        const args={requestId:randomUUID(),title:'真实宿主个人待办',body:'只使用虚构资料',notePath:'资料/背景.md'};
+        const args={requestId:randomUUID(),title:'真实宿主个人待办',body:'只使用虚构资料'};
         const created=await call('corilo_todos_create',args);
         const retry=await call('corilo_todos_create',args);
         const done=await call('corilo_todos_update',{requestId:randomUUID(),id:created.id,expected:created.version,patch:{status:'done'}});

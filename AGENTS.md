@@ -1,12 +1,12 @@
 # Corilo 可里开发约束
 
-当前方向 v0.31（2026-11-10）：用户决定以 DeepSeek Harness 为主体，Corilo 提供笔记、待办/日程与后续记忆插件，首期个人自部署。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，开发命令见 docs/DEVELOPMENT.md。用户新决定优先于旧 Pi/Files.md 云端要求；产品规则只在 PRODUCT-SPEC.md 维护。
+当前方向 v0.32（2026-11-10）：用户决定以 DeepSeek Harness 为主体，Corilo 提供笔记、待办/日程与后续记忆插件，首期个人自部署。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，开发命令见 docs/DEVELOPMENT.md。用户新决定优先于旧 Pi/Files.md 云端要求；产品规则只在 PRODUCT-SPEC.md 维护。
 
 视觉采用 Astryx Neutral 0.7.11 静态 token 子集与插件局部 CSS 适配，MIT notice 随包；固定 Harness 实测 React 18.3.1，而 Astryx React 组件要求 >=19，不得擅自升级宿主、另带 React 或声称已接入其组件。
 
 笔记正文复用固定 CodeMirror 6 与 Lezer Markdown，不自行维护富文本数据模型或解析器。编辑仍输出普通 Markdown；即时标记显隐只影响呈现，保存回执保留光标和撤销历史，跨文档隔离撤销，组字期间暂停保存／格式操作。完整预览仍由 markdown-it／DOMPurify 负责，不能因编辑器接入放开 HTML 或主动外部资源。
 
-用户最新收敛：笔记只要新建、查找、编辑、同目录改名和自动保存。明确移除笔记草稿库、恢复草稿、历史、回收站、删除入口、手动保存开关及单独原话捕获流程，不只是隐藏到次级入口。当前输入仅在会话内保留，未保存关闭时提醒；不承诺刷新／崩溃恢复。旧 IndexedDB 与历史目录保留但当前插件不读写，旧恢复代码只用于存量兼容；新启动不要求 stateRoot／Git。不得因旧规格或旧测试重新添加这些功能。待办核心流程及已有可靠性机制保持，日期、日程、提醒、联动和自动记忆暂缓。
+用户最新收敛：笔记只要新建、查找、编辑、同目录改名和自动保存。明确移除笔记草稿库、恢复草稿、历史、回收站、删除入口、手动保存开关及单独原话捕获流程，不只是隐藏到次级入口。当前输入仅在会话内保留，未保存关闭时提醒；不承诺刷新／崩溃恢复。旧 IndexedDB 与历史目录保留但当前插件不读写，旧恢复代码只用于存量兼容；新启动不要求 stateRoot／Git。不得因旧规格或旧测试重新添加这些功能。待办同样移除草稿库／恢复、手动保存开关、重复新建表单、关联笔记和取消入口；仅保留新增、查找、编辑、完成／撤销及 JSON 导出。页面与工具共用 coreTodos 业务边界，版本检查和 UUID 幂等回执保持内部实现。旧 SQLite 取消记录和关联字段原样保留并包含在导出中，旧 IndexedDB 不读写、不删除；当前输入只在会话内保留。日期、日程、提醒、联动和自动记忆暂缓。
 
 复用 Harness 自带 Web UI、模型设置、会话、默认工具与运行机制，不再新建 Corilo Agent loop、模型管理、权限审批或任务调度底座。模型初期 DeepSeek。优先独立插件和公开扩展点，固定开发者预览的兼容版本；接入文档与真实插件运行证据必须对应同一版本。工具插件不等于笔记编辑页面；代码存在不等于已在 Harness Web/手机验收。不将 Harness 工具中的执行计划 todo 当个人待办/日程，不将内存定时器当可靠提醒。
 

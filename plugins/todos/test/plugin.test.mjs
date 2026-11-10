@@ -24,7 +24,7 @@ test('published Cordis pipeline manages personal todos with idempotency, version
     const prepared = await pipeline.prepare({ callId: String(++callId), name, arguments: args, signal });
     return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared);
   };
-  const args = { requestId: randomUUID(), title: '个人事项：读文章', body: '明天自己处理', notePath: '资料/文章.md' };
+  const args = { requestId: randomUUID(), title: '个人事项：读文章', body: '明天自己处理' };
   const created = await call('corilo_todos_create', args);
   assert.equal(created.isError, false, JSON.stringify(created));
   assert.equal(created.value.status, 'open');
@@ -32,7 +32,7 @@ test('published Cordis pipeline manages personal todos with idempotency, version
   assert.deepEqual(repeated.value, created.value);
   assert.equal((await call('corilo_todos_list', {})).value.items.length, 1);
   const read = (await call('corilo_todos_read', { id: created.value.id })).value;
-  assert.equal(read.notePath, '资料/文章.md');
+  assert.equal(Object.hasOwn(read, 'notePath'), false);
   const complete = { requestId: randomUUID(), id: read.id, expected: read.version, patch: { status: 'done' } };
   const done = await call('corilo_todos_update', complete);
   assert.equal(done.isError, false, JSON.stringify(done));
@@ -42,10 +42,12 @@ test('published Cordis pipeline manages personal todos with idempotency, version
   assert.equal((await call('corilo_todos_read', { id: 123 })).isError, true);
   assert.equal((await call('corilo_todos_update', { ...complete, patch: { reminders: true } })).isError, true);
   const cancelled = await call('corilo_todos_update', { requestId: randomUUID(), id: read.id, expected: done.value.version, patch: { status: 'cancelled' } });
-  assert.equal(cancelled.value.status, 'cancelled');
+  assert.equal(cancelled.isError, true);
+  const linked = await call('corilo_todos_update', { requestId: randomUUID(), id: read.id, expected: done.value.version, patch: { notePath: 'old.md' } });
+  assert.equal(linked.isError, true);
   const exported = await call('corilo_todos_export', {});
   assert.equal(exported.value.format, 'corilo-todos-v1');
-  assert.equal(exported.value.items[0].status, 'cancelled');
+  assert.equal(exported.value.items[0].status, 'done');
   const abort = new AbortController(); abort.abort();
   assert.equal((await call('corilo_todos_create', { requestId: randomUUID(), title: '已取消调用' }, abort.signal)).isError, true);
   await fiber.dispose();
@@ -53,6 +55,6 @@ test('published Cordis pipeline manages personal todos with idempotency, version
   assert.equal((await call('corilo_todos_list', {})).isError, true);
   // Unload releases SQLite; a fresh service can read the committed records.
   const reopened = await TodoStore.open(root);
-  try { assert.equal((await reopened.get(read.id)).status, 'cancelled'); }
+  try { assert.equal((await reopened.get(read.id)).status, 'done'); }
   finally { await reopened.close(); }
 });

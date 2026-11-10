@@ -23,7 +23,7 @@ test('standalone todo tarball installs production dependencies and boots real Ha
   await mkdir(env.HOME);
   const packed = JSON.parse((await exec('npm', ['pack', '--json', '--pack-destination', base], { cwd: packageRoot, env, maxBuffer: 8 * 1024 * 1024 })).stdout)[0];
   const files = packed.files.map(file => file.path);
-  for (const file of ['index.mjs', 'api.mjs', 'storage.mjs', 'lib/client.js', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'todos.patch.example.yml']) assert.ok(files.includes(file), `Missing ${file}`);
+  for (const file of ['index.mjs', 'api.mjs', 'core.mjs', 'storage.mjs', 'lib/client.js', 'README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'todos.patch.example.yml']) assert.ok(files.includes(file), `Missing ${file}`);
   assert.ok(files.every(file => !/^(client\/|test\/|node_modules\/|.*\.sqlite|.*\.patch\.json$)/.test(file)));
   const install = path.join(base, 'install'); await mkdir(install);
   await writeFile(path.join(install, 'package.json'), JSON.stringify({ name: 'todos-consumer', private: true }));

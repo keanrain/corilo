@@ -186,7 +186,8 @@ export class TodoStore {
     } catch (error) { throw sqliteFailure(error); }
   }
   async update(args) {
-    object(args, ['requestId', 'id', 'expected', 'patch', 'signal'], ['requestId', 'id', 'expected', 'patch']);
+    object(args, ['requestId', 'id', 'expected', 'patch', 'signal', 'activeOnly'], ['requestId', 'id', 'expected', 'patch']);
+    if (args.activeOnly !== undefined && typeof args.activeOnly !== 'boolean') throw fail(400, '待办请求格式无效');
     const identifier = id(args.id), request = requestId(args.requestId), changes = patch(args.patch);
     if (!Number.isSafeInteger(args.expected) || args.expected < 1) throw fail(400, '请提供读取时的待办版本');
     const hash = digest({ kind: 'update', id: identifier, expected: args.expected, patch: changes });
@@ -195,7 +196,8 @@ export class TodoStore {
       return this.transaction(() => this.receipt(request, hash, () => {
         const row = this.db.prepare('SELECT * FROM todos WHERE id=?').get(identifier);
         if (!row) throw fail(404, '待办不存在');
-        if (row.version !== args.expected) throw fail(409, '待办已有更新，请读取最新内容后核对；当前草稿未覆盖');
+        if (args.activeOnly && row.status === 'cancelled') throw fail(404, '待办不在当前清单中');
+        if (row.version !== args.expected) throw fail(409, '待办已有更新，请读取最新内容后核对；当前输入未覆盖');
         const next = { ...todo(row), ...changes, version: row.version + 1, updatedAt: new Date().toISOString() };
         this.db.prepare('UPDATE todos SET title=?, body=?, note_path=?, status=?, version=?, updated_at=? WHERE id=? AND version=?')
           .run(next.title, next.body, next.notePath, next.status, next.version, next.updatedAt, identifier, args.expected);
@@ -204,11 +206,12 @@ export class TodoStore {
     } catch (error) { throw sqliteFailure(error); }
   }
   async list(options = {}) {
-    object(options, ['status', 'cursor', 'query', 'signal']);
-    const { status = 'open', cursor = null, query = '', signal } = options;
+    object(options, ['status', 'cursor', 'query', 'signal', 'activeOnly']);
+    const { status = 'open', cursor = null, query = '', signal, activeOnly = false } = options;
+    if (typeof activeOnly !== 'boolean') throw fail(400, '待办列表条件无效');
     if (!STATUSES.has(status) && status !== 'all' || typeof query !== 'string' || !query.isWellFormed() || [...query].length > 256 || query.includes('\0') || cursor !== null && (typeof cursor !== 'string' || cursor.length > 1024)) throw fail(400, '待办列表条件无效');
     let anchor = null;
-    const filter = digest({ identity: this.identity, status, query });
+    const filter = digest({ identity: this.identity, status, query, ...(activeOnly ? { activeOnly: true } : {}) });
     if (cursor !== null) {
       try {
         anchor = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
@@ -217,9 +220,9 @@ export class TodoStore {
     }
     try {
       checkSignal(signal); await this.check(); checkSignal(signal);
-      const rows = this.db.prepare(`SELECT * FROM todos WHERE (?='all' OR status=?) AND (?='' OR instr(lower(title || char(10) || body),lower(?))>0)
+      const rows = this.db.prepare(`SELECT * FROM todos WHERE (?='all' OR status=?) AND (?=0 OR status<>'cancelled') AND (?='' OR instr(lower(title || char(10) || body),lower(?))>0)
         AND (? IS NULL OR created_at < ? OR (created_at = ? AND id > ?)) ORDER BY created_at DESC, id ASC LIMIT 101`)
-        .all(status, status, query, query, anchor?.at ?? null, anchor?.at ?? null, anchor?.at ?? null, anchor?.id ?? null);
+        .all(status, status, activeOnly ? 1 : 0, query, query, anchor?.at ?? null, anchor?.at ?? null, anchor?.at ?? null, anchor?.id ?? null);
       const hasMore = rows.length > 100, items = rows.slice(0, 100).map(todo), last = items.at(-1);
       return { items, hasMore, nextCursor: hasMore ? Buffer.from(JSON.stringify({ format: 1, filter, at: last.createdAt, id: last.id })).toString('base64url') : null };
     } catch (error) { throw sqliteFailure(error); }

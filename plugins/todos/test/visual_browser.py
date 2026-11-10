@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 
 from playwright.sync_api import sync_playwright, expect
-from browser import ROOT, wait_for
+from core_browser import ROOT, wait_for
 
 
 def main():
