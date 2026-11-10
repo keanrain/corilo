@@ -171,8 +171,10 @@ function TodosPage({ useStore, actions, call, getState }) {
       set({ ...editor, rowPending: null, rowSaveState: 'saved', rowError: '', lastRow: updated.status === 'done' ? updated : null, notice: updated.status === 'done' ? '' : '已撤销完成。' });
       await list();
     } catch (error) {
+      const editorConflict = error.code === 'todos/409' && getState().item?.id === request.args.id;
       set({ rowPending: error.unknown ? request : null, rowSaveState: error.unknown ? 'unknown' : 'failed',
-        rowError: error.code === 'todos/409' ? '这项待办已有更新，列表已刷新。请核对后再操作。' : error.message });
+        rowError: editorConflict ? '' : error.code === 'todos/409' ? '这项待办已有更新，列表已刷新。请核对后再操作。' : error.message,
+        ...(editorConflict ? { conflict: true, latest: null, leaveSaveBlocked: true, saveState: 'failed', error: error.message } : {}) });
       if (!error.unknown) await list();
     }
   }

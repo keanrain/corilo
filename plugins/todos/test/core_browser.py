@@ -109,6 +109,39 @@ def main():
                     expect(body).to_have_value('旧说明')
                     assert panel.get_by_role('textbox', name='关联笔记路径').count() == 0
                     assert panel.get_by_role('button', name='保存待办', exact=True).count() == 0
+                    # Completion and reopening from a stale detail must use the
+                    # same explicit reconciliation as stale text edits. A list
+                    # refresh alone must not leave the checkbox retrying forever.
+                    for action, original_status, target in [('完成待办', 'open', 'done'), ('重新打开待办', 'done', 'open')]:
+                        stale = api('get', {'id': old['linked']['id']})
+                        remote_body = '另一设备修改，准备' + action
+                        latest = api('update', {'requestId': str(uuid.uuid4()), 'id': stale['id'], 'expected': stale['version'], 'patch': {'body': remote_body}})
+                        checkbox = panel.get_by_role('checkbox', name=action, exact=True)
+                        before = len(mutations)
+                        checkbox.click()
+                        compare = panel.get_by_role('button', name='查看最新待办', exact=True)
+                        expect(compare).to_be_visible()
+                        expect(checkbox).to_be_disabled()
+                        expect(body).to_have_value(stale['body'])
+                        expect(panel.locator('.corilo-todos-save-state')).to_have_text('版本冲突')
+                        page.wait_for_timeout(200)
+                        assert len(mutations) == before + 1, 'Conflicts must not automatically retry'
+                        assert mutations[-1]['expected'] == stale['version']
+                        assert api('get', {'id': stale['id']}) == latest
+                        assert latest['status'] == original_status
+                        compare.click()
+                        expect(panel.get_by_role('textbox', name='最新待办说明')).to_have_value(remote_body)
+                        page.once('dialog', lambda dialog: dialog.accept())
+                        panel.get_by_role('button', name='采用最新待办', exact=True).click()
+                        expect(body).to_have_value(remote_body)
+                        expect(checkbox).to_be_enabled()
+                        checkbox.click()
+                        expect(panel.get_by_role('checkbox', name='重新打开待办' if target == 'done' else '完成待办', exact=True)).to_be_enabled()
+                        result = api('get', {'id': stale['id']})
+                        assert result['status'] == target
+                        assert result['body'] == remote_body
+                        assert result['version'] == latest['version'] + 1
+                        assert mutations[-1]['expected'] == latest['version']
                     body.fill('新版只修改正文')
                     panel.get_by_role('button', name='返回列表').click()
                     assert api('get', {'id': old['linked']['id']})['body'] == '新版只修改正文'
@@ -175,7 +208,7 @@ def main():
                     assert errors == [], errors
                     assert external == [], external
                     browser.close()
-                print('Core todos Harness passed: no draft database/manual mode/association/cancellation/new form; core CRUD, save-on-leave, same-UUID unknown retry, conflicts, completion/undo, legacy-preserving export and desktop/mobile; zero model/external requests.')
+                print('Core todos Harness passed: no draft database/manual mode/association/cancellation/new form; core CRUD, save-on-leave, same-UUID unknown retry, text/status conflicts with explicit reconciliation, completion/undo, legacy-preserving export and desktop/mobile; zero model/external requests.')
             finally:
                 host.terminate()
                 host.wait(timeout=20)
