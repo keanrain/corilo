@@ -27,10 +27,14 @@ function coriloSaved() {
     if (!coriloBlocked.size && !coriloUnknownWrite) { $c('corilo-error').textContent = ''; $c('corilo-resolution').hidden = true; $c('corilo-latest').hidden = true; }
     report();
 }
-const plainText = cm => { const text = cm.getValue(), line = text.split('\n')[0];return line.startsWith('# ')?text.slice(line.length+(text.includes('\n')?1:0)):text; };
+const coriloBody = text => { const line = text.split('\n')[0];return line.startsWith('# ')?text.slice(line.length+(text.includes('\n')?1:0)):text; };
+const plainText = cm => coriloBody(cm.getValue());
+function coriloCheckSaved() {
+    if ([editor, editor2].some(cm => cm?.path && !cm.isClean())) throw new Error('保存期间有新输入，请保存后再操作');
+}
 syncCurrentFile = async (explicit = false) => {
     if (!coriloReady || coriloPaused) return;
-    if (coriloSaving) return coriloSaving;
+    if (coriloSaving) { await coriloSaving; coriloCheckSaved(); return; }
     coriloSaving = (async () => {
         for (const cm of [editor, editor2]) {
             if (!cm?.path || cm.isClean()) continue;
@@ -41,7 +45,7 @@ syncCurrentFile = async (explicit = false) => {
             if (!handle) throw new Error('文件句柄不存在，当前输入仍保留');
             const header = snapshot.split('\n')[0], newPath = joinPath(toDirPath(oldPath), fromHeaderToFilename(header));
             try {
-                const writer = await handle.createWritable(); await writer.write(plainText(cm)); await writer.close();
+                const writer = await handle.createWritable(); await writer.write(coriloBody(snapshot)); await writer.close();
                 if (header.startsWith('# ') && newPath !== oldPath) {
                     cm.coriloRename={from:oldPath,to:newPath};
                     await coriloJSON('/api/fs/rename', {from:oldPath,to:newPath,expected:handle.etag});
@@ -54,7 +58,7 @@ syncCurrentFile = async (explicit = false) => {
             } catch(error) {coriloBlocked.set(cm,error);coriloError(error,cm);throw error;}
         }
     })();
-    try { await coriloSaving; } finally { coriloSaving=null; coriloSaved(); }
+    try { await coriloSaving; coriloCheckSaved(); } finally { coriloSaving=null; coriloSaved(); }
 };
 const upstreamOpenChat = openChat, upstreamOpenChatModal = openChatModal, upstreamSendToChat = sendToChat;
 openChat = async (...args) => { await syncCurrentFile(); await upstreamOpenChat(...args); report(); };

@@ -57,6 +57,18 @@ v0.33 · 2026-11-11。产品规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，架�
 
 `prepack` 构建客户端；固定运行依赖、许可证与指南应随包，不含测试资料、node_modules 或凭据。仓库外生产安装／启动验证由各包分发测试覆盖。当前两包均为 `private`，没有执行公开 `npm publish`；发布操作与取消 private 不属于仓库整理。
 
+## 独立 DSH 安装与升级演练
+
+已有两个不同构建的 Files.md 工作区包时，可运行：
+
+```sh
+npm_config_cache=/workspace/work/npm-cache node plugins/notes/test/upgrade.mjs /absolute/previous.tgz /absolute/next.tgz
+```
+
+脚本先在临时目录用 --save-exact 仅安装固定 DSH 0.2.2-rc.1 并实际启动，再安装旧包、通过鉴权 API 写入合成资料，停止服务、安装新包并重启。检查既有 overlay 字节不变、旧资料保留、服务返回的 host.js 与新安装文件完全一致且哈希改变、未认证请求为 401、SIGTERM 正常退出。它从独立 DSH 的原生入口启动，不依赖源码 launcher。两个包须已包含构建资源；可以是同版本的不同本地构建，不能把这种演练写成 npm 公开版本升级。
+
+整个演练使用可丢弃实例并在结束后清理，输出只有包版本、哈希和检查结果；不会替用户升级真实实例。目标用户 DSH 的路径、overlay 和部署环境仍须单独核对。真实浏览器行为继续由 workspace_browser.py 验收，HTTP 资源检查不等于第二实例浏览器验收。
+
 ## 保留的旧应用命令
 
 这些命令继续维护已有应用，不是当前插件入口。先用根 `npm ci --ignore-scripts` 安装旧应用依赖。

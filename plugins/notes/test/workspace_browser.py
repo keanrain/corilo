@@ -59,10 +59,37 @@ def run():
      wait(lambda:actual.evaluate("()=>editor.path==='/New file.md'"))
      frame.locator('.CodeMirror').first.click();page.keyboard.press('Control+End');page.keyboard.insert_text('直接写作，保存为普通 Markdown')
      wait(lambda:(notes/'New file.md').read_text()=='直接写作，保存为普通 Markdown')
+     # A navigation must not discard text typed while its save acknowledgement is pending.
+     actual.evaluate("""()=>{
+      clearInterval(window.saver);
+      const originalFetch=window.fetch;
+      window.fetch=async(...args)=>{
+       const request=args[1]?.body&&JSON.parse(args[1].body);
+       if(request?.method==='write'){
+        window.fetch=originalFetch;
+        const response=await originalFetch(...args);
+        await new Promise(resolve=>{window.releaseSave=resolve;});
+        return response;
+       }
+       return originalFetch(...args);
+      };
+      editor.replaceRange('，第一段',{line:editor.lastLine(),ch:editor.getLine(editor.lastLine()).length});
+      window.navigationResult=null;
+      openFile('/Hello.md').then(()=>window.navigationResult='opened',error=>window.navigationResult=error.message);
+     }""")
+     wait(lambda:actual.evaluate('Boolean(window.releaseSave)'))
+     actual.evaluate("()=>{window.chatResult=null;openChat().then(()=>window.chatResult='opened',error=>window.chatResult=error.message);editor.replaceRange('，等待时的新输入',{line:editor.lastLine(),ch:editor.getLine(editor.lastLine()).length});window.releaseSave();}")
+     wait(lambda:actual.evaluate('window.navigationResult!==null&&window.chatResult!==null'))
+     assert actual.evaluate("!isChat&&window.chatResult!=='opened'"), 'Joining an in-flight save must also preserve input'
+     assert actual.evaluate("editor.path==='/New file.md'&&!editor.isClean()&&editor.getValue().includes('等待时的新输入')"), 'Navigation discarded input typed during save'
+     assert '等待时的新输入' not in (notes/'New file.md').read_text()
+     actual.evaluate('async()=>{await syncCurrentFile();}')
+     assert '等待时的新输入' in (notes/'New file.md').read_text()
+     actual.evaluate("()=>{window.saver=setInterval(()=>{if(!coriloBlocked.size)syncCurrentFile().catch(coriloError);},1000);}")
      # The filename is the editable first heading, with native rename semantics.
      actual.evaluate("()=>editor.replaceRange('# 新名字',{line:0,ch:0},{line:0,ch:editor.getLine(0).length})")
      wait(lambda:(notes/'新名字.md').exists() and not (notes/'New file.md').exists())
-     assert (notes/'新名字.md').read_text()=='直接写作，保存为普通 Markdown'
+     assert (notes/'新名字.md').read_text()=='直接写作，保存为普通 Markdown，第一段，等待时的新输入'
      # Split-pane version ownership and unchanged underlying Markdown checklists.
      actual.evaluate("async()=>{await openFile('/Later.md',true,'editor2-textarea');}")
      expect(frame.locator('#editor2-container')).to_be_visible()
@@ -161,7 +188,7 @@ def run():
      (notes/'已核对的新文件名.md').write_text('原件的外部更新')
      actual.evaluate("async()=>{editor.replaceRange('保留在副本',{line:editor.lastLine(),ch:0});try{await syncCurrentFile()}catch(e){coriloError(e)}}")
      frame.locator('#corilo-copy').click()
-     wait(lambda:(notes/'未命名.md').exists() and actual.evaluate("editor.path==='/未命名.md'&&editor.isClean()"))
+     wait(lambda:(notes/'未命名.md').exists() and actual.evaluate("editor.path==='/未命名.md'&&editor.isClean()&&!coriloCopying&&!coriloReloading&&!coriloNavigating"))
      assert '保留在副本' in (notes/'未命名.md').read_text()
      assert (notes/'已核对的新文件名.md').read_text()=='原件的外部更新'
      # External media remain textual; the integration never fetches them.
