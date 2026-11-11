@@ -35,6 +35,6 @@ npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.pat
 
 冲突和未知保存结果保留输入，先核对文件或明确保存副本，不自动重发。关闭未保存页面时提醒；刷新／崩溃恢复不作承诺。
 
-旧双插件实例不自动改配置或迁移 SQLite。先停止相关服务并备份，再按 [迁移说明](README.md#existing-installations-and-sqlite-todos)预览、显式导入 Later.md，核对成功后移除旧 overlay 中的 corilo-todos 项；原数据库保留。旧笔记页可明确配置 interface: classic。
+旧双插件实例不自动改配置或迁移 SQLite。v0.34 已恢复独立任务／日程方向；保留待办插件和原库。只有明确选择以后用 Markdown 管理这些事项时，才按[可选导入说明](README.md#existing-installations-and-sqlite-todos)停服、备份、预览及显式导入；不再默认建议移除旧入口。旧笔记页可明确配置 interface: classic。
 
 Linux 常驻参考 [Linux 指南](LINUX.zh-CN.md)。目标设备、远程访问、自启与 NAS 仍需实际验收，示例不会自动安装服务。

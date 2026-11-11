@@ -1,12 +1,12 @@
 # 开发与仓库导航
 
-v0.33 · 2026-11-11。产品规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，架构边界见 [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)。本页只维护目录、命令与分发约定；命令均在仓库根目录执行。
+v0.34 · 2026-11-11。此页命令描述现有运行代码，任务／日程方案不自动改变安装与启动行为。产品规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，架构边界见 [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)。本页只维护目录、命令与分发约定；命令均在仓库根目录执行。
 
 ## 目录职责
 
 | 位置 | 当前用途 |
 |---|---|
-| [plugins/](../plugins/README.md) | 当前工作区包／旧待办兼容包；各自包含宿主服务、客户端、CLI、构建与测试 |
+| [plugins/](../plugins/README.md) | 当前工作区包／基础待办与后续日程扩展包；各自包含宿主服务、客户端、CLI、构建与测试 |
 | [launcher/corilo.mjs](../launcher/corilo.mjs)、`launcher/test/` | 源码单工作区启动及旧双插件兼容验收 |
 | [deploy/systemd/](../deploy/systemd/corilo.service.example) | 手工部署参考，不随初始化自动安装 |
 | [scripts/](../scripts/README.md) | 设计资产生成、历史开发工具；`scripts/corilo.mjs` 只兼容转发至新入口 |

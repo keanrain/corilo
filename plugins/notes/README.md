@@ -75,9 +75,11 @@ IndexedDB, SQLite, credentials and conversations are never automatically migrate
 or deleted. Classic recovery helpers remain for pre-existing data only.
 
 New source-launcher configs load only this workspace package. Old two-plugin
-configs remain supported; the SQLite package is a compatibility path, not a second
-required install for new workspaces. Stop both source and destination services and
-back up their directories before importing personal tasks:
+configs remain supported. The v0.34 design restores the separate tasks/calendar
+plugin; its new features are not implemented yet. Keep the existing todo package
+and database when using that workflow. The following is an optional one-way
+export for users who explicitly choose Markdown task management. Stop both source
+and destination services and back up their directories before importing:
 
 ```sh
 # Read-only preview: does not create the notes directory.
@@ -98,10 +100,10 @@ The import journal is written before the target and records planned/complete
 state and before/after versions. A retry after a crash does not append twice.
 Subsequent changes to the source or conflicting target edits require review.
 Both the target and journal must fit 1 MiB; oversize imports fail before writing.
-The old database, receipts and package remain. After verifying the import, remove
-only the `corilo-todos` entry from the old combined overlay (keep its backup), and
-restart using the remaining notes plugin. Do not continue maintaining two task
-sources or delete the old database as part of this upgrade.
+The old database, receipts and package remain. Removing the `corilo-todos` entry
+is only appropriate after explicitly choosing to manage those tasks in Markdown;
+it is no longer the recommended default. There is no automatic synchronization
+between the exported checklist and the database. Do not delete either source.
 
 ## Tools, provenance and verification
 
