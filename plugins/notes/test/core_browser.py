@@ -43,6 +43,9 @@ with tempfile.TemporaryDirectory(prefix='corilo-review-') as temp:
                 panel=page.get_by_role('region',name='Corilo 笔记')
                 body=panel.get_by_role('textbox',name='笔记正文',exact=True)
                 expect(body).to_be_editable()
+                assert panel.get_by_role('button',name='刷新列表',exact=True).count()==0
+                assert panel.locator('.corilo-notes-direct, .corilo-format-tools').count()==0
+                assert panel.get_by_role('group',name='正文格式',exact=True).count()==0
                 origin=url.split('/?')[0]
                 for method in ['history','readRevision','restore','trash','listTrash','restoreTrash']:
                     response=context.request.post(origin+'/api/corilo-notes/'+method,data={})
@@ -70,7 +73,7 @@ with tempfile.TemporaryDirectory(prefix='corilo-review-') as temp:
                 expect(search).to_have_value('尚未提交的搜索词')
                 body.press('Control+z');wait(lambda:(notes/'same.md').read_text()=='target same text')
                 expect(panel.get_by_text('“target”的文件名和正文结果',exact=True)).to_be_visible()
-                panel.get_by_role('button',name='刷新列表',exact=True).click()
+                search.fill('');search.press('Enter')
                 expect(search).to_have_value('')
                 expect(panel.get_by_role('button',name='unrelated.md',exact=True)).to_be_visible()
                 body.press('Control+z')

@@ -5,7 +5,6 @@ export function LibraryPanel({ call, onOpen, disabled, selectedPath, revision })
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState('browse');
   const [applied, setApplied] = useState('');
-  const [directPath, setDirectPath] = useState('');
   const [pending, setPending] = useState(false);
   const [pendingKind, setPendingKind] = useState('browse');
   const [error, setError] = useState('');
@@ -30,9 +29,7 @@ export function LibraryPanel({ call, onOpen, disabled, selectedPath, revision })
     return () => { request.current++; controller.current?.abort(); };
   }, [revision]);
   return <aside aria-label="笔记列表">
-    <div className="corilo-notes-library-heading"><h2>所有笔记</h2>
-      <button disabled={disabled || pending} type="button" aria-label="刷新列表" title="刷新列表" onClick={() => { setQuery(''); void load('browse'); }}>↻</button>
-    </div>
+    <div className="corilo-notes-library-heading"><h2>所有笔记</h2></div>
     <form className="corilo-notes-list-tools" onSubmit={event => { event.preventDefault(); void load(query.trim() ? 'search' : 'browse'); }}>
       <input aria-label="搜索笔记" placeholder="搜索文件名或正文" value={query} onChange={event => setQuery(event.target.value)} />
       <button disabled={disabled} type="submit" aria-label="搜索" title="搜索">⌕</button>
@@ -50,13 +47,5 @@ export function LibraryPanel({ call, onOpen, disabled, selectedPath, revision })
     </li>)}</ul>
     {mode === 'browse' && page.hasMore && <button disabled={disabled || pending} onClick={() => load('browse', page.nextCursor)}>加载更多笔记</button>}
     {page.truncated && <p>只显示前 100 条结果，请缩小搜索词；这不是全部匹配。</p>}
-    <details className="corilo-notes-direct">
-      <summary>按路径打开</summary>
-      <p className="corilo-notes-hint">扫描达到上限时，仍可直接打开已知的 Markdown 路径。</p>
-      <form onSubmit={event => { event.preventDefault(); if (directPath) void onOpen(directPath); }}>
-        <input aria-label="要打开的笔记路径" placeholder="例如 项目/想法.md" value={directPath} onChange={event => setDirectPath(event.target.value)} />
-        <button disabled={disabled || !directPath} type="submit">打开路径</button>
-      </form>
-    </details>
   </aside>;
 }

@@ -55,8 +55,6 @@
 .corilo-notes summary { cursor: pointer; min-height: 44px; padding: 10px 0; color: var(--ax-color-text-secondary); font-size: 13px; font-weight: var(--ax-font-weight-medium); }
 .corilo-notes summary:hover { color: var(--ax-color-text-primary); }
 .corilo-notes-search-snippet { font-size: 13px; color: var(--ax-color-text-secondary); padding-inline: var(--ax-spacing-3); overflow-wrap: anywhere; }
-.corilo-notes-direct { margin-top: var(--ax-spacing-5); border-top: 1px solid var(--ax-color-border); padding-top: var(--ax-spacing-2); }
-.corilo-notes-direct form { display: flex; flex-direction: column; gap: var(--ax-spacing-2); }
 .corilo-notes-library-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--ax-spacing-3); }
 .corilo-notes-library-heading h2 { margin: 0; font-size: 13px; color: var(--ax-color-text-secondary); font-weight: var(--ax-font-weight-medium); }
 .corilo-notes-library-heading button { border-color: transparent; width: 44px; padding: 0; font-size: 20px; }
@@ -161,16 +159,11 @@
 .corilo-notes aside li [aria-current="page"] { background: var(--ax-color-background-surface); }
 /* CodeMirror owns editing, selection, history and Markdown parsing. All visual
    overrides stay below the plugin root and follow the host's neutral theme. */
-.corilo-notes .corilo-format-tools { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 0 10px; margin-bottom: 8px; border-bottom: 1px solid var(--ax-color-border); }
-.corilo-notes .corilo-format-tools button { border: 0; background: transparent; min-width: 36px; min-height: 36px; padding: 6px 8px; color: var(--ax-color-text-secondary); }
-.corilo-notes .corilo-format-tools button[aria-label="加粗"] { font-weight: 750; }
-.corilo-notes .corilo-format-tools button[aria-label="斜体"] { font-style: italic; }
 .corilo-notes .cm-editor { background: transparent; color: var(--ax-color-text-primary); font-size: 16px; }
 .corilo-notes .cm-editor.cm-focused { outline: none; }
 .corilo-notes .cm-scroller { font-family: inherit; line-height: 1.9; overflow: auto; max-height: 65vh; }
 .corilo-notes .cm-content { min-height: 55vh; padding: 8px 0 40px; caret-color: var(--ax-color-text-primary); }
 .corilo-notes .cm-content:focus-visible { outline: none; }
-.corilo-notes .corilo-markdown-editor:focus-within .corilo-format-tools { border-bottom-color: var(--ax-color-text-info); }
 .corilo-notes .cm-line { padding: 0 2px; }
 .corilo-notes .cm-cursor { border-left-color: var(--ax-color-text-primary); }
 .corilo-notes .cm-selectionBackground, .corilo-notes .cm-focused .cm-selectionBackground { background: var(--ax-color-overlay-hover); }
@@ -193,9 +186,6 @@
 @media (max-width: 700px) {
   .corilo-notes .corilo-markdown-editor { min-width: 0; max-width: 100%; }
   .corilo-notes .corilo-notes-editor { padding-top: 16px; gap: 10px; }
-  .corilo-notes .corilo-format-tools { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; }
-  .corilo-notes .corilo-format-tools button { min-width: 44px; min-height: 44px; }
-  .corilo-notes .corilo-format-tools button { flex-shrink: 0; }
   .corilo-notes .cm-content { min-height: clamp(170px, 48vh, 360px); }
   .corilo-notes .cm-scroller { max-height: 58vh; }
 }

@@ -1,12 +1,12 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, drawSelection, keymap, placeholder } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, redo, undo } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, redo } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { openSearchPanel, search, searchKeymap } from '@codemirror/search';
+import { search, searchKeymap } from '@codemirror/search';
 import { tags } from '@lezer/highlight';
-import { applyEditorChanges, normalizedText, prefixLines, wrapSelection } from './editor-commands.mjs';
+import { applyEditorChanges, normalizedText, wrapSelection } from './editor-commands.mjs';
 import { liveMarkdown } from './editor-live.mjs';
 
 const highlighting = HighlightStyle.define([
@@ -82,22 +82,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({ text, documen
   useEffect(() => {
     editor.current.dispatch({ effects: lock.current.reconfigure([EditorState.readOnly.of(disabled), EditorView.editable.of(!disabled), EditorView.contentAttributes.of({ 'aria-disabled': String(disabled) })]) });
   }, [disabled]);
-  const run = command => {
-    if (!disabled && !editor.current.composing) command(editor.current);
-  };
   return <div className="corilo-markdown-editor">
-    <div className="corilo-format-tools" role="group" aria-label="正文格式">
-      {[
-        ['标题', 'H', view => prefixLines(view, '## ')],
-        ['加粗', 'B', view => wrapSelection(view, '**')],
-        ['斜体', 'I', view => wrapSelection(view, '*')],
-        ['列表', '☷', view => prefixLines(view, '- ')],
-        ['引用', '❞', view => prefixLines(view, '> ')],
-        ['行内代码', '</>', view => wrapSelection(view, '`')],
-        ['撤销', '↶', undo], ['重做', '↷', redo], ['查找正文', '⌕', openSearchPanel],
-      ].map(([label, icon, command]) => <button key={label} type="button" aria-label={label} title={label} disabled={disabled}
-        onMouseDown={event => event.preventDefault()} onClick={() => run(command)}>{icon}</button>)}
-    </div>
     <div ref={parent} className="corilo-codemirror" />
   </div>;
 });
