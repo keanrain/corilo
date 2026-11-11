@@ -142,6 +142,59 @@ def main():
                         assert result['body'] == remote_body
                         assert result['version'] == latest['version'] + 1
                         assert mutations[-1]['expected'] == latest['version']
+                    exports = []
+                    downloads = []
+                    page.on('request', lambda req: exports.append(req.url) if req.url.endswith('/api/corilo-todos/export') else None)
+                    page.on('download', lambda item: downloads.append(item))
+                    export_button = panel.get_by_role('button', name='导出待办 JSON', exact=True)
+                    # Export must flush the current edit before downloading.
+                    body.fill('直接导出时先保存的说明')
+                    with page.expect_download() as saved_download:
+                        export_button.click()
+                    saved_export = json.loads(pathlib.Path(saved_download.value.path()).read_text())
+                    assert next(x for x in saved_export['items'] if x['id'] == old['linked']['id'])['body'] == '直接导出时先保存的说明'
+                    assert api('get', {'id': old['linked']['id']})['body'] == '直接导出时先保存的说明'
+                    # Known validation failures cannot yield an incomplete export.
+                    title_input = panel.get_by_role('textbox', name='待办标题', exact=True)
+                    title_input.fill('')
+                    count = len(exports), len(downloads)
+                    export_button.click()
+                    expect(panel.get_by_role('button', name='重试保存', exact=True)).to_be_visible()
+                    assert (len(exports), len(downloads)) == count
+                    title_input.fill('已有待办')
+                    panel.get_by_role('button', name='重试保存', exact=True).click()
+                    expect(panel.get_by_role('button', name='重试保存', exact=True)).to_have_count(0)
+                    # A stale edit must stop export and preserve the input.
+                    current = api('get', {'id': old['linked']['id']})
+                    api('update', {'requestId': str(uuid.uuid4()), 'id': current['id'], 'expected': current['version'], 'patch': {'body': '外部更新，不能覆盖'}})
+                    body.fill('导出前仍保留的冲突输入')
+                    export_button.click()
+                    expect(panel.get_by_role('button', name='查看最新待办', exact=True)).to_be_visible()
+                    expect(body).to_have_value('导出前仍保留的冲突输入')
+                    export_button.click()
+                    page.wait_for_timeout(200)
+                    assert (len(exports), len(downloads)) == count
+                    panel.get_by_role('button', name='查看最新待办', exact=True).click()
+                    page.once('dialog', lambda dialog: dialog.accept())
+                    panel.get_by_role('button', name='采用最新待办', exact=True).click()
+                    # Lost save replies also stop export until explicit same-UUID retry.
+                    def lose_export_save(route):
+                        assert route.fetch().json()['ok']
+                        route.abort()
+                    page.route('**/api/corilo-todos/update', lose_export_save, times=1)
+                    body.fill('导出前保存响应丢失')
+                    export_button.click()
+                    retry_save = panel.get_by_role('button', name='重试保存', exact=True)
+                    expect(retry_save).to_be_visible()
+                    original_save = mutations[-1]
+                    assert (len(exports), len(downloads)) == count
+                    retry_save.click()
+                    expect(retry_save).to_have_count(0)
+                    assert mutations[-1] == original_save
+                    with page.expect_download() as recovered_download:
+                        export_button.click()
+                    recovered_export = json.loads(pathlib.Path(recovered_download.value.path()).read_text())
+                    assert next(x for x in recovered_export['items'] if x['id'] == current['id'])['body'] == '导出前保存响应丢失'
                     body.fill('新版只修改正文')
                     panel.get_by_role('button', name='返回列表').click()
                     assert api('get', {'id': old['linked']['id']})['body'] == '新版只修改正文'

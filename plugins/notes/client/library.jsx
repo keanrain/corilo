@@ -10,21 +10,23 @@ export function LibraryPanel({ call, onOpen, disabled, selectedPath, revision })
   const [pendingKind, setPendingKind] = useState('browse');
   const [error, setError] = useState('');
   const request = useRef(0), controller = useRef(null);
-  async function load(kind = 'browse', cursor = null) {
+  const selection = useRef({ kind: 'browse', query: '' });
+  async function load(kind = 'browse', cursor = null, searchQuery = query) {
+    selection.current = { kind, query: kind === 'search' ? searchQuery : '' };
     const id = ++request.current;
     controller.current?.abort();
     const abort = new AbortController(); controller.current = abort;
     setPending(true); setPendingKind(kind); setError('');
     try {
-      const result = await call(kind, kind === 'search' ? { query } : cursor ? { cursor } : {}, abort.signal);
+      const result = await call(kind, kind === 'search' ? { query: searchQuery } : cursor ? { cursor } : {}, abort.signal);
       if (id !== request.current || abort.signal.aborted) return;
       setPage(previous => cursor ? { ...result, items: [...new Map([...previous.items, ...result.items].map(item => [item.path, item])).values()] } : result);
-      setMode(kind); setApplied(kind === 'search' ? query : '');
+      setMode(kind); setApplied(kind === 'search' ? searchQuery : '');
     } catch (failure) { if (id === request.current && !abort.signal.aborted) setError(failure.message); }
     finally { if (id === request.current) setPending(false); }
   }
   useEffect(() => {
-    void load('browse');
+    void load(selection.current.kind, null, selection.current.query);
     return () => { request.current++; controller.current?.abort(); };
   }, [revision]);
   return <aside aria-label="笔记列表">

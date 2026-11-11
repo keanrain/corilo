@@ -15,6 +15,7 @@ with tempfile.TemporaryDirectory(prefix='corilo-review-') as temp:
     base=pathlib.Path(temp); notes=base/'notes';notes.mkdir()
     (base/'history').mkdir(); (base/'history/keep').write_bytes(b'legacy data unchanged')
     (notes/'same.md').write_text('target same text')
+    (notes/'unrelated.md').write_text('其他笔记')
     config=base/'overlay.json'
     config.write_text(json.dumps([{'insert':[
         {'id':'corilo-notes','name':str(ROOT/'index.mjs'),'config':{'root':str(notes),'stateRoot':str(base/'history')}},
@@ -57,7 +58,21 @@ with tempfile.TemporaryDirectory(prefix='corilo-review-') as temp:
                 search=panel.get_by_role('textbox',name='搜索笔记')
                 search.fill('target');search.press('Enter')
                 expect(panel.get_by_role('button',name='same.md',exact=True)).to_be_visible()
+                expect(panel.get_by_role('button',name='unrelated.md',exact=True)).to_have_count(0)
+                # Typing another query without submitting must not change the
+                # active search when saving refreshes the library.
+                search.fill('尚未提交的搜索词')
+                body.fill('target 保存后仍匹配')
+                wait(lambda:(notes/'same.md').read_text()=='target 保存后仍匹配')
+                expect(panel.get_by_role('button',name='same.md',exact=True)).to_be_visible()
+                expect(panel.get_by_text('“target”的文件名和正文结果',exact=True)).to_be_visible()
+                expect(panel.get_by_role('button',name='unrelated.md',exact=True)).to_have_count(0)
+                expect(search).to_have_value('尚未提交的搜索词')
+                body.press('Control+z');wait(lambda:(notes/'same.md').read_text()=='target same text')
+                expect(panel.get_by_text('“target”的文件名和正文结果',exact=True)).to_be_visible()
                 panel.get_by_role('button',name='刷新列表',exact=True).click()
+                expect(search).to_have_value('')
+                expect(panel.get_by_role('button',name='unrelated.md',exact=True)).to_be_visible()
                 body.press('Control+z')
                 assert value(body)=='target same text' and (notes/'same.md').read_text()=='target same text'
                 body.fill('after edit');wait(lambda:(notes/'same.md').read_text()=='after edit')

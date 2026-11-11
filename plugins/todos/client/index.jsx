@@ -126,7 +126,10 @@ function TodosPage({ useStore, actions, call, getState }) {
   async function saveCurrent(explicit = true) {
     const current = getState();
     if (hasPending(current) || current.changed || !current.ready || current.conflict || detailComposing.current) return false;
-    if (!hasChanges(current) && current.item) return current.item;
+    if (!hasChanges(current) && current.item) {
+      set({ saveState: 'clean', error: '', leaveSaveBlocked: false });
+      return current.item;
+    }
     if (!current.item || !explicit && current.leaveSaveBlocked) return false;
     if (!current.draft.title.trim()) { set({ error: '待办标题不能为空。', leaveSaveBlocked: true }); return false; }
     return submit({ method: 'update', args: { id: current.item.id, expected: current.item.version, requestId: uuidv4(), patch: { title: current.draft.title, body: current.draft.body } } });
@@ -200,9 +203,11 @@ function TodosPage({ useStore, actions, call, getState }) {
     finally { set({ loading: false }); }
   }
   async function exportTodos() {
-    if (busy) return;
-    set({ loading: true, error: '' });
+    const current = getState();
+    if (busy || detailComposing.current || current.conflict || current.leaveSaveBlocked) return;
+    set({ loading: true, error: '', notice: '' });
     try {
+      if (!await retainEditor()) return;
       const data = await call('export', {});
       const href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2) + '\n'], { type: 'application/json' }));
       const anchor = document.createElement('a'); anchor.href = href; anchor.download = 'corilo-todos.json'; anchor.click();

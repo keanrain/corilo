@@ -1,6 +1,6 @@
 # Corilo Notes for DeepSeek Harness
 
-**[中文快速开始](QUICKSTART.zh-CN.md)** · Version **0.6.0**, not published to npm.
+**[中文快速开始](QUICKSTART.zh-CN.md)** · Version **0.6.1**, not published to npm.
 
 A small notes plugin: create, find, read, edit, rename, and auto-save ordinary Markdown. No model key is needed for direct editing. Harness supplies conversations, models, authentication, permissions and default tools. The runtime is fixed to **0.2.2-rc.1**, with **Node.js >=24.9.0**.
 
@@ -27,7 +27,7 @@ node plugins/notes/cli.mjs start --config /absolute/corilo-instance/notes.patch.
 
 For notes and todos together, use the repository's `setup:corilo`, `init:corilo` and `start:corilo` commands. Root `npm start` remains the legacy application.
 
-A received `corilo-dsh-notes-0.6.0.tgz` includes the built client. In a new installation directory, run `npm init -y` and `npm install --ignore-scripts /absolute/corilo-dsh-notes-0.6.0.tgz`. Use `npx --no-install corilo-notes` for init/check/start. npm still downloads the fixed production dependencies; no esbuild or source checkout is needed.
+A received `corilo-dsh-notes-0.6.1.tgz` includes the built client. In a new installation directory, run `npm init -y` and `npm install --ignore-scripts /absolute/corilo-dsh-notes-0.6.1.tgz`. Use `npx --no-install corilo-notes` for init/check/start. npm still downloads the fixed production dependencies; no esbuild or source checkout is needed.
 
 For an existing DSH installation, load the package's `index.mjs` with an absolute Markdown root as shown in `notes.patch.example.yml`. The browser client is supplied through `dsh.client` and `./client`; restart DSH after updating the package.
 
@@ -53,3 +53,5 @@ npm --prefix plugins/notes run test:browser
 ```
 
 The browser acceptance runs the actual published Harness with synthetic files, no model calls and no external requests. File/CLI tests also protect legacy compatibility. Physical phones, native IMEs, WebKit, real DeepSeek, remote deployment and NAS remain separately unverified. Licenses for bundled dependencies are in THIRD_PARTY_NOTICES.md.
+
+Autosave refreshes the library using the last submitted search, preserving the search context. Unsubmitted text in the search field is not applied by a background refresh.

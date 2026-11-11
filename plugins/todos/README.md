@@ -1,6 +1,6 @@
 # Corilo 个人待办 for DeepSeek Harness
 
-独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.5.1，目前没有发布到 npm。
+独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.5.2，目前没有发布到 npm。
 
 页面直接创建、查看、编辑、完成或撤销待办，不需要模型密钥；Agent 工具使用同一持久化服务。个人待办与 Harness 的 Agent 执行计划分开。首版不包含日期、日历、提醒调度或通知，创建待办不代表安排通知。
 
@@ -64,6 +64,8 @@ cd plugins/todos
 
 当前记录使用 `id`、`title`、`body`、`status`、`version`、`createdAt` 和 `updatedAt`，状态为 open／done。标题去掉首尾空白后 1–200 字符，说明最多 20000 字符。底层原始 v1 格式仍兼容旧 `notePath` 与 cancelled，当前插件不再提供这些操作。`./store` 是原始格式兼容接口；页面和 Agent 工具共用 `core.mjs` 的当前业务边界。请求回执随数据库持久保存，尚未设置自动清理或磁盘配额。
 
+页面导出会先保存当前详情修改；保存失败、版本冲突、未知结果或组字期间不开始下载。未提交的快速录入不自动创建。
+
 页面和 `corilo_todos_export` 可导出公开 `corilo-todos-v1` JSON，含所有状态的业务记录，最多 10000 条/8 MiB；超限报错，不能把部分导出叫完整。JSON 不含凭据、Harness 会话或幂等回执；首版不提供 JSON 导入，不把它称作等价数据库灾备。
 
 需要备份时停止所有使用该目录的 Harness 实例及外部写入，复用 restic 备份**整个待办资料目录**，恢复到新的空目录后校验并用匹配版本重新打开。不要只复制运行中的主数据库而漏掉 WAL。现有笔记备份仅选择 notes/state，**不会自动包含待办**；笔记 `restore.mjs` 只接受 notes/state，也不能处理三目录组合。待办目录属于新增备份边界，NAS/全实例一致性恢复仍需单独验收。
@@ -87,7 +89,7 @@ cd plugins/todos
 npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.5.1.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
+收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.5.2.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
 
 源码验证：
 
@@ -100,4 +102,4 @@ npm --prefix plugins/todos run test:browser
 
 ## 从旧版升级
 
-升级前先保存当前页面输入，再停止服务并备份整个待办目录。安装 0.5.1 包、沿用现有资料目录并重新启动 Harness；浏览器重新加载客户端。没有数据库迁移或数据清理。旧浏览器草稿只可用旧版本读取，新版不承诺恢复；不要清除站点数据后再寻找旧草稿。取消记录和关联字段仍包含在 JSON 导出中。
+升级前先保存当前页面输入，再停止服务并备份整个待办目录。安装 0.5.2 包、沿用现有资料目录并重新启动 Harness；浏览器重新加载客户端。没有数据库迁移或数据清理。旧浏览器草稿只可用旧版本读取，新版不承诺恢复；不要清除站点数据后再寻找旧草稿。取消记录和关联字段仍包含在 JSON 导出中。
