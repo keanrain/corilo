@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Source-checkout launcher: compose the two independent plugins, then delegate
+// Source-checkout launcher: compose the workspace plugin (or retain an existing legacy two-plugin config), then delegate
 // boot, authentication and model settings to the pinned Harness.
 import path from 'node:path';
 import { constants } from 'node:fs';
@@ -45,9 +45,9 @@ async function layout(input, existing = false) {
   return result;
 }
 const environment = locations => ({ ...process.env, DSH_HOME: locations.harness, DSH_AGENTS_HOME: locations.agents });
-const overlay = (locations, legacy = false) => [{ insert: [
+const overlay = (locations, legacy = false, dual = false) => [{ insert: [
   { id: 'corilo-notes', name: path.join(notesRoot, 'index.mjs'), config: { root: locations.notes, ...(legacy ? { stateRoot: locations.state } : {}) } },
-  { id: 'corilo-todos', name: path.join(todosRoot, 'index.mjs'), config: { root: locations.todos, notesRoot: locations.notes } },
+  ...(dual ? [{ id: 'corilo-todos', name: path.join(todosRoot, 'index.mjs'), config: { root: locations.todos, notesRoot: locations.notes } }] : []),
 ] }, { id: 'workspace-controller', config: { documentsDirectory: locations.workspace } }];
 async function bundledClient(packageRoot, name) {
   const manifest = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
@@ -55,8 +55,8 @@ async function bundledClient(packageRoot, name) {
   if (!bundle.includes('window.__ModuleLoader__.load') || !bundle.includes(manifest.name)) fail(`${name} 页面构建格式不兼容，请重新构建。`);
   return manifest;
 }
-async function dependencies() {
-  for (const [root, name] of [[notesRoot, 'notes'], [todosRoot, 'todos']]) {
+async function dependencies(dual = false) {
+  for (const [root, name] of [[notesRoot, 'notes'], ...(dual ? [[todosRoot, 'todos']] : [])]) {
     const require = createRequire(path.join(root, 'package.json'));
     try { require.resolve('@deepseek-ai/dsh/package.json'); }
     catch { fail(`缺少 ${name} 依赖，请运行 npm --prefix plugins/${name} ci --ignore-scripts。`); }
@@ -75,7 +75,8 @@ async function config(locations) {
   if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 65536) fail('组合配置必须是普通独立文件，且不超过 64 KiB。');
   let data;
   try { data = JSON.parse(await readFile(locations.config, 'utf8')); } catch { fail('组合配置无效，请保留原文件并核对。'); }
-  if (!isDeepStrictEqual(data, overlay(locations)) && !isDeepStrictEqual(data, overlay(locations, true))) fail('组合配置与当前源码/实例路径不匹配；不自动迁移或执行其他插件。');
+  if (![overlay(locations), overlay(locations, true), overlay(locations, false, true), overlay(locations, true, true)].some(expected => isDeepStrictEqual(data, expected))) fail('组合配置与当前源码/实例路径不匹配；不自动迁移或执行其他插件。');
+  return data[0].insert.some(entry => entry.id === 'corilo-todos');
 }
 
 export async function initialize(input) {
@@ -91,14 +92,14 @@ export async function initialize(input) {
 }
 export async function inspect(input) {
   const locations = await layout(input, true);
-  await dependencies(); await config(locations);
+  const dual = await config(locations); await dependencies(dual);
   const checked = JSON.parse((await runNotes('check', locations)).stdout);
   if (checked.root !== locations.notes || checked.stateRoot && checked.stateRoot !== locations.state || checked.harnessHome !== locations.harness || checked.agentsHome !== locations.agents) {
     fail('笔记配置路径与统一实例不匹配，请保留原配置并核对。');
   }
-  const todo = JSON.parse(await readFile(path.join(todosRoot, 'package.json'), 'utf8'));
-  if (todo.dependencies['@deepseek-ai/dsh'] !== checked.harness) fail('两个插件声明的 Harness 版本不一致，请恢复固定依赖。');
-  return { ...locations, node: checked.node, harnessVersion: checked.harness, git: checked.git, noteState: checked.state, todosValidation: 'on-start', client: 'built' };
+  if (dual) { const todo = JSON.parse(await readFile(path.join(todosRoot, 'package.json'), 'utf8'));
+    if (todo.dependencies['@deepseek-ai/dsh'] !== checked.harness) fail('两个插件声明的 Harness 版本不一致，请恢复固定依赖。'); }
+  return { ...locations, node: checked.node, harnessVersion: checked.harness, git: checked.git, noteState: checked.state, todosValidation: dual ? 'on-start' : 'not-loaded', client: 'built' };
 }
 export async function start(input, port = '3000') {
   const locations = await inspect(input);

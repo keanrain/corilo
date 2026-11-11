@@ -2,11 +2,14 @@ import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { NotesStore } from './storage.mjs';
 import { registerNotesApi } from './api.mjs';
+import { WorkspaceStore } from './workspace-store.mjs';
+import { registerWorkspaceApi } from './workspace-api.mjs';
 
 export const name = 'corilo-notes';
 export const inject = ['tools'];
 export const Config = z.object({
   root: z.string().required().description('Absolute directory containing the personal Markdown knowledge base.'),
+  interface: z.union(['filesmd', 'classic']).default('filesmd').description('Files.md workspace by default; classic preserves the earlier standalone notes page.'),
   stateRoot: z.string().description('Legacy recovery path accepted for existing configurations. The current plugin does not read, write or create history there.'),
 });
 
@@ -57,7 +60,7 @@ export function noteTools(store) {
       async execute(args, exec) { check(exec.signal); return store.create({ ...args, signal: exec.signal }); },
     }),
     defineTool({
-      name: 'corilo_notes_save', description: 'Create or save a Markdown note. Pass the version returned by read; null creates only when the path is absent. A stale version is a conflict: read again rather than blindly overwrite.',
+      name: 'corilo_notes_save', description: 'Create or save a Markdown note. Pass the version returned by read; null creates only when the path is absent. A stale version is a conflict: read again rather than blindly overwrite. In the Files.md workspace, personal tasks are Markdown checklist items (- [ ] / - [x]) in Later.md; capture uses Chat.md and journals use journal/YYYY.MM Month.md. Read first and preserve unrelated text, timestamps and completion states. These are personal records, not Agent execution plans.',
       parameters: {
         path: string, text: string,
         expected: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
@@ -82,6 +85,10 @@ export function noteTools(store) {
 export async function apply(ctx, config) {
   const store = await NotesStore.open(config.root);
   for (const tool of noteTools(store)) ctx.tools.register(tool);
-  await ctx.inject(['connection'], scope => { registerNotesApi(scope, store); });
+  const workspace = config.interface === 'classic' ? null : await WorkspaceStore.open(store);
+  await ctx.inject(['connection'], async scope => {
+    registerNotesApi(scope, store, { workspace, interface: workspace ? 'filesmd' : 'classic' });
+    if (workspace) await registerWorkspaceApi(scope, workspace);
+  });
   ctx.logger('corilo-notes').info('Corilo notes tools registered');
 }

@@ -1,3 +1,4 @@
+import { createWorkspace, WorkspaceEntry } from './workspace.jsx';
 import React, { useEffect, useRef, useState } from 'react';
 import { defineStore } from '@deepseek-ai/dsh-client-store';
 import { LibraryPanel } from './library.jsx';
@@ -148,8 +149,9 @@ function NotesPage({ useStore, actions, call, saves, getDraft }) {
   </section>;
 }
 function NotesIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="5" y="3" width="15" height="18" rx="2"/><path d="M3 7h4M3 12h4M3 17h4M10 8h6M10 12h6"/></svg>; }
-export const inject = ['slots', 'connection'];
+export const inject = ['slots', 'connection', 'layout'];
 export function apply(ctx) {
+  const workspace = createWorkspace(ctx);
   let snapshot = freshNote(), identity = null, changed = false;
   const call = async (method, args, signal) => {
     let result;
@@ -181,6 +183,6 @@ export function apply(ctx) {
     window.addEventListener('beforeunload', guard);
     return () => { sheet.remove(); window.removeEventListener('beforeunload', guard); saves.dispose(); };
   });
-  ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'corilo-notes', store, inject: () => ({ call, saves, getDraft: () => snapshot }) }, NotesPage));
+  ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'corilo-notes', store, inject: () => ({ call, saves, getDraft: () => snapshot, workspace, classic: NotesPage }) }, WorkspaceEntry));
   ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist', id: 'corilo-notes', order: 5, label: '笔记' }, NotesIcon));
 }

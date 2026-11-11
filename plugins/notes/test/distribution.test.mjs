@@ -125,7 +125,7 @@ test('npm tarball installs outside the checkout with production dependencies and
   const packed = await exec('npm', ['pack', '--json', '--pack-destination', base], { cwd: packageRoot, env, maxBuffer: 8 * 1024 * 1024 });
   const report = JSON.parse(packed.stdout)[0];
   const files = report.files.map(file => file.path);
-  for (const file of ['cli.mjs', 'index.mjs', 'api.mjs', 'storage.mjs', 'library.mjs', 'history.mjs', 'recovery-tools.mjs', 'lib/client.js', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'QUICKSTART.zh-CN.md', 'restore.mjs', 'BACKUP.zh-CN.md', 'LINUX.zh-CN.md', 'corilo-notes.service.example']) assert.ok(files.includes(file), `Missing runtime file: ${file}`);
+  for (const file of ['workspace-api.mjs', 'workspace-store.mjs', 'workspace/adapter.js', 'workspace/host.js', 'workspace/host.css', 'vendor/filesmd/web/index.html', 'vendor/filesmd/LICENSE', 'vendor/filesmd/web/lib/LICENSES.txt', 'import-todos.mjs', 'cli.mjs', 'index.mjs', 'api.mjs', 'storage.mjs', 'library.mjs', 'history.mjs', 'recovery-tools.mjs', 'lib/client.js', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'QUICKSTART.zh-CN.md', 'restore.mjs', 'BACKUP.zh-CN.md', 'LINUX.zh-CN.md', 'corilo-notes.service.example']) assert.ok(files.includes(file), `Missing runtime file: ${file}`);
   assert.ok(files.every(file => !/^(client\/|test\/|node_modules\/|\.env|.*\.patch\.json$)/.test(file)), 'Distribution excludes sources/tests/user configs');
   const installRoot = path.join(base, 'independent-install');
   await mkdir(installRoot);
@@ -178,6 +178,17 @@ test('npm tarball installs outside the checkout with production dependencies and
   assert.ok(address, 'Installed tarball did not launch the real Harness Web profile');
   assert.equal((await fetch(address)).status, 401);
   assert.equal((await fetch(address + 'api/corilo-notes/list', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 401);
+  const launch = /dsh web: (http:\/\/127\.0\.0\.1:\d+\/\?[^\s\x1b]+)/.exec(output)?.[1];
+  assert.ok(launch);
+  const login = await fetch(launch, {redirect:'manual'}), cookie = login.headers.getSetCookie()[0]?.split(';')[0];
+  assert.ok(cookie);
+  const html = await fetch(address+'api/corilo-notes/workspace/index.html',{headers:{cookie}});
+  assert.equal(html.status,200);assert.match(await html.text(),/host\.js/);
+  assert.equal((await fetch(address+'api/corilo-notes/workspace/adapter.js',{headers:{cookie}})).status,200);
+  const identity = await (await fetch(address+'api/corilo-notes/identity',{method:'POST',headers:{cookie,'content-type':'application/json'},body:'{}'})).json();
+  assert.equal(identity.value.interface,'filesmd');
+  const file = await (await fetch(address+'api/corilo-notes/workspace/fs',{method:'POST',headers:{cookie,'content-type':'application/json','x-corilo-workspace-id':identity.value.workspaceId},body:JSON.stringify({method:'read',path:'previous.md'})})).json();
+  assert.equal(Buffer.from(file.value.data,'base64').toString(),'upgrade keeps existing notes');
   // Proof that the package's host loaded and initialized its separately bound
   // recovery state, rather than merely booting an empty Harness profile.
   const marker = JSON.parse(await readFile(path.join(state, 'corilo-notes-state.json'), 'utf8'));
@@ -223,4 +234,13 @@ test('npm tarball installs outside the checkout with production dependencies and
   assert.equal((await previousStore.read('previous.md')).text, 'upgrade keeps existing notes');
   assert.deepEqual(await previousStore.history('previous.md'), previousHistory);
   assert.ok((await previousStore.search({ query: '蓝鲸' })).items.some(item => item.kind === 'content'));
+});
+
+test('explicit classic interface is validated and preserved by declarative rebind',async t=>{
+ const base=await mkdtemp(path.join(os.tmpdir(),'corilo-classic-config-'));t.after(()=>rm(base,{recursive:true,force:true}));
+ const original=path.join(base,'old.json'),next=path.join(base,'new.json');
+ await initialize({root:path.join(base,'notes'),configPath:original,interface:'classic'});
+ assert.equal((await inspect(original)).interface,'classic');
+ await rebind(original,next);assert.equal((await inspect(next)).interface,'classic');
+ await assert.rejects(initialize({root:path.join(base,'notes'),configPath:path.join(base,'bad.json'),interface:'unknown'}),/Unsupported workspace interface/);
 });

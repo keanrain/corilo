@@ -97,10 +97,11 @@ async function readConfig(configPath, { allowPreviousPackage = false } = {}) {
   if (!Array.isArray(data) || data.length !== 1 || !data[0] || typeof data[0] !== 'object' || Array.isArray(data[0]) || Object.keys(data[0]).join() !== 'insert' ||
       !Array.isArray(data[0].insert) || data[0].insert.length !== 1 || entry?.id !== 'corilo-notes' ||
       !supportedEntry || Object.keys(entry).some(key => !['id', 'name', 'config'].includes(key)) ||
-      !entry.config || Object.keys(entry.config).some(key => !['root', 'stateRoot'].includes(key))) {
+      !entry.config || Object.keys(entry.config).some(key => !['root', 'stateRoot', 'interface'].includes(key))) {
     fail('This command accepts a single Corilo notes overlay for this installed package. Use corilo-notes rebind to create a new overlay after moving installations.');
   }
-  return locations(entry.config.root, entry.config.stateRoot, configPath);
+  if (entry.config.interface !== undefined && !['filesmd','classic'].includes(entry.config.interface)) fail('Unsupported workspace interface.');
+  return { ...await locations(entry.config.root, entry.config.stateRoot, configPath), ...(entry.config.interface ? {interface:entry.config.interface} : {}) };
 }
 
 async function stateBinding(root, stateRoot) {
@@ -134,12 +135,13 @@ async function gitVersion() {
   });
 }
 
-export async function initialize({ root, stateRoot, configPath }) {
+export async function initialize({ root, stateRoot, configPath, interface: ui }) {
   await runtime();
+  if (ui !== undefined && !['filesmd','classic'].includes(ui)) fail('Unsupported workspace interface.');
   const resolved = await locations(root, stateRoot, configPath);
   await homes(resolved);
   if (resolved.stateRoot) await stateBinding(resolved.root, resolved.stateRoot);
-  const overlay = [{ insert: [{ id: 'corilo-notes', name: path.join(packageRoot, 'index.mjs'), config: { root: resolved.root, ...(resolved.stateRoot ? { stateRoot: resolved.stateRoot } : {}) } }] }];
+  const overlay = [{ insert: [{ id: 'corilo-notes', name: path.join(packageRoot, 'index.mjs'), config: { root: resolved.root, ...(ui ? {interface:ui} : {}), ...(resolved.stateRoot ? { stateRoot: resolved.stateRoot } : {}) } }] }];
   await writeFile(resolved.configPath, JSON.stringify(overlay, null, 2) + '\n', { flag: 'wx', mode: 0o600 }).catch(error => {
     if (error.code === 'EEXIST') fail('Config already exists; it was not changed. Choose another --config path.');
     fail('Could not create config. Its parent directory must already exist and be writable.');
@@ -153,7 +155,7 @@ export async function initialize({ root, stateRoot, configPath }) {
 export async function rebind(configPath, outputPath) {
   if (!outputPath) fail('rebind requires --output with a new absolute config path.');
   const previous = await readConfig(configPath, { allowPreviousPackage: true });
-  return initialize({ root: previous.root, stateRoot: previous.stateRoot, configPath: outputPath });
+  return initialize({ root: previous.root, stateRoot: previous.stateRoot, configPath: outputPath, interface: previous.interface });
 }
 
 export async function initializeDirectory(input) {

@@ -1,12 +1,12 @@
 # Corilo 可里
 
-基于 **DeepSeek Harness** 的个人笔记与待办插件：简单记录、查找与完成事情，资料保存在自己的设备并可带走。首期面向 Linux 小主机／常开电脑，复用 Harness 的网页、会话、模型设置与默认工具。
+运行在 **DeepSeek Harness** 中的 Files.md 工作区：笔记、待办清单、日记和附件都保存在自己的设备，既能直接操作，也能交给原生 Agent。
 
-当前专注核心笔记和待办。日期、日程、提醒、笔记联动与自动记忆暂缓；不要求 Supabase、Corilo 账号或 GitHub 绑定。
+当前主包 **`@corilo/dsh-notes` 0.7.0** 完整移植 Files.md 前端，保留其菜单和交互；新实例只加载这一个插件。普通编辑、勾选、收集与日记不用模型。Harness 负责模型、会话、登录和权限，不运行旧 Pi、Telegram Bot 或另一套同步服务。
 
-## 一起使用笔记和待办
+## 三步启动
 
-需要 Node.js ≥24.9.0。在仓库根目录执行下面三步，实例目录选在**仓库之外**，使用绝对路径：
+需要 Node.js ≥24.9.0。在仓库根执行，实例路径使用仓库外的绝对路径：
 
 ```sh
 npm run setup:corilo
@@ -14,46 +14,29 @@ npm run init:corilo -- --directory /absolute/corilo-instance
 npm run start:corilo -- --directory /absolute/corilo-instance
 ```
 
-`setup` 按两个插件各自的锁文件安装依赖并构建；`init` 只需一次，独占生成配置，不覆盖或迁移已有实例；以后只需 `start`。打开终端打印的鉴权地址，关闭 Harness 模型密钥引导即可直接记笔记与待办，核心操作不用模型。Ctrl+C 停止。
+`setup` 只安装并构建工作区包。`init` 只创建配置，不覆盖或迁移已有实例；以后直接 `start`。使用 Harness 打印的鉴权地址，关闭模型配置引导后点击侧栏“笔记”。默认回环端口 3000，Ctrl+C 停止；预检使用 `npm run check:corilo -- --directory /absolute/corilo-instance`。
 
-默认监听回环地址、固定端口 `3000`，可为 `start` 添加 `--port 其他端口`。排错用 `npm run check:corilo -- --directory /absolute/corilo-instance`；检查不创建资料目录、原生 home 或待办数据库，数据库 schema 在实际启动时校验。旧独立实例继续按各插件指南管理，统一入口不自动接管；源码路径改变后需核对配置，详见[开发指南](docs/DEVELOPMENT.md)。
+界面保留 Files.md 原生文件树、新建、查找、标题内改名、移动／归档、分栏、收集、日记和 Markdown 清单。Agent 按钮先保存当前输入，再切到 Harness 会话；返回时保留编辑区。文件由小主机统一保存，其他电脑／手机通过浏览器访问，不需要每台设备选择本地文件夹。
 
-## 当前功能
+## 旧实例与待办
 
-| 插件 | 核心体验 | 次级能力 |
-|---|---|---|
-| [笔记](plugins/notes/README.md) v0.6.2 | 新建即写、标题内改名、自动保存、Markdown 编辑／预览与查找 | 失败保留当前输入、未保存关闭提醒；旧恢复资料保留 |
-| [待办](plugins/todos/README.md) v0.5.2 | 清单内连续新增、行内完成／撤销、伸缩详情与键盘导航 | 版本与幂等保护、JSON 导出 |
+旧双插件配置和 `plugins/todos` 0.5.2 保留兼容，不自动改写配置或删除 SQLite。新工作区待办采用 Markdown 复选框，旧待办可显式迁入 Later.md：
 
-页面与 Agent 工具共用各插件业务服务。视觉复用 Astryx Neutral 0.7.11 静态 token，使用宿主 React；不是 Astryx React 组件集成。
-
-## 仓库与分发
-
-```text
-plugins/notes/      独立笔记 npm 包、客户端、服务与测试
-plugins/todos/      独立待办 npm 包、客户端、服务与测试
-launcher/          源码组合启动器与启动验收
-deploy/systemd/   统一用户服务示例（不自动安装）
-scripts/          开发工具、历史脚本及旧入口兼容转发
-docs/             当前产品／架构／开发文档与历史档案
-app/              保留的旧本机／云端应用与 vendor
-android/ prototype/ p0/   保留的历史工程与证据
+```sh
+# 先停止源、目标服务并备份；默认仅预览
+node plugins/notes/import-todos.mjs --source /absolute/old/todos/todos.sqlite --root /absolute/corilo-instance/notes
+# 核对预览后执行
+node plugins/notes/import-todos.mjs --source /absolute/old/todos/todos.sqlite --root /absolute/corilo-instance/notes --apply
 ```
 
-两个插件独立安装、构建、打包，不依赖根应用发布；安装与 tarball 分发入口见[插件导航](plugins/README.md)。当前 npm 包仍为 `private`，尚未公开发布 npm。本仓库统一启动器用于源码组合使用，不是第三个已发布包。
+导入保留原 SQLite，已完成／未完成转为清单，取消记录及原字段保存在 archive/ 的迁移记录中；重试不会重复追加。确认迁移后，旧组合配置可移除 `corilo-todos` 项，保留原配置副本用于回退。不要让旧服务继续维护另一份“当前待办”。[完整说明](plugins/notes/README.md)。
 
-实例与源码分开：`notes/` 存正文，`todos/` 存 SQLite；旧实例的 `state/` 原样保留，新版不生成笔记历史；`runtime/{harness,agents}` 存 Harness 原生配置／会话，`workspace/` 为默认工具工作目录。整个实例包含敏感状态，不能当作无凭据的资料导出。
+## 分发与边界
 
-## 使用边界
+插件可独立打包，不需要旧 app/：进入 `plugins/notes` 执行 `npm pack`，收到包的人只需安装生产依赖并初始化。包仍为 private，尚未公开发布 npm。[快速开始](plugins/notes/QUICKSTART.zh-CN.md)。
 
-Harness 固定为开发者预览版 `0.2.2-rc.1`，升级须验证兼容性。插件版本保护只协调各自服务，默认文件／bash 工具及外部编辑器不受其队列约束，也不是多租户隔离边界。
+Files.md 固定为源码记录中的版本，Harness 固定 `0.2.2-rc.1`。当前真实 Harness／Chromium 与迁移验收不代表真实 DeepSeek、物理手机、原生输入法／WebKit、麦克风、目标 Linux 常驻部署或 NAS 已验收。没有可靠提醒或自动记忆；NAS 先做备份，未经验证的 SMB/NFS 不作为工作盘。
 
-真实发布版 Harness、Chromium 核心流程与独立包生产安装已有验收；物理手机／原生输入法／WebKit、真实 DeepSeek、远程部署、设备开机自启及 NAS 尚未验收。NAS 先作备份方向，未验证 SMB/NFS 或双向同步目录为工作目录。笔记级 restic 恢复不等于完整实例备份。
+目录保持：`plugins/notes` 当前工作区包，`plugins/todos` 旧兼容包，`launcher/` 源码入口，`docs/` 当前文档与归档。旧 app/、Android、原型与用户数据保留，根 `npm start/test` 仍运行旧应用。
 
-Linux 常驻可审阅[统一 systemd 用户服务示例](deploy/systemd/corilo.service.example)，替换绝对路径后按[Linux 指南](plugins/notes/LINUX.zh-CN.md)管理，将服务名改为 `corilo.service` 并采用统一入口；原生 home 由启动器固定。示例不配置远程监听，也不自动安装或启用。
-
-## 文档入口
-
-[设计索引](docs/README.md) · [当前业务规则](docs/PRODUCT-SPEC.md) · [当前架构](docs/TECHNICAL_DESIGN.md) · [开发与检查](docs/DEVELOPMENT.md) · [开发脚本](scripts/README.md)
-
-`npm start` 与 `npm test` 仍分别运行旧本机应用及旧测试；旧代码和资料保留，不自动迁移。迁移前完整运行说明见[旧应用档案](docs/history/LEGACY-APP.md)。
+[设计索引](docs/README.md) · [业务规则](docs/PRODUCT-SPEC.md) · [架构](docs/TECHNICAL_DESIGN.md) · [开发指南](docs/DEVELOPMENT.md) · [插件导航](plugins/README.md)

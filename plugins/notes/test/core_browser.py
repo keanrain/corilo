@@ -18,7 +18,7 @@ with tempfile.TemporaryDirectory(prefix='corilo-review-') as temp:
     (notes/'unrelated.md').write_text('其他笔记')
     config=base/'overlay.json'
     config.write_text(json.dumps([{'insert':[
-        {'id':'corilo-notes','name':str(ROOT/'index.mjs'),'config':{'root':str(notes),'stateRoot':str(base/'history')}},
+        {'id':'corilo-notes','name':str(ROOT/'index.mjs'),'config':{'root':str(notes),'interface':'classic','stateRoot':str(base/'history')}},
     ]},{'id':'workspace-controller','config':{'documentsDirectory':str(base/'workspace')}}]))
     logfile=base/'host.log'
     with logfile.open('w') as log:

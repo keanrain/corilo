@@ -1,22 +1,16 @@
-# Corilo Notes for DeepSeek Harness
+# Corilo Files.md Workspace for DeepSeek Harness
 
-**[中文快速开始](QUICKSTART.zh-CN.md)** · Version **0.6.2**, not published to npm.
+**Version 0.7.0** · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
 
-A small notes plugin: create, find, read, edit, rename, and auto-save ordinary Markdown. No model key is needed for direct editing. Harness supplies conversations, models, authentication, permissions and default tools. The runtime is fixed to **0.2.2-rc.1**, with **Node.js >=24.9.0**.
+One plugin supplies the Files.md workspace inside Harness: files, Markdown notes,
+checklists, capture, journals, split editing and media. The complete pinned upstream
+web tree and menus are retained. Harness supplies authentication, native Agent
+conversations, model configuration and permissions. No Go sync server, Pi loop,
+Telegram service or separate model UI is started.
 
-The editor reuses CodeMirror 6 and Lezer, with Markdown styles, basic formatting, list continuation, search and undo/redo. Optional reading preview uses markdown-it and DOMPurify without raw HTML, active images or external resources. React comes from Harness.
+## Install and run
 
-## One save workflow
-
-Click **新笔记** and write, or type into the initial page. Markdown auto-saves after a one-second pause; Ctrl/Cmd+S saves immediately. Click the title to rename within its directory. Opening another note first saves the current edit. Save responses retain later typing; rename and initial creation retain undo history, while another document gets its own editing session.
-
-Failures retain current input in the active plugin session. Conflicts and unknown outcomes stop automatic writes. Read the file to verify or explicitly save a copy; uncertain creation is never retried automatically. Closing an unsaved page prompts before leaving.
-
-**No notes draft library, recovery UI, history, trash, delete page, or manual-save mode.** There is no notes IndexedDB persistence and no promise of recovering unsaved input after a reload, crash or browser closure. Switching Harness panels retains the active plugin session and its save pipeline.
-
-## Install from source
-
-From the repository root:
+Node.js **>=24.9.0**, Harness **0.2.2-rc.1**, fixed dependencies. From this checkout:
 
 ```sh
 npm --prefix plugins/notes ci --ignore-scripts
@@ -25,35 +19,118 @@ node plugins/notes/cli.mjs init --directory /absolute/corilo-instance
 node plugins/notes/cli.mjs start --config /absolute/corilo-instance/notes.patch.json
 ```
 
-For notes and todos together, use the repository's `setup:corilo`, `init:corilo` and `start:corilo` commands. Root `npm start` remains the legacy application.
+For a received tarball, in a new installation directory:
 
-A received `corilo-dsh-notes-0.6.2.tgz` includes the built client. In a new installation directory, run `npm init -y` and `npm install --ignore-scripts /absolute/corilo-dsh-notes-0.6.2.tgz`. Use `npx --no-install corilo-notes` for init/check/start. npm still downloads the fixed production dependencies; no esbuild or source checkout is needed.
+```sh
+npm init -y
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.7.0.tgz
+npx --no-install corilo-notes init --directory /absolute/corilo-instance
+npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
+```
 
-For an existing DSH installation, load the package's `index.mjs` with an absolute Markdown root as shown in `notes.patch.example.yml`. The browser client is supplied through `dsh.client` and `./client`; restart DSH after updating the package.
+The package includes the built client, pinned Files.md assets and notices; source
+checkout, esbuild and the legacy app are unnecessary for production installation.
+Use the private authenticated URL printed by Harness; never share its token.
+Dismiss the model-key introduction to edit without a model. Existing DSH installs
+can use `notes.patch.example.yml`, with absolute entry and root paths.
 
-## Data and compatibility
+## Workspace and Agent
 
-New configuration only needs `root`; **Git and stateRoot are not required**. The current plugin never creates history or writes to legacy recovery directories. Old `stateRoot` settings are accepted for existing installations. Existing Markdown, history directories and browser draft databases are not migrated or deleted.
+The native Files.md interface runs in a persistent iframe document. File access
+uses authenticated Harness routes and the host disk as the sole authority; no
+browser directory grant, local mirror or external sync is required. Native menus,
+new files/folders, search, title rename, move/archive, links, split panes, capture,
+journals and checklists remain. The host status/Agent bar reserves space above the
+workspace. External embedded media are not fetched automatically; local media
+remain available. The folder chooser explains that the directory is configured on
+the host. External bot/API actions explain that those services are not connected.
 
-Before upgrading, save any unsaved input using the old version. Old browser recovery data remains readable only by the old version at the same origin; the new version does not open that database. Retain the old installation and config for rollback. `rebind --config /old.patch.json --output /new.patch.json` creates a new installation overlay without overwriting the old one or moving data.
+`Chat.md` is deterministic capture, `Later.md` is a Markdown checklist, `journal/`
+contains journals and `media/` holds attachments. These are separate from Harness
+model conversations. The Agent button flushes pending edits and selects the native
+conversation; returning retains the same iframe and editing session. Agent tools
+read and version-save the same files and share the same queue as the workspace.
+No model is invoked by direct editing, capture, journals or checkbox operations.
 
-Legacy Git/history helpers and offline restore code remain solely for existing data compatibility. [The old backup guide](BACKUP.zh-CN.md) describes that older format, not features of this plugin. Ordinary Markdown can be backed up with tools the user already uses; the plugin does not create a backup service.
+Writes check the version actually read; stale writes fail and retain input.
+Unknown writes stop further writes to that file until a read verifies the result.
+Capture replies lost after committing cannot be blindly sent again. Errors allow
+file verification, explicit adoption or saving a separate note. Filename changes
+must not overwrite existing targets. A service queue does not provide transactions
+against arbitrary external editors/default shell tools. Beforeunload warns about
+unsaved input; browser refresh/crash recovery is not promised.
 
-## Storage contract
+Text/settings limit: 1 MiB. Attachment limit: 16 MiB. Directory list: at most
+20000 entries, 64 MiB aggregate reads; recursive version scans have a 20-level /
+20000-entry / 10-second budget. Hidden paths, traversal, symlinks, hard links and
+special files are refused. Operations involving unsafe descendants fail clearly.
+The root is an instance configuration, not a sandbox for all Harness tools.
 
-UI and Agent tools share NotesStore. New files require expected:null; updates require the read SHA-256 version. Stale writes fail. Paths reject traversal, hidden components, links and special files. Notes are limited to 1 MiB; metadata browse and literal ripgrep search are bounded. These checks coordinate this service, not arbitrary external editors or Harness bash/file tools.
+## Existing installations and SQLite todos
 
-The tools are `corilo_notes_list`, `browse`, `search`, `read`, `create`, `save`, `rename`, and compatibility `capture` under the same prefix. History/restore/trash tools and HTTP routes are not registered.
+Old configs still load, with Files.md as the default interface. To keep the prior
+React/CodeMirror 6 notes page explicitly set `interface: classic` in its plugin
+config. Old `stateRoot` is accepted but not used by the current plugin. Old history,
+IndexedDB, SQLite, credentials and conversations are never automatically migrated
+or deleted. Classic recovery helpers remain for pre-existing data only.
 
-## Verify
+New source-launcher configs load only this workspace package. Old two-plugin
+configs remain supported; the SQLite package is a compatibility path, not a second
+required install for new workspaces. Stop both source and destination services and
+back up their directories before importing personal tasks:
+
+```sh
+# Read-only preview: does not create the notes directory.
+corilo-import-todos --source /absolute/old/todos/todos.sqlite --root /absolute/notes
+# Explicit import after reviewing the counts and paths.
+corilo-import-todos --source /absolute/old/todos/todos.sqlite --root /absolute/notes --apply
+```
+
+Source checkouts use `node plugins/notes/import-todos.mjs` instead of the installed
+command. The source must be a regular, unlinked v1 Corilo SQLite file in a directory
+separate from notes. It is opened read-only. Existing `Later.md` is preserved and
+new items appended: open → `- [ ]`, done → `- [x]`; cancelled records are never
+reopened. Body and association remain readable; all original business fields,
+including cancellation, timestamps and versions, are preserved exactly in the
+public JSON inside `archive/Todo import <identity>.md`.
+
+The import journal is written before the target and records planned/complete
+state and before/after versions. A retry after a crash does not append twice.
+Subsequent changes to the source or conflicting target edits require review.
+Both the target and journal must fit 1 MiB; oversize imports fail before writing.
+The old database, receipts and package remain. After verifying the import, remove
+only the `corilo-todos` entry from the old combined overlay (keep its backup), and
+restart using the remaining notes plugin. Do not continue maintaining two task
+sources or delete the old database as part of this upgrade.
+
+## Tools, provenance and verification
+
+The eight `corilo_notes_*` tools retain their identifiers: list, browse, search,
+read, create, save, rename and capture. Agent saves personal checklists and journals
+as ordinary versioned Markdown; its execution-plan todo is a separate concept.
+Actual DeepSeek interaction requires its own validation and is not claimed by
+synthetic tool-pipeline tests.
+
+Upstream: https://github.com/zakirullin/files.md at
+`9e948ba6071e320c41c866f92817cf96f9bb7ba6`. `vendor/filesmd/SOURCE.json` records hashes;
+vendored web files are unchanged. `workspace-api.mjs` applies checked runtime
+patches for filename safety, lifecycle, read-error propagation and local-only media.
+`workspace/` adapts file handles and native Agent navigation. Original MIT and
+bundled third-party notices are distributed. Classic CodeMirror 6/Astryx code and
+its notices remain only for explicit compatibility.
 
 ```sh
 npm --prefix plugins/notes test
 npm --prefix plugins/notes run test:browser
+# Independent tarball; run inside this package directory.
+npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-The browser acceptance runs the actual published Harness with synthetic files, no model calls and no external requests. File/CLI tests also protect legacy compatibility. Physical phones, native IMEs, WebKit, real DeepSeek, remote deployment and NAS remain separately unverified. Licenses for bundled dependencies are in THIRD_PARTY_NOTICES.md.
-
-Autosave refreshes the library using the last submitted search, preserving the search context. Unsubmitted text in the search field is not applied by a background refresh.
-
-The page has no path-entry form, list refresh button, or editor toolbar. Clear and submit the search to return to all notes. CodeMirror keyboard shortcuts for formatting, search and undo/redo remain available.
+`test/workspace_browser.py` covers the current real Harness workspace;
+`test/core_browser.py` covers the optional classic page. Node tests cover storage,
+Agent pipeline, host boot, isolated production installation, source hashes and
+SQLite migration. All use synthetic data and no models/external services. Physical
+phones, native IME/WebKit, microphone, real models, remote deployments, Linux
+service/autostart, NAS and full-instance recovery remain separately unverified.
+[Linux guide](LINUX.zh-CN.md). [Old recovery guide](BACKUP.zh-CN.md) is only for old
+notes/state backups, not a complete Harness-instance backup.

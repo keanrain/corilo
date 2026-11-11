@@ -25,7 +25,7 @@ def main():
         patch.write_text(json.dumps([
             {'insert': [
                 {'id': 'corilo-todos', 'name': str(ROOT / 'index.mjs'), 'config': {'root': str(base / 'todos')}},
-                {'id': 'corilo-notes', 'name': str(ROOT.parent / 'notes/index.mjs'), 'config': {'root': str(base / 'notes'), 'stateRoot': str(base / 'notes-state')}}
+                {'id': 'corilo-notes', 'name': str(ROOT.parent / 'notes/index.mjs'), 'config': {'root': str(base / 'notes'), 'interface': 'classic', 'stateRoot': str(base / 'notes-state')}}
             ]},
             {'id': 'workspace-controller', 'config': {'documentsDirectory': str(base / 'documents')}}
         ]))

@@ -1,22 +1,22 @@
 # Corilo 可里开发约束
 
-当前方向 v0.32（2026-11-10）：用户决定以 DeepSeek Harness 为主体，Corilo 提供笔记、待办/日程与后续记忆插件，首期个人自部署。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，开发命令见 docs/DEVELOPMENT.md。用户新决定优先于旧 Pi/Files.md 云端要求；产品规则只在 PRODUCT-SPEC.md 维护。
+当前方向 v0.33（2026-11-11）：用户决定将 files.md 完整前端移植进 Harness，保留其菜单和功能，后续再决定裁剪；笔记、清单、待办、日记收敛为一个工作区插件，机器人能力使用 Harness Agent。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，命令见 docs/DEVELOPMENT.md。
 
-视觉采用 Astryx Neutral 0.7.11 静态 token 子集与插件局部 CSS 适配，MIT notice 随包；固定 Harness 实测 React 18.3.1，而 Astryx React 组件要求 >=19，不得擅自升级宿主、另带 React 或声称已接入其组件。
+当前默认前端是 plugins/notes/vendor/filesmd 固定版本的原生 HTML／JS／CSS 与 CodeMirror 5／HyperMD，在独立 iframe 文档中运行，通过 Harness 鉴权路由和 workspace/ 适配主机文件。保留 vendor 原文，安全、宿主生命周期和存储差异通过 workspace-api.mjs 的校验式运行时转换与适配层实现，保留来源和全部第三方许可。不直接接入 Go 同步、Telegram 或旧 Pi，不外联上传资料，不放宽整个宿主的 CSP。
 
-笔记正文复用固定 CodeMirror 6 与 Lezer Markdown，不自行维护富文本数据模型或解析器。编辑仍输出普通 Markdown；即时标记显隐只影响呈现，保存回执保留光标和撤销历史，跨文档隔离撤销，组字期间暂停保存／格式操作。完整预览仍由 markdown-it／DOMPurify 负责，不能因编辑器接入放开 HTML 或主动外部资源。
+旧 CodeMirror 6／Astryx 笔记页通过 interface: classic 保留兼容；其测试不是当前 Files.md 工作区的验收。之前的极简界面和删减规则已由用户最新决定替代，不再据此裁掉 Files.md 菜单。当前界面和 Agent Markdown 工具共用 NotesStore 及其队列；WorkspaceStore 扩展目录、附件和设置文件操作，浏览器不直接访问磁盘，不建设第二个 Agent loop。
 
-用户最新收敛：笔记只要新建、查找、编辑、同目录改名和自动保存。明确移除笔记草稿库、恢复草稿、历史、回收站、删除入口、手动保存开关及单独原话捕获流程，不只是隐藏到次级入口。当前输入仅在会话内保留，未保存关闭时提醒；不承诺刷新／崩溃恢复。旧 IndexedDB 与历史目录保留但当前插件不读写，旧恢复代码只用于存量兼容；新启动不要求 stateRoot／Git。笔记页面也不提供按路径打开、列表刷新按钮或正文格式／撤销／重做工具栏；编辑器快捷键保持。不得因旧规格或旧测试重新添加这些功能。待办同样移除草稿库／恢复、手动保存开关、重复新建表单、关联笔记和取消入口；仅保留新增、查找、编辑、完成／撤销及 JSON 导出。页面与工具共用 coreTodos 业务边界，版本检查和 UUID 幂等回执保持内部实现。旧 SQLite 取消记录和关联字段原样保留并包含在导出中，旧 IndexedDB 不读写、不删除；当前输入只在会话内保留。日期、日程、提醒、联动和自动记忆暂缓。
+新源码实例只加载 @corilo/dsh-notes 工作区包，plugins/todos 0.5.2 作为存量 SQLite 兼容包保留。旧双插件配置继续可启动，不自动重写配置、迁移或删除数据。corilo-import-todos 默认只预览，--apply 显式导入 Later.md；运行前停止旧服务并备份。原 SQLite 只读，已取消记录、关联及原字段保存在迁移记录里；可恢复的迁移日志防重复追加，原数据库和旧浏览器资料保持。不得自动重放旧任务或通知。
 
 复用 Harness 自带 Web UI、模型设置、会话、默认工具与运行机制，不再新建 Corilo Agent loop、模型管理、权限审批或任务调度底座。模型初期 DeepSeek。优先独立插件和公开扩展点，固定开发者预览的兼容版本；接入文档与真实插件运行证据必须对应同一版本。工具插件不等于笔记编辑页面；代码存在不等于已在 Harness Web/手机验收。不将 Harness 工具中的执行计划 todo 当个人待办/日程，不将内存定时器当可靠提醒。
 
 正文为普通 Markdown 与附件。首期常开电脑/主机本机磁盘作为工作目录，NAS 为独立备份目标；不把未经验证的 SMB/NFS 或双向同步目录宣称为可用工作目录。个人版不依赖 Supabase、Corilo 官方账号或 GitHub 绑定；远程访问鉴权、版本保护、资料导出与备份恢复仍需交付。Tailscale 为建议，尚未部署。用户已选 Linux 小主机/常开电脑为首个部署方向；具体硬件、发行版及远程方式未定，不能宣称所有 NAS 或移动端已兼容。
 
-当前独立包为 plugins/notes（Markdown）与 plugins/todos（个人待办 SQLite）；两者页面/工具共用各自业务服务。待办不含日期/调度/通知，不能当可靠提醒已交付。新代码位于 plugins/；旧 app/host、app/cloud、app/vendor、android、prototype 和既有配置/数据原样保留，作为迁移前实现，不默认删除或转换数据。旧 Pi 会话、PostgreSQL 任务和 Harness 会话不是同一格式，不自动重放历史工具。品牌与兼容标识（.personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/ 等）保留。旧版本文档标注历史，不继续作为当前路线扩展。
+当前主包是 plugins/notes（Files.md 工作区）；plugins/todos 保留为旧实例兼容。Markdown 勾选清单不是可靠提醒，日期/调度/通知并未因此交付。新代码位于 plugins/；旧 app/host、app/cloud、app/vendor、android、prototype 和既有配置/数据原样保留，作为迁移前实现，不默认删除或转换数据。旧 Pi 会话、PostgreSQL 任务和 Harness 会话不是同一格式，不自动重放历史工具。品牌与兼容标识（.personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/ 等）保留。旧版本文档标注历史，不继续作为当前路线扩展。
 
 使用现有 checkout，不擅自创建 worktree。保留其他改动；按已授权范围在开发分支提交推送，不 force-push。部署、公开可见性变更及破坏性操作需要对应授权。代码仓库与知识库分开。使用虚构资料和合成凭据测试，不提交或输出真实密钥和用户笔记。
 
-仓库分层：plugins/notes 与 plugins/todos 保持独立 npm 包和锁文件；launcher/ 是源码组合入口及启动测试，不是第三个发行包；deploy/ 是人工审阅的部署示例；scripts/ 放开发工具与历史兼容脚本。scripts/corilo.mjs 保留转发以兼容已有命令和服务。根依赖/锁文件及 npm start/test 服务旧应用，不改作插件安装入口。当前文档留在 docs/，阶段记录及旧路线归 docs/history/；历史实现保留原目录，避免破坏既有路径。不要为此引入 workspace、共享运行包或迁移用户实例。
+仓库分层：plugins/notes 是当前工作区包，plugins/todos 保留独立锁文件维护旧实例；launcher/ 是源码入口及启动测试，不是第三个发行包；deploy/ 是人工审阅的部署示例；scripts/ 放开发工具与历史兼容脚本。scripts/corilo.mjs 保留转发以兼容已有命令和服务。根依赖/锁文件及 npm start/test 服务旧应用，不改作插件安装入口。当前文档留在 docs/，阶段记录及旧路线归 docs/history/；历史实现保留原目录，避免破坏既有路径。不要为此引入 workspace、共享运行包或迁移用户实例。
 
 应用改动运行 npm test；新插件按其实际测试脚本执行，必须验证真实 Cordis/Harness 加载及工具调用，不能只用手写假 ctx 宣称接入通过。修改文件接口或 UI 时，另运行既有 python3 app/tests/browser_smoke.py、browser_review.py、browser_sync.py；它们仅保护旧 app，不替代新 Harness 插件页面的浏览器验收。保留 CSP，不改 vendor 掩盖失败。新插件的文件测试覆盖版本冲突、路径/链接拒绝及实际磁盘持久化。
 

@@ -1,24 +1,14 @@
-# 可独立分发的 Corilo 插件
+# Corilo 插件
 
-| 目录 | npm 包名 | 主要职责 |
+| 目录 | 包 | 状态 |
 |---|---|---|
-| [notes/](notes/README.md) | `@corilo/dsh-notes` | Markdown 笔记、直接原话保存、历史及回收站 |
-| [todos/](todos/README.md) | `@corilo/dsh-todos` | SQLite 个人待办、状态流转、持久幂等保护 |
+| [notes/](notes/README.md) | `@corilo/dsh-notes` 0.7.0 | 当前 Files.md 工作区，笔记／清单／待办／日记＋原生 Agent |
+| [todos/](todos/README.md) | `@corilo/dsh-todos` 0.5.2 | 旧 SQLite 实例兼容包；新配置不再默认加载 |
 
-每个目录是独立 npm 包，自己的 package.json、package-lock.json、Host、client、构建和测试都放在包内。两个插件均可通过固定版本 Harness 的公开扩展点独立加载；页面与 Agent 工具共用本包业务服务。
+工作区包拥有独立依赖、构建、客户端、文件服务、迁移命令与许可，在仓库外安装生产依赖即可运行。Files.md 原生前端固定来源随包分发，运行时适配文件和 Agent，不依赖旧 app/。
 
-## 边界
+[根目录三步](../README.md#三步启动)现在只安装／加载工作区。旧双插件配置继续可启动，需要相应旧依赖；没有自动迁移、删除数据库或改写配置。旧待办迁移先停服务、备份，再运行 corilo-import-todos 预览和 --apply；核对后可移除旧插件入口，源码与原数据库保留。
 
-- 插件目录保持稳定，现有 Harness overlay 记录其绝对入口；整理仓库不移动它们或迁移实例资料。
-- 不依赖仓库根的旧应用依赖，也不从另一个包相对导入源码。构建工具保持包内可执行，独立 tarball 使用者不需要整个 Corilo 仓库。
-- 根目录和 [launcher/](../launcher/README.md) 是源码开发/组合启动入口，当前不是第三个 npm 发行包。资料和原生凭据放在用户选择的仓库外实例。
-- 根锁文件服务旧应用兼容；两个插件各自的锁文件固定各自安装。当前不用 npm workspaces 强行合并，也不因为少量构建代码相似就增加共享运行依赖。
-- Astryx token 副本由 [vendor-astryx.mjs](../scripts/vendor-astryx.mjs) 从固定来源生成，各自随客户端构建内联；第三方许可分别随包分发。
+根依赖仍用于旧应用；launcher/ 只是源码启动入口，不是第三个发行包。不引入 npm workspace 或另一套 Agent／同步服务。包保持 private，未发布 npm。打包需进入对应包目录执行 npm pack，不能发布整个仓库；测试、node_modules、截图和真实资料不进入包。
 
-## 安装、检查和打包
-
-两个插件一起使用，按[根目录三步上手](../README.md#一起使用笔记和待办)。独立运行方式见上表中的包 README。
-
-在仓库根执行对应的 `npm run test:notes` / `npm run test:todos`。打包前进入目标插件目录，再执行 `npm pack --dry-run` 查看分发清单；不要在仓库根尝试发布。
-
-目前两包仍为 `private: true`，未因为仓库整理而开放发布。公开发布前确认 npm scope 权限、包名及不可重复的版本号，并单独调整包的发布配置。各包 `files` 是发行边界：业务源码、构建客户端、说明和许可会分发，测试、node_modules、截图和真实资料不属于发行内容。具体开发检查见 [开发指南](../docs/DEVELOPMENT.md)。
+开发与验收见 [开发指南](../docs/DEVELOPMENT.md)。旧包的独立安装／测试仍有效，不以旧 UI 测试代表当前 Files.md 工作区已验收。

@@ -1,3 +1,5 @@
+> 存量兼容包：新实例使用 [Files.md 工作区](../notes/README.md)，不再默认加载本插件。旧 SQLite 和配置保留；迁移先停止服务并备份，按工作区说明预览／显式导入，核对成功后再移除旧入口。不要直接删除数据库。
+
 # Corilo 个人待办 for DeepSeek Harness
 
 独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.5.2，目前没有发布到 npm。

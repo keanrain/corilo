@@ -615,3 +615,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+## Files.md workspace (MIT and bundled third-party licenses)
+
+The complete pinned Files.md web tree is included under `vendor/filesmd/web/`.
+Source: https://github.com/zakirullin/files.md at commit
+`9e948ba6071e320c41c866f92817cf96f9bb7ba6`.
+The original web files are preserved; runtime integration transforms are in
+`workspace-api.mjs`, and the host adapter is in `workspace/`.
+
+Files.md copyright and MIT terms: `vendor/filesmd/LICENSE`.
+Its bundled libraries (including CodeMirror 5, HyperMD and related assets) retain
+upstream notices in `vendor/filesmd/web/lib/LICENSES.txt` and individual files.
+The CodeMirror 6 notices above continue to apply to the optional classic page.

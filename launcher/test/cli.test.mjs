@@ -53,7 +53,7 @@ test('one-directory setup and read-only preflight preserve data and reject alter
   assert.equal(report.harness, path.join(instance, 'runtime/harness'));
   assert.equal(report.agents, path.join(instance, 'runtime/agents'));
   assert.equal(report.harnessVersion, '0.2.2-rc.1');
-  assert.equal(report.todosValidation, 'on-start');
+  assert.equal(report.todosValidation, 'not-loaded');
   if (process.platform !== 'win32') assert.equal((await lstat(combined)).mode & 0o777, 0o600);
   for (const location of ['notes', 'state', 'todos', 'runtime', 'workspace']) await assert.rejects(access(path.join(instance, location)), { code: 'ENOENT' });
   await assert.rejects(access(env.DSH_HOME), { code: 'ENOENT' });
@@ -89,9 +89,16 @@ test('one-directory setup and read-only preflight preserve data and reject alter
   await assert.rejects(access(path.join(separate, 'notes.patch.json')), { code: 'ENOENT' });
 });
 
-for (const entry of [cli, legacyCli]) test(`${entry === cli ? 'canonical' : 'legacy'} launcher boots both real plugin APIs, preserves home separation and forwards SIGTERM`, { timeout: 60000 }, async t => {
+for (const entry of [cli, legacyCli]) test(`${entry === cli ? 'canonical' : 'legacy'} launcher boots workspace / legacy two-plugin APIs, preserves home separation and forwards SIGTERM`, { timeout: 60000 }, async t => {
   const { base, instance, env, run } = await fixture(t, { cleanup: false });
   await run('init');
+  const legacyDual = entry === legacyCli;
+  if (legacyDual) {
+    const configPath = path.join(instance, 'corilo.patch.json');
+    const config = JSON.parse(await readFile(configPath, 'utf8'));
+    config[0].insert.push({ id: 'corilo-todos', name: path.join(checkout, 'plugins/todos/index.mjs'), config: { root: path.join(instance,'todos'), notesRoot: path.join(instance,'notes') } });
+    await writeFile(configPath, JSON.stringify(config));
+  }
   let child;
   t.after(async () => {
     if (child) {
@@ -125,20 +132,27 @@ for (const entry of [cli, legacyCli]) test(`${entry === cli ? 'canonical' : 'leg
     const result = await response.json(); assert.equal(result.ok, true); return result.value;
   };
   const notesIdentity = await call('notes', 'identity', {});
-  const todoIdentity = await call('todos', 'identity', {});
+  assert.equal(notesIdentity.interface, 'filesmd');
+  const todoIdentity = legacyDual ? await call('todos', 'identity', {}) : null;
   const saved = await call('notes', 'capture', { text: '统一入口保存的虚构笔记' }, notesIdentity.id);
   assert.equal((await call('notes', 'read', { path: saved.path }, notesIdentity.id)).text, '统一入口保存的虚构笔记');
+  if (legacyDual) {
   const created = await call('todos', 'create', { requestId: randomUUID(), title: '统一入口的个人待办' }, todoIdentity.id);
   const done = await call('todos', 'update', { requestId: randomUUID(), id: created.id, expected: created.version, patch: { status: 'done' } }, todoIdentity.id);
   assert.equal(done.status, 'done');
   assert.equal((await call('todos', 'list', { status: 'all' }, todoIdentity.id)).items.length, 1);
+  } else {
+    await call('notes','save',{path:'Later.md',text:'- [ ] 统一工作区的个人待办\n',expected:null},notesIdentity.id);
+    assert.equal((await call('notes','read',{path:'Later.md'},notesIdentity.id)).text,'- [ ] 统一工作区的个人待办\n');
+  }
   assert.equal((await fetch(origin + '/api/corilo-todos/identity', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 401);
   child.kill('SIGTERM');
   const result = await Promise.race([exited, new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error('Unified host did not stop')), 15000); timer.unref(); })]);
   assert.equal(result.code, 0);
   await assert.rejects(fetch(origin));
   assert.equal(await readFile(path.join(instance, 'notes', saved.path), 'utf8'), '统一入口保存的虚构笔记');
-  await access(path.join(instance, 'todos/todos.sqlite'));
+  if (legacyDual) await access(path.join(instance, 'todos/todos.sqlite'));
+  else await assert.rejects(access(path.join(instance,'todos')),{code:'ENOENT'});
   await access(path.join(instance, 'runtime/harness/.credentials.yaml'));
   await assert.rejects(access(env.DSH_HOME), { code: 'ENOENT' });
   assert.equal(JSON.parse((await run('check')).stdout).noteState, 'disabled');

@@ -1,6 +1,6 @@
 {
   "name": "@corilo/dsh-notes",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -30,14 +30,19 @@
     "restore.mjs",
     "BACKUP.zh-CN.md",
     "LINUX.zh-CN.md",
-    "corilo-notes.service.example"
+    "corilo-notes.service.example",
+    "workspace-store.mjs",
+    "workspace-api.mjs",
+    "workspace/",
+    "vendor/filesmd/",
+    "import-todos.mjs"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "build": "node build.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test:browser": "python3 test/core_browser.py",
+    "test:browser": "python3 test/workspace_browser.py && python3 test/core_browser.py",
     "test:distribution": "node --test test/distribution.test.mjs",
     "benchmark": "node test/benchmark.mjs"
   },
@@ -75,6 +80,7 @@
     }
   },
   "bin": {
-    "corilo-notes": "./cli.mjs"
+    "corilo-notes": "./cli.mjs",
+    "corilo-import-todos": "./import-todos.mjs"
   }
 }

@@ -1,13 +1,13 @@
 # 开发与仓库导航
 
-v0.25 · 2026-11-09。产品规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，架构边界见 [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)。本页只维护目录、命令与分发约定；命令均在仓库根目录执行。
+v0.33 · 2026-11-11。产品规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，架构边界见 [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)。本页只维护目录、命令与分发约定；命令均在仓库根目录执行。
 
 ## 目录职责
 
 | 位置 | 当前用途 |
 |---|---|
-| [plugins/](../plugins/README.md) | 当前笔记／待办独立包；各自包含宿主服务、客户端、CLI、构建与测试 |
-| [launcher/corilo.mjs](../launcher/corilo.mjs)、`launcher/test/` | 源码两插件组合启动与真实组合验收 |
+| [plugins/](../plugins/README.md) | 当前工作区包／旧待办兼容包；各自包含宿主服务、客户端、CLI、构建与测试 |
+| [launcher/corilo.mjs](../launcher/corilo.mjs)、`launcher/test/` | 源码单工作区启动及旧双插件兼容验收 |
 | [deploy/systemd/](../deploy/systemd/corilo.service.example) | 手工部署参考，不随初始化自动安装 |
 | [scripts/](../scripts/README.md) | 设计资产生成、历史开发工具；`scripts/corilo.mjs` 只兼容转发至新入口 |
 | `docs/`、`docs/history/` | 当前设计／开发文档与不可混用的历史记录 |
@@ -18,7 +18,7 @@ v0.25 · 2026-11-09。产品规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，架�
 
 ## 运行时与锁文件
 
-当前插件和源码组合入口需要 **Node.js ≥24.9.0**（Git 仅供旧存量恢复工具使用）；待办使用 Node 原生 SQLite。根 `package.json` 的 `engines >=22.19.0` 是保留的旧应用约定，不能据此用 Node 22 启动当前插件。根命令是便捷入口，不代表所有命令拥有同一运行时要求。
+当前插件和源码组合入口需要 **Node.js ≥24.9.0**（Git 仅供旧存量恢复工具使用）；旧待办和迁移工具使用 Node 原生 SQLite。根 `package.json` 的 `engines >=22.19.0` 是保留的旧应用约定，不能据此用 Node 22 启动当前插件。根命令是便捷入口，不代表所有命令拥有同一运行时要求。
 
 仓库保留三个 npm 锁文件：
 
@@ -32,19 +32,19 @@ v0.25 · 2026-11-09。产品规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，架�
 
 | 目的 | 命令 | 边界 |
 |---|---|---|
-| 安装并构建两个插件 | `npm run setup:corilo` | 使用各包锁文件，忽略安装脚本后显式构建；不启动服务，不需先装根依赖 |
-| 初始化组合实例 | `npm run init:corilo -- --directory /absolute/corilo-instance` | 独占创建固定两插件配置，不覆盖或迁移 |
+| 安装并构建工作区 | `npm run setup:corilo` | 使用工作区锁文件，忽略安装脚本后显式构建；不启动服务，不需先装根依赖 |
+| 初始化组合实例 | `npm run init:corilo -- --directory /absolute/corilo-instance` | 独占创建单工作区配置，不覆盖或迁移 |
 | 只读预检 | `npm run check:corilo -- --directory /absolute/corilo-instance` | 不创建资料、原生 home 或数据库；不代替启动时 SQLite schema 检查 |
 | 启动组合实例 | `npm run start:corilo -- --directory /absolute/corilo-instance` | 委托原生 Harness；默认回环 `3000`，可追加 `--port` |
 | 笔记服务／真实宿主／分发测试 | `npm run test:notes` | 包内 `npm test` 自动构建 |
 | 待办服务／真实宿主／分发测试 | `npm run test:todos` | 包内 `npm test` 自动构建 |
-| 源码组合启动测试 | `npm run test:startup` | 使用 `launcher/test/cli.test.mjs`，依赖已安装的两包 |
+| 源码组合启动测试 | `npm run test:startup` | 使用 `launcher/test/cli.test.mjs`，新工作区只需 notes；旧双插件兼容用例还需 todos |
 
-统一实例不自动接管已有独立插件实例。配置使用绝对入口路径，移动 checkout 前保留原配置与安装；独立包路径切换／回退参考[笔记指南](../plugins/notes/QUICKSTART.zh-CN.md)和[待办 README](../plugins/todos/README.md)。组合入口只接受固定组合配置，不执行任意 overlay 或自动迁移。
+统一实例不自动接管已有独立插件实例。配置使用绝对入口路径，移动 checkout 前保留原配置与安装；独立包路径切换／回退参考[笔记指南](../plugins/notes/QUICKSTART.zh-CN.md)和[待办 README](../plugins/todos/README.md)。入口只接受固定单工作区或旧双插件配置，不执行任意 overlay 或自动迁移。
 
 ## 浏览器与分发检查
 
-新页面应在真实发布版 Harness 中验证，不能用旧应用浏览器脚本替代。Python 浏览器环境按 `requirements-dev.txt` 安装并准备 Playwright Chromium；可用脚本与准确运行方法分别见[笔记 README](../plugins/notes/README.md)、[待办 README](../plugins/todos/README.md)及两份插件 CI。使用隔离 home、临时合成资料，不调用真实模型；记录实际通过的流程与未验收设备。
+当前默认浏览器验收为 plugins/notes/test/workspace_browser.py，旧 core_browser.py 只保护 interface: classic。新页面应在真实发布版 Harness 中验证，不能用旧应用浏览器脚本替代。Python 浏览器环境按 `requirements-dev.txt` 安装并准备 Playwright Chromium；可用脚本与准确运行方法分别见[笔记 README](../plugins/notes/README.md)、[待办 README](../plugins/todos/README.md)及两份插件 CI。使用隔离 home、临时合成资料，不调用真实模型；记录实际通过的流程与未验收设备。
 
 变更共享入口时运行 `test:startup`；变更插件按范围运行对应 Node／真实宿主／浏览器检查。修改文件接口或 UI 还需按 AGENTS 保护旧应用的三套浏览器回归。普通文档调整检查本地链接及命令路径即可，不把未运行检查写作通过。
 

@@ -1,20 +1,13 @@
-# Corilo 源码启动入口
+# Corilo 源码入口
 
-本目录将 `plugins/notes` 和 `plugins/todos` 组合到同一个 DeepSeek Harness 实例，复用 Harness 的 Web 服务、鉴权、模型配置和工具运行机制。它是源码仓库的启动脚本，不是第三个 npm 插件包。
-
-在仓库根目录运行：
-
-```bash
+```sh
 npm run setup:corilo
 npm run init:corilo -- --directory /absolute/corilo-instance
-npm run check:corilo -- --directory /absolute/corilo-instance
-npm run start:corilo -- --directory /absolute/corilo-instance --port 3000
+npm run start:corilo -- --directory /absolute/corilo-instance
 ```
 
-需要插件要求的 Node.js `>=24.9.0`。实例目录必须使用仓库外的绝对路径；配置、笔记、待办数据库和 Harness 运行资料保存在该目录。启动时使用 Harness 输出的私有鉴权地址，勿分享其中的 token。
+新实例仅加载 @corilo/dsh-notes Files.md 工作区，个人待办使用普通 Markdown 清单，不新建 SQLite。setup 只安装／构建工作区包。统一目录包含 notes/、runtime/、workspace/ 和两份配置；位置必须在仓库外，勿分享鉴权 token。
 
-规范入口为 `launcher/corilo.mjs`。旧 `scripts/corilo.mjs` 保留为兼容转发，已有命令和用户复制的服务仍可使用；已生成的实例配置与资料目录不需要迁移。
+规范入口是 launcher/corilo.mjs，scripts/corilo.mjs 保留兼容转发。旧双插件配置继续支持，需保留 plugins/todos 的安装依赖；预检不改写配置、迁移数据库或删除原文件。先停服务并按工作区指南迁移待办，核对后可从旧组合配置移除 corilo-todos 项。不能让旧服务继续维护另一份当前待办。
 
-Linux 用户服务示例见 [`deploy/systemd/corilo.service.example`](../deploy/systemd/corilo.service.example)。该文件只是模板，需自行审阅并替换绝对路径；仓库不会自动安装或启用服务。
-
-入口验证：`npm run test:startup`。根目录 `npm start`、`npm test` 仍属于旧应用。
+Linux 用户服务示例在 deploy/systemd/，只是人工审阅模板，不自动安装或启用。验证使用 npm run test:startup，同时覆盖单工作区启动及旧双插件启动。根 npm start/test 仍属于旧应用。

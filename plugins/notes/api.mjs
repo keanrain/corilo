@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 // Public Connection Fetch routes inherit Harness authentication and Host/Origin checks.
 // Business failures remain data; filesystem diagnostics never cross the wire.
-export function registerNotesApi(ctx, store) {
+export function registerNotesApi(ctx, store, options = {}) {
   const libraryId = createHash('sha256').update(store.root).digest('hex');
   const handle = async (method, args, signal) => {
     const failure = (status, message) => ({ ok: false, error: { code: `notes/${status}`, message, details: {} } });
@@ -21,7 +21,7 @@ export function registerNotesApi(ctx, store) {
     try {
       signal.throwIfAborted();
       const value = method === 'identity' ? {
-        id: libraryId,
+        id: libraryId, interface: options.interface || 'classic', ...(options.workspace ? { workspaceId: options.workspace.identity } : {}),
       } : method === 'list' ? await store.list()
         : method === 'browse' ? await store.browse({ ...args, signal })
         : method === 'search' ? await store.search({ ...args, signal })
