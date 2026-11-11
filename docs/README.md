@@ -4,6 +4,7 @@ v0.33 · 2026-11-11。DeepSeek Harness 为主体，当前主包 `@corilo/dsh-not
 
 | 文档 | 职责 |
 |---|---|
+| [接手快照](HANDOFF.md) | 当前版本、运行／迁移、证据及后续工作；不是业务规则来源 |
 | [根 README](../README.md) | 安装启动、当前功能与升级边界 |
 | [产品](PRODUCT.md) | 定位、范围与取舍 |
 | [业务规格](PRODUCT-SPEC.md) | 唯一当前业务规则和验收条件 |
