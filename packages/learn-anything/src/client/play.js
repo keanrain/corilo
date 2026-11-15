@@ -1,3 +1,4 @@
+import { t, useUiLocale } from './locale.js'
 // Four answer *forms* on top of the existing quiz card: Counterexample,
 // MinimalChange, DualPredict and TransferTask. They only lay out the task and collect
 // one value in the agreed shape; completion and the readable form come from
@@ -15,6 +16,7 @@ const asList = (value) => (Array.isArray(value) ? value : [])
 const indexIn = (value, length) => (Number.isInteger(value) && value >= 0 && value < length ? value : null)
 
 function Intro({ eyebrow, title, note }) {
+  useUiLocale()
   return h('div', { className: 'la-play-intro' },
     h('div', { className: 'la-play-head' },
       h('span', { className: 'la-play-kicker' }, h('span', { className: 'la-play-spark', 'aria-hidden': true }), eyebrow),
@@ -24,11 +26,13 @@ function Intro({ eyebrow, title, note }) {
 
 /** A case marker for the detective/blueprint framing; purely visual. */
 function CaseNo({ children }) {
+  useUiLocale()
   return h('span', { className: 'la-play-no', 'aria-hidden': true }, children)
 }
 
 export function createPlayRenderers({ useField, useLabel }) {
   function Counterexample({ props = {} }) {
+    useUiLocale()
     const cases = asList(props.cases)
     const [value, set, locked] = useField(props.prompt, (next) => playAnswerComplete('Counterexample', props, next))
     useLabel(props.prompt, (next) => playAnswerText('Counterexample', props, next))
@@ -37,29 +41,30 @@ export function createPlayRenderers({ useField, useLabel }) {
     const reason = asText(current[1])
     const update = (index, text) => set([index, text])
     return h('section', { className: 'la-play', 'data-play': 'counterexample' },
-      h(Intro, { eyebrow: '反例侦探 · 01', title: props.prompt, note: '从候选里挑一条最能推翻说法的案例，再说清它缺了哪个条件。' }),
+      h(Intro, { eyebrow: t('反例侦探 · 01'), title: props.prompt, note: '从候选里挑一条最能推翻说法的案例，再说清它缺了哪个条件。' }),
       h('div', { className: 'la-play-claim' },
-        h('span', { className: 'la-play-tag' }, '待检验的说法'),
+        h('span', { className: 'la-play-tag' }, t('待检验的说法')),
         h(QuestionText, { text: props.claim })),
       h('div', { className: 'la-play-step' },
         h('p', { className: 'la-play-label' }, '哪条候选案例能让这个说法站不住？',
-          h('small', null, cases.length ? `${cases.length} 条候选` : '候选还在生成')),
-        cases.length ? h('div', { className: 'la-play-cases', role: 'group', 'aria-label': asText(props.prompt) || '候选案例' },
+          h('small', null, cases.length ? t('{count} 条候选', { count: cases.length }) : t('候选还在生成'))),
+        cases.length ? h('div', { className: 'la-play-cases', role: 'group', 'aria-label': asText(props.prompt) || t('候选案例') },
           cases.map((item, index) => h('button', {
             key: index, type: 'button', className: 'la-play-case', disabled: locked,
             'aria-pressed': selected === index, onClick: () => update(index, reason),
           }, h(CaseNo, null, LETTERS[index] ?? index + 1), h(InlineText, { text: item }))))
-          : h('p', { className: 'la-play-empty' }, '候选案例还没有生成完。')),
+          : h('p', { className: 'la-play-empty' }, t('候选案例还没有生成完。'))),
       h('label', { className: 'la-play-field' },
         h('span', { className: 'la-play-label' }, '缺了哪个条件？'),
         h('textarea', {
-          className: 'la-reason', 'aria-label': `${asText(props.prompt) || '反例'}：说明缺失条件`,
+          className: 'la-reason', 'aria-label': `${asText(props.prompt) || t('反例')}：说明缺失条件`,
           value: reason, readOnly: locked, placeholder: props.placeholder ?? '这条案例为什么推翻说法？它缺了哪个前提？',
           onChange: (event) => update(selected, event.target.value),
         })))
   }
 
   function MinimalChange({ props = {} }) {
+    useUiLocale()
     const conditions = asList(props.conditions)
     const [value, set, locked] = useField(props.prompt, (next) => playAnswerComplete('MinimalChange', props, next))
     useLabel(props.prompt, (next) => playAnswerText('MinimalChange', props, next))
@@ -69,36 +74,36 @@ export function createPlayRenderers({ useField, useLabel }) {
     const reason = asText(current[2])
     const update = (index, text, why) => set([index, text, why])
     return h('section', { className: 'la-play', 'data-play': 'minimal-change' },
-      h(Intro, { eyebrow: '最小改动 · 02', title: props.prompt, note: '只动一条条件，其余保持原样；先改，再看预览。' }),
+      h(Intro, { eyebrow: t('最小改动 · 02'), title: props.prompt, note: '只动一条条件，其余保持原样；先改，再看预览。' }),
       h('div', { className: 'la-play-brief la-play-goal' },
-        h('span', { className: 'la-play-tag' }, '目标'),
+        h('span', { className: 'la-play-tag' }, t('目标')),
         h(QuestionText, { text: props.goal })),
       h('div', { className: 'la-play-step' },
-        h('p', { className: 'la-play-label' }, '选一条要改的条件',
-          h('small', null, conditions.length ? '其余条件不变' : '条件还在生成')),
-        conditions.length ? h('div', { className: 'la-play-conds', role: 'group', 'aria-label': asText(props.prompt) || '选择要改的条件' },
+        h('p', { className: 'la-play-label' }, t('选一条要改的条件'),
+          h('small', null, conditions.length ? t('其余条件不变') : t('条件还在生成'))),
+        conditions.length ? h('div', { className: 'la-play-conds', role: 'group', 'aria-label': asText(props.prompt) || t('选择要改的条件') },
           conditions.map((item, index) => h('button', {
             key: index, type: 'button', className: 'la-play-cond', disabled: locked,
             'aria-pressed': selected === index, onClick: () => update(index, replacement, reason),
           }, h(CaseNo, null, index + 1), h('span', { className: 'la-play-cond-text' }, h(InlineText, { text: item })),
-          selected === index ? h('span', { className: 'la-play-cond-flag' }, '改这条') : null)))
-          : h('p', { className: 'la-play-empty' }, '条件还没有生成完。')),
+          selected === index ? h('span', { className: 'la-play-cond-flag' }, t('改这条')) : null)))
+          : h('p', { className: 'la-play-empty' }, t('条件还没有生成完。'))),
       h('label', { className: 'la-play-field' },
-        h('span', { className: 'la-play-label' }, selected === null ? '先选一条条件，再写替换' : `把第 ${selected + 1} 条改成`),
+        h('span', { className: 'la-play-label' }, selected === null ? t('先选一条条件，再写替换') : t('把第 {index} 条改成', { index: selected + 1 })),
         h('textarea', {
-          className: 'la-reason', 'aria-label': '替换后的条件', value: replacement, readOnly: locked || selected === null,
-          placeholder: selected === null ? '点上面的一条条件' : props.placeholder ?? '写出替换后的条件，不改变其它条件',
+          className: 'la-reason', 'aria-label': t('替换后的条件'), value: replacement, readOnly: locked || selected === null,
+          placeholder: selected === null ? t('点上面的一条条件') : props.placeholder ?? t('写出替换后的条件，不改变其它条件'),
           onChange: (event) => update(selected, event.target.value, reason),
         })),
-      h('div', { className: 'la-play-preview', 'aria-label': '修改预览' },
-        h('span', { className: 'la-play-tag' }, '修改预览'),
+      h('div', { className: 'la-play-preview', 'aria-label': t('修改预览') },
+        h('span', { className: 'la-play-tag' }, t('修改预览')),
         conditions.length ? h('ol', null, conditions.map((item, index) => h('li', {
           key: index, 'data-active': selected === index,
         }, h(CaseNo, null, index + 1), h('span', { className: 'la-play-cond-text' }, h(InlineText, { text: item })),
         selected === index
-          ? h('span', { className: 'la-play-cond-new' }, replacement.trim() ? `→ ${replacement.trim()}` : '→ 待填写')
-          : h('span', { className: 'la-play-cond-keep' }, '不变'))))
-          : h('p', { className: 'la-play-empty' }, '还没有可预览的条件。')),
+          ? h('span', { className: 'la-play-cond-new' }, replacement.trim() ? `→ ${replacement.trim()}` : t('→ 待填写'))
+          : h('span', { className: 'la-play-cond-keep' }, t('不变')))))
+          : h('p', { className: 'la-play-empty' }, t('还没有可预览的条件。'))),
       h('label', { className: 'la-play-field' },
         h('span', { className: 'la-play-label' }, '为什么只改这一条？'),
         h('textarea', {
@@ -109,6 +114,7 @@ export function createPlayRenderers({ useField, useLabel }) {
   }
 
   function DualPredict({ props = {} }) {
+    useUiLocale()
     const options = asList(props.options)
     const [value, set, locked] = useField(props.prompt, (next) => playAnswerComplete('DualPredict', props, next))
     useLabel(props.prompt, (next) => playAnswerText('DualPredict', props, next))
@@ -127,12 +133,12 @@ export function createPlayRenderers({ useField, useLabel }) {
           key: index, type: 'button', className: 'la-play-opt', disabled: locked,
           'aria-pressed': selected === index, onClick: () => choose(side, index),
         }, h(CaseNo, null, LETTERS[index] ?? index + 1), h(InlineText, { text: option })))
-          : h('p', { className: 'la-play-empty' }, '选项还没有生成完。')))
+          : h('p', { className: 'la-play-empty' }, t('选项还没有生成完。'))))
     return h('section', { className: 'la-play', 'data-play': 'dual-predict' },
-      h(Intro, { eyebrow: '双局预测 · 03', title: props.prompt, note: '两场只改变一个因素；同一组选项，分别预测。' }),
+      h(Intro, { eyebrow: t('双局预测 · 03'), title: props.prompt, note: '两场只改变一个因素；同一组选项，分别预测。' }),
       h('div', { className: 'la-play-cols' },
-        column('before', '变化前', props.before, before),
-        column('after', '变化后', props.after, after)),
+        column('before', t('变化前'), props.before, before),
+        column('after', t('变化后'), props.after, after)),
       h('label', { className: 'la-play-field' },
         h('span', { className: 'la-play-label' }, '结果相同或不同的依据是什么？'),
         h('textarea', {
@@ -143,6 +149,7 @@ export function createPlayRenderers({ useField, useLabel }) {
   }
 
   function TransferTask({ props = {} }) {
+    useUiLocale()
     const constraints = asList(props.constraints)
     const [value, set, locked] = useField(props.prompt, (next) => playAnswerComplete('TransferTask', props, next))
     useLabel(props.prompt, (next) => playAnswerText('TransferTask', props, next))
@@ -151,20 +158,20 @@ export function createPlayRenderers({ useField, useLabel }) {
     const reason = asText(current[1])
     const update = (nextPlan, nextReason) => set([nextPlan, nextReason])
     return h('section', { className: 'la-play', 'data-play': 'transfer' },
-      h(Intro, { eyebrow: '迁移任务 · 04', title: props.prompt, note: '进入新的任务现场：写方案，再说清你的判断依据。' }),
+      h(Intro, { eyebrow: t('迁移任务 · 04'), title: props.prompt, note: '进入新的任务现场：写方案，再说清你的判断依据。' }),
       h('div', { className: 'la-play-brief' },
-        h('span', { className: 'la-play-tag' }, '新领域现场'),
+        h('span', { className: 'la-play-tag' }, t('新领域现场')),
         h(QuestionText, { text: props.situation }),
         h('div', { className: 'la-play-goal' },
-          h('span', { className: 'la-play-tag' }, '目标'),
+          h('span', { className: 'la-play-tag' }, t('目标')),
           h(QuestionText, { text: props.goal })),
         constraints.length ? h('div', { className: 'la-play-constraints' },
-          h('span', { className: 'la-play-label' }, '约束'),
+          h('span', { className: 'la-play-label' }, t('约束')),
           h('ul', null, constraints.map((item, index) => h('li', { key: index }, h(InlineText, { text: item }))))) : null),
       h('label', { className: 'la-play-field' },
-        h('span', { className: 'la-play-label' }, '行动方案'),
+        h('span', { className: 'la-play-label' }, t('行动方案')),
         h('textarea', {
-          className: 'la-reason', 'aria-label': '行动方案', value: plan, readOnly: locked,
+          className: 'la-reason', 'aria-label': t('行动方案'), value: plan, readOnly: locked,
           placeholder: '在这个新领域里，具体怎么做？写出可执行的步骤。',
           onChange: (event) => update(event.target.value, reason),
         })),

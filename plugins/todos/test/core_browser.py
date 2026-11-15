@@ -54,7 +54,7 @@ def main():
                 origin = url.split('/?')[0]
                 with sync_playwright() as p:
                     browser = p.chromium.launch(headless=True, executable_path=shutil.which('chromium') or None)
-                    context = browser.new_context(viewport={'width': 1400, 'height': 950}, accept_downloads=True)
+                    context = browser.new_context(locale='zh-CN', viewport={'width': 1400, 'height': 950}, accept_downloads=True)
                     context.add_init_script('''window.todoDbOpens=0;const original=indexedDB.open.bind(indexedDB);
                       indexedDB.open=(name,...args)=>{if(String(name).startsWith('corilo-todos')){window.todoDbOpens++;throw Error('No todo draft database expected');}return original(name,...args);};''')
                     errors, external, mutations = [], [], []
@@ -65,12 +65,12 @@ def main():
 
                     def enter(target):
                         target.goto(url)
-                        target.get_by_role('button', name='Continue', exact=True).or_(target.get_by_role('button', name='Close', exact=True)).first.wait_for()
-                        if target.get_by_role('button', name='Continue', exact=True).is_visible():
-                            target.get_by_role('button', name='Continue', exact=True).click()
-                        target.get_by_role('button', name='Close', exact=True).click()
+                        target.get_by_role('button', name=re.compile(r'^(Continue|继续)$'), exact=True).or_(target.get_by_role('button', name=re.compile(r'^(Close|关闭)$'), exact=True)).first.wait_for()
+                        if target.get_by_role('button', name=re.compile(r'^(Continue|继续)$'), exact=True).is_visible():
+                            target.get_by_role('button', name=re.compile(r'^(Continue|继续)$'), exact=True).click()
+                        target.get_by_role('button', name=re.compile(r'^(Close|关闭)$'), exact=True).click()
                         if target.viewport_size['width'] <= 700:
-                            target.get_by_role('button', name='Open sidebar', exact=True).click()
+                            target.get_by_role('button', name=re.compile(r'^(Open sidebar|打开侧边栏)$'), exact=True).click()
                         target.get_by_role('button', name='待办', exact=True).click()
                         if target.viewport_size['width'] <= 700:
                             target.touchscreen.tap(target.viewport_size['width'] - 8, 220)
@@ -244,7 +244,7 @@ def main():
                     shots = pathlib.Path(os.environ.get('CORILO_BROWSER_ARTIFACT_DIR', str(base / 'shots')))
                     shots.mkdir(parents=True, exist_ok=True)
                     panel.screenshot(path=str(shots / 'desktop.png'))
-                    phone_context = browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
+                    phone_context = browser.new_context(locale='zh-CN', viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
                     phone_context.on('request', lambda req: external.append(req.url.split('?')[0]) if req.url.startswith('http') and not req.url.startswith(origin + '/') else None)
                     phone = phone_context.new_page()
                     phone.on('pageerror', lambda error: errors.append(str(error)))

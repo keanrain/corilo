@@ -1,5 +1,7 @@
 # Corilo 源码入口
 
+**简体中文** | [English](README.en.md)
+
 ```sh
 npm run setup:corilo
 npm run init:corilo -- --directory /absolute/corilo-instance

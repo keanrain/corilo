@@ -10,7 +10,11 @@ window.__ModuleLoader__ = { load: ({ factory }) => { plugin = factory(name => ({
 await import('../../src/client/index.js')
 const slots = new Map()
 const original = { options: { key: 'assistant-step' }, component: ({ node }) => h('div', { style: { whiteSpace: 'pre-wrap' } }, node.data.blocks.filter(b => b.kind === 'text').map(b => b.text).join('\n')) }
-const ctx = { inject(names, fn) { if (names.includes('sidebarRight')) fn(ctx) }, effect: fn => fn(), sidebarRightTabs: { register() {} }, uiConversation: { events: { register() {} } }, slots: { entries: () => [original], inject: (_, fn) => fn(), register: ({ name, key = '' }, component) => slots.set(`${name}:${key}`, component) } }; plugin.apply(ctx)
+const localeListeners = new Set()
+let activeLocale = 'zh'
+const locale = { getSnapshot: () => ({ active: activeLocale }), register: () => () => {}, subscribe(fn) { localeListeners.add(fn); return () => localeListeners.delete(fn) } }
+window.setTutorUiLanguage = (language) => { activeLocale = language; localeListeners.forEach((fn) => fn()) }
+const ctx = { locale, inject(names, fn) { if (names.includes('sidebarRight') || names.includes('locale')) fn(ctx) }, effect: fn => fn(), sidebarRightTabs: { register() {} }, uiConversation: { events: { register() {} } }, slots: { entries: () => [original], inject: (_, fn) => fn(), register: ({ name, key = '' }, component) => slots.set(`${name}:${key}`, component) } }; plugin.apply(ctx)
 const sources = ['m-smoke#1', 'm-smoke#2']
 const sessionKey = 'learn-anything:smoke-session-v2'
 const modes = [['base', '原有五类卡片'], ['flash', '翻面闪卡'], ['spot', '找茬修复'], ['order', '步骤排序'], ['retry', '错题重赛'], ...PLAY_EXAMPLES.map(item => [item.id, item.title])]

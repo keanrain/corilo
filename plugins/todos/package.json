@@ -20,6 +20,7 @@
     "core.mjs",
     "lib/client.js",
     "README.md",
+    "README.en.md",
     "todos.patch.example.yml",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
@@ -38,7 +39,7 @@
     "build": "node build.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test:browser": "python3 test/core_browser.py && python3 test/visual_browser.py && python3 test/flow_browser.py",
+    "test:browser": "python3 test/core_browser.py && python3 test/visual_browser.py && python3 test/flow_browser.py && python3 test/i18n_browser.py",
     "test:planner:browser": "python3 test/planner_browser.py"
   },
   "dependencies": {
@@ -69,7 +70,8 @@
       "inject": [
         "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-sidebar",
-        "@deepseek-ai/dsh-client-connection"
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-locale"
       ]
     }
   },

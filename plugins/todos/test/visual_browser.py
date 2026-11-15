@@ -44,17 +44,17 @@ def main():
                     browser = p.chromium.launch(headless=True, executable_path=shutil.which('chromium') or None)
                     errors, external = [], []
                     def open_context(scheme, width, height):
-                        ctx = browser.new_context(viewport={'width': width, 'height': height}, has_touch=True, color_scheme=scheme)
+                        ctx = browser.new_context(locale='zh-CN', viewport={'width': width, 'height': height}, has_touch=True, color_scheme=scheme)
                         pg = ctx.new_page()
                         pg.on('pageerror', lambda error: errors.append(str(error)))
                         ctx.on('request', lambda req: external.append(req.url.split('?')[0]) if req.url.startswith('http') and not req.url.startswith(origin + '/') else None)
                         pg.goto(url)
-                        pg.get_by_role('button', name='Continue', exact=True).or_(pg.get_by_role('button', name='Close', exact=True)).first.wait_for()
-                        if pg.get_by_role('button', name='Continue', exact=True).is_visible():
-                            pg.get_by_role('button', name='Continue', exact=True).click()
-                        pg.get_by_role('button', name='Close', exact=True).click()
+                        pg.get_by_role('button', name=re.compile(r'^(Continue|继续)$'), exact=True).or_(pg.get_by_role('button', name=re.compile(r'^(Close|关闭)$'), exact=True)).first.wait_for()
+                        if pg.get_by_role('button', name=re.compile(r'^(Continue|继续)$'), exact=True).is_visible():
+                            pg.get_by_role('button', name=re.compile(r'^(Continue|继续)$'), exact=True).click()
+                        pg.get_by_role('button', name=re.compile(r'^(Close|关闭)$'), exact=True).click()
                         if width <= 700:
-                            pg.get_by_role('button', name='Open sidebar', exact=True).click()
+                            pg.get_by_role('button', name=re.compile(r'^(Open sidebar|打开侧边栏)$'), exact=True).click()
                         pg.get_by_role('button', name='待办', exact=True).click(timeout=20000)
                         if width <= 700:
                             pg.touchscreen.tap(width - 8, 220)

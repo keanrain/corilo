@@ -11,11 +11,30 @@ const coriloPanel = document.createElement('aside'); coriloPanel.id = 'corilo-wo
 coriloPanel.innerHTML = '<button id="corilo-files" aria-label="工作区文件">文件</button><span id="corilo-status" role="status">正在打开工作区…</span><button id="corilo-agent">Agent</button><div id="corilo-error" role="alert"></div><div id="corilo-resolution" hidden><button id="corilo-verify">核对文件</button><button id="corilo-copy">保存副本</button><button id="corilo-retry">重试保存</button></div><div id="corilo-latest" hidden><textarea aria-label="文件最新内容" readonly></textarea><button id="corilo-adopt">采用文件内容</button></div>';
 document.body.append(coriloPanel);
 const $c = id => document.getElementById(id);
+const coriloLabels = {
+  'corilo-files': '文件', 'corilo-verify': '核对文件', 'corilo-copy': '保存副本',
+  'corilo-retry': '重试保存', 'corilo-adopt': '采用文件内容',
+};
+function coriloTranslate() {
+  for (const [id, label] of Object.entries(coriloLabels)) $c(id).textContent=coriloNotesUI.t(label);
+  $c('corilo-files').setAttribute('aria-label',coriloNotesUI.t('工作区文件'));
+  $c('corilo-latest').querySelector('textarea').setAttribute('aria-label',coriloNotesUI.t('文件最新内容'));
+  if (!coriloReady) $c('corilo-status').textContent=coriloNotesUI.t('正在打开工作区…');
+  else if(coriloBlocked.size || coriloUnknownWrite) $c('corilo-status').textContent=coriloNotesUI.t('当前修改尚未确认保存');
+  else $c('corilo-status').textContent=coriloNotesUI.t(dirty()?'未保存':'已保存到主机');
+  $c('corilo-error').textContent=coriloNotesUI.t($c('corilo-error').textContent);
+}
+coriloNotesUI.subscribe(coriloTranslate);
+window.addEventListener('message',event=>{
+  if(event.source!==parent||event.origin!==location.origin||event.data?.type!=='corilo-workspace-locale')return;
+  if(typeof event.data.locale==='string')coriloNotesUI.setLocale(event.data.locale);
+});
+
 const dirty = () => [editor, editor2].some(cm => cm?.path && !cm.isClean()) || Boolean(coriloSaving) || Boolean(chatInput?.value);
 function report() { parent.postMessage({type:'corilo-workspace-state',dirty:dirty()||coriloBlocked.size>0||Boolean(coriloUnknownWrite)},location.origin); }
 function coriloError(error, cm = currentEditor) {
-    $c('corilo-status').textContent = '当前修改尚未确认保存';
-    $c('corilo-error').textContent = error?.message || String(error);
+    $c('corilo-status').textContent = coriloNotesUI.t("当前修改尚未确认保存");
+    $c('corilo-error').textContent = coriloNotesUI.t(error?.message || String(error));
     $c('corilo-resolution').hidden = !cm?.path;
     $c('corilo-copy').hidden = isChat;
     $c('corilo-verify').hidden = isChat && !coriloUnknownWrite;
@@ -23,14 +42,14 @@ function coriloError(error, cm = currentEditor) {
     report();
 }
 function coriloSaved() {
-    $c('corilo-status').textContent = dirty() ? '未保存' : '已保存到主机';
+    $c('corilo-status').textContent = dirty() ? coriloNotesUI.t("未保存") : coriloNotesUI.t("已保存到主机");
     if (!coriloBlocked.size && !coriloUnknownWrite) { $c('corilo-error').textContent = ''; $c('corilo-resolution').hidden = true; $c('corilo-latest').hidden = true; }
     report();
 }
 const coriloBody = text => { const line = text.split('\n')[0];return line.startsWith('# ')?text.slice(line.length+(text.includes('\n')?1:0)):text; };
 const plainText = cm => coriloBody(cm.getValue());
 function coriloCheckSaved() {
-    if ([editor, editor2].some(cm => cm?.path && !cm.isClean())) throw new Error('保存期间有新输入，请保存后再操作');
+    if ([editor, editor2].some(cm => cm?.path && !cm.isClean())) throw new Error(coriloNotesUI.t("保存期间有新输入，请保存后再操作"));
 }
 syncCurrentFile = async (explicit = false) => {
     if (!coriloReady || coriloPaused) return;
@@ -38,11 +57,11 @@ syncCurrentFile = async (explicit = false) => {
     coriloSaving = (async () => {
         for (const cm of [editor, editor2]) {
             if (!cm?.path || cm.isClean()) continue;
-            if (cm.state.coriloComposing) throw new Error('请等待输入法组字结束后再操作');
+            if (cm.state.coriloComposing) throw new Error(coriloNotesUI.t("请等待输入法组字结束后再操作"));
             const blocked = coriloBlocked.get(cm);
             if (blocked && (!explicit || blocked.unknown || blocked.status === 409)) throw blocked;
             const snapshot = cm.getValue(), generation = cm.changeGeneration(), oldPath = cm.path, handle = cm.coriloFileHandle;
-            if (!handle) throw new Error('文件句柄不存在，当前输入仍保留');
+            if (!handle) throw new Error(coriloNotesUI.t("文件句柄不存在，当前输入仍保留"));
             const header = snapshot.split('\n')[0], newPath = joinPath(toDirPath(oldPath), fromHeaderToFilename(header));
             try {
                 const writer = await handle.createWritable(); await writer.write(coriloBody(snapshot)); await writer.close();
@@ -93,7 +112,7 @@ async function coriloReload() {
 }
 $c('corilo-files').onclick=()=>toggleSidebar();
 $c('corilo-agent').onclick=async()=>{
-    try{await syncCurrentFile();if(dirty())throw Error('请先保存当前输入，再交给 Agent');parent.postMessage({type:'corilo-workspace-agent'},location.origin);}catch(error){coriloError(error);}
+    try{await syncCurrentFile();if(dirty())throw Error(coriloNotesUI.t("请先保存当前输入，再交给 Agent"));parent.postMessage({type:'corilo-workspace-agent'},location.origin);}catch(error){coriloError(error);}
 };
 $c('corilo-retry').onclick=()=>syncCurrentFile(true).catch(coriloError);
 $c('corilo-verify').onclick=async()=>{
@@ -103,7 +122,7 @@ $c('corilo-verify').onclick=async()=>{
             const request=coriloUnknownWrite.request;
             const result=await coriloJSON('/api/fs/read?path='+encodeURIComponent(request.path));
             const confirmed=result.data===request.data;
-            if(!confirmed&&!confirm('文件已有不同内容。放弃尚未确认的这次录入，保留文件现状？'))return;
+            if(!confirmed&&!confirm(coriloNotesUI.t("文件已有不同内容。放弃尚未确认的这次录入，保留文件现状？")))return;
             coriloUnknownWrite=null;if(chatInput.value===coriloChatAttempt)chatInput.value='';coriloChatAttempt=null;
             await renderMessages();coriloSaved();return;
         }
@@ -118,14 +137,14 @@ $c('corilo-verify').onclick=async()=>{
             if(coriloUnknownWrite?.request.path===verifiedPath)coriloUnknownWrite=null;
             cm.coriloFileHandle.etag=result.etag;
             if(cm.coriloRename&&verifiedPath!==cm.coriloRename.to){
-                const error=Object.assign(Error('正文已核对，文件名尚未更新；可明确重试保存'),{status:400});coriloBlocked.set(cm,error);coriloError(error,cm);return;
+                const error=Object.assign(Error(coriloNotesUI.t("正文已核对，文件名尚未更新；可明确重试保存")),{status:400});coriloBlocked.set(cm,error);coriloError(error,cm);return;
             }
             cm.path=verifiedPath;cm.coriloFileHandle.path=verifiedPath;cm.coriloFileHandle.name=toFilename(verifiedPath);cm.coriloRename=null;
             coriloBlocked.delete(cm);cm.markClean();coriloSaved();
         }else{
             $c('corilo-latest').hidden=false;$c('corilo-latest').querySelector('textarea').value=text;
             $c('corilo-adopt').onclick=()=>{
-                if(!confirm('放弃当前输入，采用刚刚读取的文件内容？'))return;
+                if(!confirm(coriloNotesUI.t("放弃当前输入，采用刚刚读取的文件内容？")))return;
                 cm.path=verifiedPath;cm.coriloFileHandle.path=verifiedPath;cm.coriloFileHandle.name=toFilename(verifiedPath);cm.coriloRename=null;if(coriloUnknownWrite?.request.path===verifiedPath)coriloUnknownWrite=null;cm.setValue(toHeader(toFilename(cm.path))+'\n'+text);cm.coriloFileHandle.etag=result.etag;cm.markClean();coriloBlocked.delete(cm);coriloSaved();
             };
         }
@@ -138,7 +157,7 @@ $c('corilo-copy').onclick=async()=>{
         const copied=await coriloJSON('/api/fs/copy',{text:plainText(cm)});
         const result={value:copied};
         const file=await getFileHandle('/'+result.value.path);
-        if(!cm.isClean(generation))throw Error('副本已保存，但编辑器又有新输入，请继续核对或再次保存副本');
+        if(!cm.isClean(generation))throw Error(coriloNotesUI.t("副本已保存，但编辑器又有新输入，请继续核对或再次保存副本"));
         cm.path='/'+result.value.path;cm.coriloFileHandle=file;file.etag=result.value.version;if(coriloUnknownWrite?.request.path===originalPath)coriloUnknownWrite=null;
         cm.setValue(toHeader(toFilename(cm.path))+'\n'+result.value.text);cm.markClean();coriloBlocked.delete(cm);await coriloReload();await openFile(cm.path);coriloSaved();
     }catch(error){coriloError(error);}
@@ -146,7 +165,7 @@ $c('corilo-copy').onclick=async()=>{
 };
 init=async()=>{
     const response=await fetch('../identity',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:'{}'});
-    const result=await response.json();if(!result.ok||!result.value.workspaceId)throw Error('工作区身份未确认');coriloWorkspaceId=result.value.workspaceId;
+    const result=await response.json();if(!result.ok||!result.value.workspaceId)throw Error(coriloNotesUI.t("工作区身份未确认"));coriloWorkspaceId=result.value.workspaceId;
     isMemFS=false;files=await loadLocalFiles(coriloRoot);initChat();chatInput.addEventListener('input',report);await renderSidebar();coriloReady=true;
     for(const cm of [editor,editor2]){
         cm.on('change',report);

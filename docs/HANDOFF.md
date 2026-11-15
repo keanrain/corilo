@@ -1,5 +1,16 @@
 # Corilo 可里交接文档
 
+## Bilingual project documentation and UI / 项目中英支持（2026-11-15）
+
+Current product, specification, architecture, interaction, development, release, plugin, and launcher docs now have Chinese/English navigation. AGENTS.md is maintained in English, with AGENTS.zh-CN.md retaining the Chinese counterpart. Package changelogs are bilingual. Launcher and notes CLI help/errors use English. Historical archives, vendor sources, user data, tutor prompts/skills, host teaching tools, and answer protocol modules were not translated or changed.
+
+All three plugins' owned UI follows DSH locale. Notes shares dictionaries between the client and owned Files.md adapter; language updates preserve its iframe and CodeMirror compartments. Todos keeps state keys and user text unchanged and translates labels/errors when rendering. Tutor translations are confined to the UI shell, preserving pedagogical content and serialized answers. Language dictionaries use own-property lookups so unknown keys cannot resolve inherited Object properties.
+
+Validation: notes existing 59 Node tests yielded 58 passes and 1 restic skip, plus 2 new locale tests passed; todos 35 and tutor 174 Node tests passed. Real DSH boot and native reminder checks passed for the tutor. Notes Files.md/classic plus real DSH locale switching, todos planner plus core/visual/flow/native locale switching, and the legacy app's three browser suites passed. Tutor Chromium tests cover actual cards with simulated host locale/transport, including drafts, flashcards, retry, minimal-change preview, and unchanged Chinese protocols; they are not full DSH Web end-to-end tests. Legacy app 59 Node, developer tooling 16, and launcher 4 tests passed.
+
+Language browser regressions are included in notes/todos test:browser and tutor CI. All three actual tgz inventories passed the release checker and include new language resources and paired package documents (notes 126 files, todos 20, tutor 61). No version bump, npm publication, user-instance migration, or main merge was performed. Release-candidate archives used for validation are under /tmp/corilo-bilingual-packs; live-model, physical-phone, and target-deployment acceptance remain separate.
+
+
 ## 优化改动审查修复（2026-11-15）
 
 审查发现分发内容检查跳过了通配符 exports：导师 `./locale/*.json` 在全部语言文件漏打时仍会通过。现要求每个字符串导出目标（含通配符）至少匹配包内文件，并增加无语言文件及错误扩展名被拒绝的回归用例。其他现有入口、CLI 与 bundle patch 检查保持。

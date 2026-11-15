@@ -1,5 +1,7 @@
 # 开发与仓库导航
 
+**简体中文** | [English](DEVELOPMENT.en.md)
+
 > 当前补丁版本：todos 0.6.1。提醒、跨日分类、日历任务分页与代码结构修复见 [交接文档](HANDOFF.md)；旧配置和数据库不自动迁移。
 
 > 当前默认组合：notes 0.7.0＋todos 0.6.1 planner v2。学习导师独立分发，仅安装到已有 DSH，不加入默认组合。
@@ -50,9 +52,9 @@
 
 ## 浏览器与分发检查
 
-笔记默认浏览器验收为 `plugins/notes/test/workspace_browser.py`，旧 `core_browser.py` 只保护 `interface: classic`。todos planner 使用 `npm --prefix plugins/todos run test:planner:browser`；`test:browser` 的三套测试保护 v1 页面。导师真实 DSH 启动测试为 `npm run test:boot:learn-anything`，使用模拟模型，不能替代 Web 页面验收。新页面应在真实发布版 Harness 中验证，不能用旧应用浏览器脚本替代。Python 浏览器环境按 `requirements-dev.txt` 安装并准备 Playwright Chromium；可用脚本与准确运行方法分别见[笔记 README](../plugins/notes/README.md)、[待办 README](../plugins/todos/README.md)及对应插件 CI。使用隔离 home、临时合成资料，不调用真实模型；记录实际通过的流程与未验收设备。
+笔记默认浏览器验收为 `plugins/notes/test/workspace_browser.py`，旧 `core_browser.py` 只保护 `interface: classic`。todos planner 使用 `npm --prefix plugins/todos run test:planner:browser`；`test:browser` 包含三套 v1 回归及真实 DSH 中英切换测试。导师真实 DSH 启动测试为 `npm run test:boot:learn-anything`，使用模拟模型，不能替代 Web 页面验收。新页面应在真实发布版 Harness 中验证，不能用旧应用浏览器脚本替代。Python 浏览器环境按 `requirements-dev.txt` 安装并准备 Playwright Chromium；可用脚本与准确运行方法分别见[笔记 README](../plugins/notes/README.md)、[待办 README](../plugins/todos/README.md)及对应插件 CI。使用隔离 home、临时合成资料，不调用真实模型；记录实际通过的流程与未验收设备。
 
-CI 已接入 todos 的 v1 三套浏览器测试及 planner 测试；导师 CI 在临时目录安装兼容 DSH 后运行模拟模型启动检查，再上传构建包。它们不代表真实模型或导师完整 Web 流程验收。
+CI 已接入 notes 的 Files.md／classic／中英切换测试，以及 todos 的 v1 三套回归／中英切换／planner 测试；导师 CI 在临时目录安装兼容 DSH 后运行模拟模型启动检查，再上传构建包。它们不代表真实模型或导师完整 Web 流程验收。
 
 变更共享入口时运行 `test:startup`；变更插件按范围运行对应 Node／真实宿主／浏览器检查。修改文件接口或 UI 还需按 AGENTS 保护旧应用的三套浏览器回归。普通文档调整检查本地链接及命令路径即可，不把未运行检查写作通过。
 
@@ -99,3 +101,5 @@ npm_config_cache=/workspace/work/npm-cache node plugins/notes/test/upgrade.mjs /
 `npm run test:tooling` 验证检查器和分发准备脚本的失败场景，无需安装根应用依赖。`repository-checks.yml` 在相关改动时执行这两项。
 
 先从所选包的锁文件安装依赖，再执行 `npm run prepare:release -- notes`、`todos` 或 `learn-anything`，生成该包的 tgz、SHA-256、版本信息及版本说明。也可手动运行 **Prepare independent package** workflow，选择一个产品后下载构建产物。两种方式均不执行 npm 发布，不修改包的 private 状态，也不自动升级实例。完整流程与验证边界见 [分发指南](RELEASING.md)。
+
+导师卡片双语回归运行 `python3 packages/learn-anything/test/browser/locale_browser.py`，脚本自动启动并清理测试服务，验证语言切换、草稿和作答协议。该测试使用实际卡片组件及模拟宿主语言／传输，不是真实 DSH Web 端到端测试；已纳入导师 CI。

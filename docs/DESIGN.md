@@ -1,5 +1,7 @@
 # Corilo 可里交互说明
 
+**简体中文** | [English](DESIGN.en.md)
+
 2026-11-15。描述当前产品入口与交互边界；原布局设想见 [v0.34 交互方案](history/v0.34/DESIGN.md)，业务规则见 [规格](PRODUCT-SPEC.md)。
 
 ## 笔记工作区

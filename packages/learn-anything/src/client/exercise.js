@@ -1,3 +1,4 @@
+import { t, useUiLocale, labels } from './locale.js'
 // Pure interactive-quiz UI: an OpenUI renderer, the shared quiz context, the original
 // answer components and their styles. It knows nothing about DSH, localStorage, the
 // composer or mastery; the Host passes `answers`/`status`/`onAction` down and
@@ -16,10 +17,10 @@ import schema from 'virtual:quiz-schema'
 const h = react.createElement
 
 const CONFIDENCE = [['sure', '稳'], ['unsure', '有点把握'], ['guess', '蒙的']]
-const TYPE_LABEL = {
+const TYPE_LABEL = labels({
   scenario: '情境题', predict: '预测题', 'discriminate-pos': '判别题', 'discriminate-neg': '判别题',
   contrast: '对比辨析', rephrase: '换个说法', 'own-examples': '举例题', transfer: '迁移题', recall: '记忆题',
-}
+})
 const LETTERS = 'ABCDEFGHIJ'
 
 export const QUIZ_CSS = `
@@ -62,12 +63,13 @@ function toggle(list = [], index, multi) {
 }
 
 function QuizRoot({ props, renderNode }) {
+  useUiLocale()
   const quiz = react.useContext(QuizContext)
   return h('div', { className: 'la-quiz', 'data-quiz': quiz?.id, 'aria-busy': quiz?.isStreaming },
     h('div', { className: 'la-quiz-head' },
       h('span', { className: 'la-emblem' }, h(Icon, { name: 'target' })),
       h('div', { className: 'la-grow' },
-        h('p', { className: 'la-eyebrow' }, quiz?.purpose === 'practice' ? '理解练习' : quiz?.retry ? '错题重赛' : TYPE_LABEL[props.type] ?? props.type ?? '互动练习'),
+        h('p', { className: 'la-eyebrow' }, quiz?.purpose === 'practice' ? t('理解练习') : quiz?.retry ? t('错题重赛') : TYPE_LABEL[props.type] ?? props.type ?? t('互动练习')),
         h('h3', { className: 'la-quiz-title' }, props.title)),
       props.level ? h(Level, { level: props.level }) : null),
     quiz?.retry ? h('p', { className: 'la-retry-note' }, '换个情境，再试一次。用这次的思路完成挑战。') : null,
@@ -77,13 +79,14 @@ function QuizRoot({ props, renderNode }) {
 
 /** Five steps show the challenge before the learner starts. */
 function Level(props) {
+  useUiLocale()
   const level = Math.min(5, Math.max(1, Math.round(props.level)))
-  return h('span', { className: 'la-level', title: `本题难度 ${level}/5` },
+  return h('span', { className: 'la-level', title: t('本题难度 {level}/5', { level }) },
     h('span', { className: 'la-level-bars', 'aria-hidden': true }, Array.from({ length: 5 }, (_, i) => h('i', { key: i, 'data-on': i < level, style: { height: `${5 + i * 2.5}px` } }))),
-    h('span', null, `难度 ${level}/5`))
+    h('span', null, t('难度 {level}/5', { level })))
 }
 
-const CLOSED_TEXT = { answered: '已提交作答', easier: '已请求换一道简单点的', harder: '已请求换一道难一点的', break: '已暂停', superseded: '本题已结束，请在最新题卡作答' }
+const CLOSED_TEXT = labels({ answered: '已提交作答', easier: '已请求换一道简单点的', harder: '已请求换一道难一点的', break: '已暂停', superseded: '本题已结束，请在最新题卡作答' })
 
 /**
  * Answering plus the learner's controls over the pace. Every control checks the same
@@ -91,6 +94,7 @@ const CLOSED_TEXT = { answered: '已提交作答', easier: '已请求换一道�
  * cannot be acted on through an event handler.
  */
 function QuizFooter({ quiz, title }) {
+  useUiLocale()
   const [helpOpen, setHelpOpen] = react.useState(false)
   const [demoOpen, setDemoOpen] = react.useState(false)
   const helpButton = react.useRef(null)
@@ -103,52 +107,52 @@ function QuizFooter({ quiz, title }) {
   if (quiz.closed !== null) return h('div', { className: 'la-quiz-foot', role: 'status' }, h('div', null,
     h('span', { className: 'la-done' }, h(Icon, { name: quiz.closed === 'break' ? 'pause' : 'check' }), CLOSED_TEXT[quiz.closed] ?? CLOSED_TEXT.answered),
     typeof quiz.answerText === 'string' && quiz.answerText ? h('p', { className: 'la-pre' }, quiz.answerText) : null,
-    quiz.closed === 'answered' ? h(Sources, { sources: quiz.sources, label: '教材依据' }) : null))
+    quiz.closed === 'answered' ? h(Sources, { sources: quiz.sources, label: t('教材依据') }) : null))
   const missing = quiz.fields.filter((field) => !fieldComplete(field, quiz.answers[field.key])).length
-  const status = quiz.error
-    || (quiz.readOnly ? '只读模式，不能作答'
+  const status = t(quiz.error)
+    || (quiz.readOnly ? t('只读模式，不能作答')
       : !quiz.canSend ? quiz.blocked
         : !quiz.actionable ? quiz.blocked
-          : quiz.pending ? '提交尚未确认，可以重试'
-            : !quiz.fields.length ? '题目还没有可作答的内容'
-              : missing ? `还有 ${missing} 处没答` : '答完了，提交吧')
+          : quiz.pending ? t('提交尚未确认，可以重试')
+            : !quiz.fields.length ? t('题目还没有可作答的内容')
+              : missing ? t('还有 {count} 处没答', { count: missing }) : t('答完了，提交吧'))
   return h(react.Fragment, null,
-    quiz.fields.length ? h('div', { className: 'la-answer-progress', 'aria-label': `已完成 ${quiz.fields.length - missing}/${quiz.fields.length} 项作答` },
-      h('span', null, `已完成 ${quiz.fields.length - missing} / ${quiz.fields.length}`),
+    quiz.fields.length ? h('div', { className: 'la-answer-progress', 'aria-label': t('已完成 {done}/{total} 项作答', { done: quiz.fields.length - missing, total: quiz.fields.length }) },
+      h('span', null, t('已完成 {done} / {total}', { done: quiz.fields.length - missing, total: quiz.fields.length })),
       h('span', { className: 'la-answer-track', 'aria-hidden': true }, quiz.fields.map((field) => h('i', { key: field.key, 'data-done': fieldComplete(field, quiz.answers[field.key]) })))) : null,
-    h('div', { className: 'la-conf', role: 'group', 'aria-label': '作答把握' }, h('span', null, '有几成把握？'),
+    h('div', { className: 'la-conf', role: 'group', 'aria-label': t('作答把握') }, h('span', null, t('有几成把握？')),
       h('div', { className: 'la-confidence-options' }, CONFIDENCE.map(([key, text], i) => h('button', {
         key, type: 'button', className: 'la-conf-chip', 'aria-pressed': quiz.confidence === key,
         disabled: !quiz.canSetConfidence,
         onClick: () => quiz.setConfidence(quiz.confidence === key ? null : key),
-      }, h('span', { className: 'la-signal', 'aria-hidden': true }, [0, 1, 2].map((bar) => h('i', { key: bar, 'data-on': bar < 3 - i, style: { height: `${5 + bar * 3}px` } }))), text)))),
+      }, h('span', { className: 'la-signal', 'aria-hidden': true }, [0, 1, 2].map((bar) => h('i', { key: bar, 'data-on': bar < 3 - i, style: { height: `${5 + bar * 3}px` } }))), t(text))))),
     h('div', { className: 'la-quiz-foot' },
       h('span', { className: 'la-quiz-hint' }, status),
-      h('button', { type: 'button', className: 'la-submit', disabled: !quiz.actionable || !quiz.fields.length || missing > 0, onClick: () => quiz.submit(title) }, quiz.pending ? '重试提交' : '提交作答', h(Icon, { name: 'arrow' }))),
+      h('button', { type: 'button', className: 'la-submit', disabled: !quiz.actionable || !quiz.fields.length || missing > 0, onClick: () => quiz.submit(title) }, quiz.pending ? t('重试提交') : t('提交作答'), h(Icon, { name: 'arrow' }))),
     h('div', { className: 'la-controls' },
       h('button', { ref: helpButton, type: 'button', className: 'la-ctl', disabled: !quiz.actionable, 'aria-expanded': helpOpen,
-        onClick: () => { if (quiz.actionable) setHelpOpen((open) => !open) } }, h(Icon, { name: 'book' }), '没看懂'),
-      h('button', { type: 'button', className: 'la-ctl', disabled: !quiz.actionable, onClick: () => quiz.hint(title) }, h(Icon, { name: 'bulb' }), quiz.hints ? `再给个提示（已用 ${quiz.hints}）` : '要个提示'),
-      h('button', { type: 'button', className: 'la-ctl', disabled: !quiz.actionable, onClick: () => quiz.close('easier', title) }, h(Icon, { name: 'minus' }), '太难了'),
-      h('button', { type: 'button', className: 'la-ctl', disabled: !quiz.actionable, onClick: () => quiz.close('harder', title) }, h(Icon, { name: 'plus' }), '太简单'),
-      h('button', { type: 'button', className: 'la-ctl', disabled: !quiz.actionable, onClick: () => quiz.close('break', title) }, h(Icon, { name: 'pause' }), '歇一会儿')),
-    helpOpen ? h('div', { className: 'la-help', role: 'group', 'aria-label': '学习补给' },
+        onClick: () => { if (quiz.actionable) setHelpOpen((open) => !open) } }, h(Icon, { name: 'book' }), t('没看懂')),
+      h('button', { type: 'button', className: 'la-ctl', disabled: !quiz.actionable, onClick: () => quiz.hint(title) }, h(Icon, { name: 'bulb' }), quiz.hints ? t('再给个提示（已用 {count}）', { count: quiz.hints }) : t('要个提示')),
+      h('button', { type: 'button', className: 'la-ctl', disabled: !quiz.actionable, onClick: () => quiz.close('easier', title) }, h(Icon, { name: 'minus' }), t('太难了')),
+      h('button', { type: 'button', className: 'la-ctl', disabled: !quiz.actionable, onClick: () => quiz.close('harder', title) }, h(Icon, { name: 'plus' }), t('太简单')),
+      h('button', { type: 'button', className: 'la-ctl', disabled: !quiz.actionable, onClick: () => quiz.close('break', title) }, h(Icon, { name: 'pause' }), t('歇一会儿'))),
+    helpOpen ? h('div', { className: 'la-help', role: 'group', 'aria-label': t('学习补给') },
       demoOpen && quiz.demoReady && quiz.helpDemo ? h(TaskDemo, {
         config: quiz.helpDemo, disabled: quiz.locked,
         onAction: (event) => event.type === 'return' ? returnToQuestion() : quiz.demoAction(title, event),
       }) : h(react.Fragment, null,
-      h('p', { className: 'la-help-title' }, '先补一小块，再回来继续'),
-      h('p', { className: 'la-help-note' }, '选一下卡在哪里。导师会先补必要概念或小例子，原题和已填答案保留。'),
+      h('p', { className: 'la-help-title' }, t('先补一小块，再回来继续')),
+      h('p', { className: 'la-help-note' }, t('选一下卡在哪里。导师会先补必要概念或小例子，原题和已填答案保留。')),
       h('div', { className: 'la-help-actions' },
-        h('button', { type: 'button', className: 'la-bin', disabled: !quiz.actionable, onClick: () => quiz.help('term', title) }, '这个词不懂'),
-        h('button', { type: 'button', className: 'la-bin', disabled: !quiz.actionable, onClick: () => quiz.help('approach', title) }, '不知道从哪开始'),
+        h('button', { type: 'button', className: 'la-bin', disabled: !quiz.actionable, onClick: () => quiz.help('term', title) }, t('这个词不懂')),
+        h('button', { type: 'button', className: 'la-bin', disabled: !quiz.actionable, onClick: () => quiz.help('approach', title) }, t('不知道从哪开始')),
         quiz.helpDemo ? h('button', { type: 'button', className: 'la-bin', disabled: quiz.locked || (!quiz.demoReady && !quiz.actionable), onClick: () => {
           if (quiz.locked || (!quiz.demoReady && !quiz.actionable)) return
           setDemoOpen(true)
           if (!quiz.demoReady) quiz.help('demo', title)
-        } }, demoOpen && !quiz.demoReady ? '重试打开演示' : '动手看一眼') : null,
-        h('button', { type: 'button', className: 'la-ctl', onClick: returnToQuestion }, '回到题目')),
-      demoOpen && !quiz.demoReady ? h('p', { className: 'la-help-note', role: 'status' }, '确认补给请求后会打开演示；未确认时可以重试。') : null)) : null)
+        } }, demoOpen && !quiz.demoReady ? t('重试打开演示') : t('动手看一眼')) : null,
+        h('button', { type: 'button', className: 'la-ctl', onClick: returnToQuestion }, t('回到题目'))),
+      demoOpen && !quiz.demoReady ? h('p', { className: 'la-help-note', role: 'status' }, t('确认补给请求后会打开演示；未确认时可以重试。')) : null)) : null)
 }
 
 /** Answered: a number, non-blank text, or a non-empty list whose every entry is answered. */
@@ -164,18 +168,20 @@ function fieldComplete(field, value) {
 }
 
 function Scene({ props }) {
+  useUiLocale()
   return h('div', { className: 'la-scene' },
-    h('div', { className: 'la-scene-who' }, h(Icon, { name: 'book' }), '情境',
+    h('div', { className: 'la-scene-who' }, h(Icon, { name: 'book' }), t('情境'),
       props.who ? h('span', { className: 'la-scene-role' }, props.who) : null),
     h(QuestionText, { text: props.text }))
 }
 
 function Pick({ props }) {
+  useUiLocale()
   const cards = (props.cards ?? []).map(nodeProps)
   const [value, set, locked] = useQuizField(props.prompt)
   useQuizLabel(props.prompt, (v) => v.map((i) => `「${cards[i]?.title}」`).join('、'))
   return h('div', null,
-    h('p', { className: 'la-q' }, h(InlineText, { text: props.prompt }), props.multi ? h('span', { className: 'la-muted' }, '（可多选）') : null),
+    h('p', { className: 'la-q' }, h(InlineText, { text: props.prompt }), props.multi ? h('span', { className: 'la-muted' }, t('（可多选）')) : null),
     h('div', { className: 'la-cards' }, cards.map((card, i) => h('button', {
       key: i, type: 'button', className: 'la-pick', disabled: locked,
       'aria-pressed': (value ?? []).includes(i), onClick: () => set(toggle(value, i, props.multi)),
@@ -183,11 +189,12 @@ function Pick({ props }) {
 }
 
 function Choice({ props }) {
+  useUiLocale()
   const options = props.options ?? []
   const [value, set, locked] = useQuizField(props.prompt)
   useQuizLabel(props.prompt, (v) => v.map((i) => `${LETTERS[i]}. ${options[i]}`).join('；'))
   return h('div', null,
-    h('p', { className: 'la-q' }, h(InlineText, { text: props.prompt }), props.multi ? h('span', { className: 'la-muted' }, '（可多选）') : null),
+    h('p', { className: 'la-q' }, h(InlineText, { text: props.prompt }), props.multi ? h('span', { className: 'la-muted' }, t('（可多选）')) : null),
     h('div', { className: 'la-options' }, options.map((option, i) => h('button', {
       key: i, type: 'button', className: 'la-option', disabled: locked,
       'aria-pressed': (value ?? []).includes(i), onClick: () => set(toggle(value, i, props.multi)),
@@ -195,23 +202,26 @@ function Choice({ props }) {
 }
 
 function Reason({ props }) {
+  useUiLocale()
   const [value, set, locked] = useQuizField(props.prompt)
   useQuizLabel(props.prompt, (v) => v.trim())
   return h('div', null,
     h('p', { className: 'la-q la-q-secondary' }, h(InlineText, { text: props.prompt })),
     h('textarea', {
-      className: 'la-reason', 'aria-label': props.prompt, value: value ?? '', readOnly: locked, placeholder: props.placeholder ?? '用你自己的话写',
+      className: 'la-reason', 'aria-label': props.prompt, value: value ?? '', readOnly: locked, placeholder: props.placeholder ?? t('用你自己的话写'),
       onChange: (event) => set(event.target.value),
     }))
 }
 
 function Boss({ props }) {
+  useUiLocale()
   return h('div', { className: 'la-boss' },
-    h('div', { className: 'la-boss-name' }, h(Icon, { name: 'spark' }), `进阶挑战 · ${props.title}`),
+    h('div', { className: 'la-boss-name' }, h(Icon, { name: 'spark' }), t('进阶挑战 · {title}', { title: props.title })),
     h(QuestionText, { text: props.text }))
 }
 
 function Slider({ props }) {
+  useUiLocale()
   const [value, set, locked] = useQuizField(props.prompt)
   const unit = props.unit ?? ''
   useQuizLabel(props.prompt, (v) => `${v}${unit}`)
@@ -224,7 +234,7 @@ function Slider({ props }) {
   const [left, right] = props.labels ?? []
   return h('div', { className: 'la-slider' },
     h('p', { className: 'la-q' }, h(InlineText, { text: props.prompt })),
-    h('span', { className: 'la-slider-value', 'data-unset': value === undefined }, value === undefined ? '拖动滑块给出你的估计' : `${value}${unit}`),
+    h('span', { className: 'la-slider-value', 'data-unset': value === undefined }, value === undefined ? t('拖动滑块给出你的估计') : `${value}${unit}`),
     h('input', { type: 'range', min, max, step, value: shown, disabled: locked, 'aria-label': props.prompt, onChange: commit, onPointerUp: commit, onKeyUp: commit }),
     h('div', { className: 'la-slider-ends' },
       h('span', null, `${min}${unit}${left ? ` · ${left}` : ''}`),
@@ -232,6 +242,7 @@ function Slider({ props }) {
 }
 
 function Sorter({ props }) {
+  useUiLocale()
   const bins = props.bins ?? []
   const items = props.items ?? []
   const [value, set, locked] = useQuizField(props.prompt)
@@ -248,23 +259,25 @@ function Sorter({ props }) {
 }
 
 function SpotError({ props }) {
+  useUiLocale()
   const lines = props.lines ?? []
   const [value, set, locked] = useQuizField(props.prompt)
   const current = Array.isArray(value) ? value : [null, '']
   useQuizLabel(props.prompt, (v) => `第 ${v[0]} 行「${lines[v[0] - 1] ?? ''}」；修正：${String(v[1] ?? '').trim()}`)
   return h('div', null,
-    h('p', { className: 'la-q' }, h(InlineText, { text: props.prompt }), h('small', null, '定位 → 修复')),
-    h('div', { className: 'la-code-lines', role: 'group', 'aria-label': '选择有错的一行' }, lines.map((line, i) => h('button', {
+    h('p', { className: 'la-q' }, h(InlineText, { text: props.prompt }), h('small', null, t('定位 → 修复'))),
+    h('div', { className: 'la-code-lines', role: 'group', 'aria-label': t('选择有错的一行') }, lines.map((line, i) => h('button', {
       key: i, type: 'button', className: 'la-code-line', disabled: locked,
       'aria-pressed': current[0] === i + 1, onClick: () => set([i + 1, current[1]]),
     }, h('span', { className: 'la-line-no' }, String(i + 1).padStart(2, '0')), h('code', null, line)))),
     h('label', { className: 'la-repair' },
-      h('span', null, current[0] ? `修复第 ${current[0]} 行` : '先定位问题，再写出修正'),
-      h('textarea', { className: 'la-reason', 'aria-label': `${props.prompt ?? '找茬'}：修正`, value: current[1] ?? '', readOnly: locked,
-        placeholder: props.placeholder ?? '这行应该怎么改？', onChange: (event) => set([current[0], event.target.value]) })))
+      h('span', null, current[0] ? t('修复第 {line} 行', { line: current[0] }) : t('先定位问题，再写出修正')),
+      h('textarea', { className: 'la-reason', 'aria-label': `${props.prompt ?? t('找茬')}：修正`, value: current[1] ?? '', readOnly: locked,
+        placeholder: props.placeholder ?? t('这行应该怎么改？'), onChange: (event) => set([current[0], event.target.value]) })))
 }
 
 function OrderSteps({ props }) {
+  useUiLocale()
   const items = props.items ?? []
   const [value, set, locked] = useQuizField(props.prompt)
   // Null placeholders keep a partly assembled path from counting as a complete answer.
@@ -273,30 +286,32 @@ function OrderSteps({ props }) {
   useQuizLabel(props.prompt, (v) => v.map((i, n) => `${n + 1}. ${items[i]}`).join(' → '))
   return h('div', null,
     h('p', { className: 'la-q' }, h(InlineText, { text: props.prompt }), h('small', null, `${chosen.length} / ${items.length}`)),
-    h('ol', { className: 'la-step-path', 'aria-label': '你排列的步骤', 'aria-live': 'polite' },
-      chosen.length ? chosen.map((i, n) => h('li', { key: i }, h('b', null, n + 1), items[i])) : h('li', { className: 'la-muted' }, '依次点选，拼出你的路径')),
-    h('div', { className: 'la-step-pool', role: 'group', 'aria-label': '待排列步骤' }, items.map((item, i) => h('button', {
+    h('ol', { className: 'la-step-path', 'aria-label': t('你排列的步骤'), 'aria-live': 'polite' },
+      chosen.length ? chosen.map((i, n) => h('li', { key: i }, h('b', null, n + 1), items[i])) : h('li', { className: 'la-muted' }, t('依次点选，拼出你的路径'))),
+    h('div', { className: 'la-step-pool', role: 'group', 'aria-label': t('待排列步骤') }, items.map((item, i) => h('button', {
       key: i, type: 'button', className: 'la-step', disabled: locked || chosen.includes(i), 'aria-pressed': chosen.includes(i),
       onClick: () => { if (!chosen.includes(i)) commit([...chosen, i]) },
     }, h('span', { className: 'la-line-no' }, chosen.includes(i) ? '✓' : '＋'), h('span', null, item)))),
     h('div', { className: 'la-step-tools' },
-      h('button', { type: 'button', className: 'la-bin', disabled: locked || !chosen.length, onClick: () => commit(chosen.slice(0, -1)) }, '撤销上一步'),
-      h('button', { type: 'button', className: 'la-bin', disabled: locked || !chosen.length, onClick: () => commit([]) }, '重新排列')))
+      h('button', { type: 'button', className: 'la-bin', disabled: locked || !chosen.length, onClick: () => commit(chosen.slice(0, -1)) }, t('撤销上一步')),
+      h('button', { type: 'button', className: 'la-bin', disabled: locked || !chosen.length, onClick: () => commit([]) }, t('重新排列'))))
 }
 
 function Rewrite({ props }) {
+  useUiLocale()
   const [value, set, locked] = useQuizField(props.prompt)
   useQuizLabel(props.prompt, (v) => v.trim())
   return h('div', null,
     h('p', { className: 'la-q' }, h(InlineText, { text: props.prompt })),
     h(QuestionText, { className: 'la-bubble', text: `“${props.original ?? ''}”` }),
     h('textarea', {
-      className: 'la-reason', 'aria-label': props.prompt, value: value ?? '', readOnly: locked, placeholder: props.placeholder ?? '换成你自己的话',
+      className: 'la-reason', 'aria-label': props.prompt, value: value ?? '', readOnly: locked, placeholder: props.placeholder ?? t('换成你自己的话'),
       onChange: (event) => set(event.target.value),
     }))
 }
 
 function Examples({ props }) {
+  useUiLocale()
   const slots = props.slots ?? []
   const [value, set, locked] = useQuizField(props.prompt)
   useQuizLabel(props.prompt, (v) => slots.map((slot, i) => `${slot}：${(v[i] ?? '').trim()}`).join('；'))
@@ -306,7 +321,7 @@ function Examples({ props }) {
     h('div', { className: 'la-slots' }, slots.map((slot, i) => h('label', { key: i, className: 'la-slot' },
       h('div', { className: 'la-slot-name' }, slot),
       h('textarea', {
-        className: 'la-reason', value: current[i] ?? '', readOnly: locked, placeholder: '你自己想的例子',
+        className: 'la-reason', value: current[i] ?? '', readOnly: locked, placeholder: t('你自己想的例子'),
         onChange: (event) => set(current.map((x, j) => (j === i ? event.target.value : x))),
       })))))
 }
@@ -356,6 +371,7 @@ class Fallback extends react.Component {
  * the question but cannot submit.
  */
 export function Exercise({ view, answers = {}, onChange, confidence = null, onConfidenceChange, status = {}, onAction, isStreaming = false, helpDemo = null }) {
+  useUiLocale()
   const [fields, setFields] = react.useState([])
   const [failed, setFailed] = react.useState(false)
   const labels = react.useRef(new Map())
@@ -368,7 +384,7 @@ export function Exercise({ view, answers = {}, onChange, confidence = null, onCo
   const error = status.error ?? null
   const canSend = status.canSend !== false
   const readOnly = Boolean(status.readOnly)
-  const blocked = status.blocked ?? (readOnly || !onChange ? '这里不能作答' : '现在不能提交')
+  const blocked = status.blocked ?? (readOnly || !onChange ? t('这里不能作答') : t('现在不能提交'))
   const answerText = status.answerText ?? null
   const locked = readOnly || !onChange || isStreaming || closed !== null || Boolean(status.sending)
 
@@ -456,11 +472,11 @@ export function Exercise({ view, answers = {}, onChange, confidence = null, onCo
     },
   }), [view?.id, view?.sources, view?.retry, view?.purpose, isStreaming, answers, locked, closed, hints, pending, error, answerText, confidence, canSend, readOnly, blocked, fields, register, onChange, onAction, onConfidenceChange, helpDemo, status.demoReady])
 
-  const fallback = h('div', { className: 'la-card' }, h('p', { className: 'la-title' }, view?.purpose === 'practice' ? '理解练习' : '验证题'), h(QuestionText, { text: view?.question }))
+  const fallback = h('div', { className: 'la-card' }, h('p', { className: 'la-title' }, view?.purpose === 'practice' ? t('理解练习') : t('验证题')), h(QuestionText, { text: view?.question }))
   if (failed) return fallback
   return h(Fallback, { fallback },
     h(QuizContext.Provider, { value: quiz },
-      isStreaming ? h('div', { className: 'la-row', role: 'status' }, '正在生成互动题…') : null,
+      isStreaming ? h('div', { className: 'la-row', role: 'status' }, t('正在生成互动题…')) : null,
       h(Renderer, {
         response: view?.ui,
         library,

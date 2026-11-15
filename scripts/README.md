@@ -1,5 +1,7 @@
 # 开发工具与兼容入口
 
+**简体中文** | [English](README.en.md)
+
 当前产品源码在 [plugins/](../plugins/README.md)，统一启动实现在 [launcher/](../launcher/README.md)。本目录不再混放主启动实现。
 
 | 文件 | 用途 |

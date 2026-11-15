@@ -1,6 +1,10 @@
 # Corilo Files.md Workspace for DeepSeek Harness
 
-**Version 0.7.0** · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
+**English** | [简体中文](README.zh-CN.md)
+
+Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts.
+
+**Version 0.7.0** · [Quick start](QUICKSTART.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
 
 One plugin supplies the Files.md workspace inside Harness: files, Markdown notes,
 checklists, capture, journals, split editing and media. The complete pinned upstream
@@ -77,7 +81,7 @@ or deleted. Classic recovery helpers remain for pre-existing data only.
 The package CLI above creates a notes-only instance. The repository launcher
 (`npm run init:corilo`) creates notes + todos 0.6.1 with planner v2 enabled.
 Existing notes-only and legacy two-plugin configs remain supported; existing todo
-databases are not automatically migrated. See the [todos guide](../todos/README.md)
+databases are not automatically migrated. See the [todos guide](../todos/README.en.md)
 for calendar, reminders and the new-directory requirement. The following is an optional one-way
 export for users who explicitly choose Markdown task management. Stop both source
 and destination services and back up their directories before importing:

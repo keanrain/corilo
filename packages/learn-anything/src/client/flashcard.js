@@ -1,3 +1,4 @@
+import { t, useUiLocale } from './locale.js'
 import * as react from 'react'
 import { Icon } from './icons.js'
 import { Sources } from './sources.js'
@@ -26,6 +27,7 @@ export const FLASHCARD_CSS = `
 `
 
 export function FlashcardCard({ view, useInput, useConversation, inputActions }) {
+  useUiLocale()
   const [draft, setDraft] = react.useState(() => load(view.id))
   const [error, setError] = react.useState(null)
   const [sending, setSending] = react.useState(false)
@@ -48,30 +50,30 @@ export function FlashcardCard({ view, useInput, useConversation, inputActions })
     catch { setError('发送失败，自评已保留，可以重试') }
     finally { setSending(false) }
   }
-  const status = history.result ? `已告诉导师：${history.result}`
-    : closed ? '本卡已结束，请继续最新练习'
-    : error || (busy ? '正在发送…' : draft.pending ? '尚未确认发送，可以重试'
-      : !revealed ? '先回忆，再揭晓。' : !inputActions ? '这里不能发送自评'
-      : !available ? '输入框里有内容，先处理后再发送自评' : '核对后，告诉导师下一步怎么练。')
-  return h('section', { className: 'la-flash', 'data-flashcard': view.id, 'aria-label': '回忆闪卡' },
+  const status = history.result ? t('已告诉导师：{result}', { result: t(history.result) })
+    : closed ? t('本卡已结束，请继续最新练习')
+    : t(error) || (busy ? t('正在发送…') : draft.pending ? t('尚未确认发送，可以重试')
+      : !revealed ? t('先回忆，再揭晓。') : !inputActions ? t('这里不能发送自评')
+      : !available ? t('输入框里有内容，先处理后再发送自评') : t('核对后，告诉导师下一步怎么练。'))
+  return h('section', { className: 'la-flash', 'data-flashcard': view.id, 'aria-label': t('回忆闪卡') },
     h('header', { className: 'la-flash-head' }, h(Icon, { name: 'book' }),
-      h('div', { className: 'la-grow' }, h('p', { className: 'la-eyebrow' }, '回忆 · 核对 · 再练'), h('h3', null, view.kp.title)),
-      h('span', { className: 'la-flash-tag' }, '自测练习')),
+      h('div', { className: 'la-grow' }, h('p', { className: 'la-eyebrow' }, t('回忆 · 核对 · 再练')), h('h3', null, view.kp.title)),
+      h('span', { className: 'la-flash-tag' }, t('自测练习'))),
     h('div', { className: 'la-flash-body' },
       h('p', { className: 'la-flash-question' }, view.fact.prompt),
       !revealed && !closed ? h(react.Fragment, null,
-        h('p', { className: 'la-flash-note' }, '先在心里回忆，再选一个最接近的感受。'),
-        h('div', { className: 'la-flash-choices', role: 'group', 'aria-label': '翻面前的把握' }, Object.entries(FLASHCARD_CONFIDENCE).map(([value, label]) => h('button', {
+        h('p', { className: 'la-flash-note' }, t('先在心里回忆，再选一个最接近的感受。')),
+        h('div', { className: 'la-flash-choices', role: 'group', 'aria-label': t('翻面前的把握') }, Object.entries(FLASHCARD_CONFIDENCE).map(([value, label]) => h('button', {
           key: value, type: 'button', className: 'la-flash-choice', 'aria-pressed': draft.confidence === value,
           onClick: () => patch({ confidence: value }),
-        }, label))),
-        h('button', { type: 'button', className: 'la-submit', disabled: !draft.confidence, onClick: (event) => { setKeyboardReveal(event.detail === 0); patch({ revealed: true }) } }, '翻面核对', h(Icon, { name: 'arrow' }))) : null,
+        }, t(label)))),
+        h('button', { type: 'button', className: 'la-submit', disabled: !draft.confidence, onClick: (event) => { setKeyboardReveal(event.detail === 0); patch({ revealed: true }) } }, t('翻面核对'), h(Icon, { name: 'arrow' }))) : null,
       revealed ? h('div', { className: 'la-flash-answer', style: keyboardReveal ? { animation: 'none' } : undefined },
-        h('span', { className: 'la-eyebrow' }, '参考答案'), h('p', null, view.fact.answer), h(Sources, { sources: view.sources, label: '教材依据' })) : null,
-      h('p', { className: 'la-flash-note' }, '翻面和自评不会增加掌握度，后续独立回忆才算验证。'),
+        h('span', { className: 'la-eyebrow' }, t('参考答案')), h('p', null, view.fact.answer), h(Sources, { sources: view.sources, label: t('教材依据') })) : null,
+      h('p', { className: 'la-flash-note' }, t('翻面和自评不会增加掌握度，后续独立回忆才算验证。')),
       revealed && !closed ? h('div', { className: 'la-flash-actions' }, Object.entries(FLASHCARD_RESULT).map(([value, label]) => h('button', {
         key: value, type: 'button', className: value === 'remembered' ? 'la-submit' : 'la-flash-choice', disabled: !available || !inputActions,
         onClick: () => send(value),
-      }, draft.pending && draft.result === value ? `重试：${label}` : label))) : null,
+      }, draft.pending && draft.result === value ? t('重试：{label}', { label: t(label) }) : t(label)))) : null,
       h('div', { className: 'la-flash-status', role: 'status' }, status)))
 }

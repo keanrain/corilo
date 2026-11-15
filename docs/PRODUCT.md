@@ -1,5 +1,7 @@
 # Corilo 可里产品说明
 
+**简体中文** | [English](PRODUCT.en.md)
+
 2026-11-15。当前产品由三个可独立维护、安装和分发的 DSH 插件组成。产品规则见 [业务规格](PRODUCT-SPEC.md)，命令见 [开发指南](DEVELOPMENT.md)。
 
 | 产品 | 当前版本 | 用途 |

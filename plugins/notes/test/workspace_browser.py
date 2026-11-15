@@ -22,10 +22,10 @@ def run():
     origin=url.split('/?')[0]
     with sync_playwright() as p:
      browser=p.chromium.launch(headless=True,executable_path=shutil.which('chromium') or None)
-     context=browser.new_context(viewport={'width':1440,'height':1000});page=context.new_page();errors=[];external=[]
+     context=browser.new_context(locale='zh-CN', viewport={'width':1440,'height':1000});page=context.new_page();errors=[];external=[]
      page.on('pageerror',lambda e:errors.append(str(e)))
      context.on('request',lambda r:external.append(r.url.split('?')[0]) if r.url.startswith('http') and not r.url.startswith(origin+'/') else None)
-     page.goto(url);page.get_by_role('button',name='Continue',exact=True).click();page.get_by_role('button',name='Close',exact=True).click();page.get_by_role('button',name='笔记',exact=True).click()
+     page.goto(url);page.get_by_role('button',name=re.compile('^(Continue|继续)$')).click();page.get_by_role('button',name=re.compile('^(Close|关闭)$')).click();page.get_by_role('button',name='笔记',exact=True).click()
      iframe=page.locator('iframe[title="Corilo Files.md 工作区"]');expect(iframe).to_be_visible()
      frame=iframe.content_frame
      expect(frame.locator('#corilo-status')).to_have_text('已保存到主机',timeout=20000)

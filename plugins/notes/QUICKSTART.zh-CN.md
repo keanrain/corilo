@@ -1,5 +1,7 @@
 # Corilo 工作区快速开始
 
+**简体中文** | [English](QUICKSTART.en.md)
+
 0.7.0 将 Files.md 完整前端接入 Harness，一个插件处理笔记、Markdown 待办、收集与日记。先保留原生菜单和功能。资料保存在主机普通目录，不需要 Git、Corilo 账号或模型密钥。
 
 ## 源码三步
@@ -12,7 +14,7 @@ npm run init:corilo -- --directory /absolute/corilo-instance
 npm run start:corilo -- --directory /absolute/corilo-instance
 ```
 
-目录换成仓库外的绝对路径。初始化只创建配置，不覆盖已有实例。使用 Harness 打印的鉴权地址，不分享 token；关闭模型引导后点击“笔记”。新实例只加载工作区包。
+目录换成仓库外的绝对路径。初始化只创建配置，不覆盖已有实例。使用 Harness 打印的鉴权地址，不分享 token；关闭模型引导后点击“笔记”。仓库启动器的新实例加载 notes＋todos planner；下方独立 notes CLI 才创建单笔记实例。
 
 ## 收到独立包
 

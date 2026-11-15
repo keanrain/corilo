@@ -1,3 +1,4 @@
+import { t, useLocale } from './i18n.mjs';
 import React, { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, drawSelection, keymap, placeholder } from '@codemirror/view';
@@ -23,6 +24,8 @@ const highlighting = HighlightStyle.define([
 ]);
 
 export const MarkdownEditor = forwardRef(function MarkdownEditor({ text, documentId, disabled, onChange, onCompositionChange }, ref) {
+  const locale=useLocale();
+  const language=useRef(new Compartment());
   const parent = useRef(null);
   const editor = useRef(null);
   const props = useRef({ text, onChange, onCompositionChange });
@@ -30,12 +33,16 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({ text, documen
   const raw = useRef(text);
   const identity = useRef(documentId);
   const lock = useRef(new Compartment());
+  const languageExtensions = () => [
+    placeholder(t("开始写作…")),
+    EditorState.phrases.of({ Find: t("查找正文"), Replace: t("替换为"), next: t("下一个"), previous: t("上一个"), all: t("全选匹配"), replace: t("替换"), 'replace all': t("全部替换"), close: t("关闭查找"), 'match case': t("区分大小写"), regexp: t("正则表达式"), 'by word': t("全词匹配"), 'No matches': t("未找到匹配") }),
+    EditorView.contentAttributes.of({ 'aria-label': t("笔记正文") }),
+  ];
   const extensions = () => [
     lock.current.of([EditorState.readOnly.of(disabled), EditorView.editable.of(!disabled), EditorView.contentAttributes.of({ 'aria-disabled': String(disabled) })]),
-    history(), drawSelection(), EditorView.lineWrapping, placeholder('开始写作…'),
-    EditorState.phrases.of({ Find: '查找正文', Replace: '替换为', next: '下一个', previous: '上一个', all: '全选匹配', replace: '替换', 'replace all': '全部替换', close: '关闭查找', 'match case': '区分大小写', regexp: '正则表达式', 'by word': '全词匹配', 'No matches': '未找到匹配' }),
+    history(), drawSelection(), EditorView.lineWrapping, language.current.of(languageExtensions()),
     markdown({ base: markdownLanguage }), syntaxHighlighting(highlighting), liveMarkdown, search({ top: true }),
-    EditorView.contentAttributes.of({ role: 'textbox', 'aria-label': '笔记正文', 'aria-multiline': 'true', spellcheck: 'false', autocapitalize: 'off' }),
+    EditorView.contentAttributes.of({ role: 'textbox', 'aria-multiline': 'true', spellcheck: 'false', autocapitalize: 'off' }),
     keymap.of([
       { key: 'Mod-b', run: view => wrapSelection(view, '**'), preventDefault: true },
       { key: 'Mod-i', run: view => wrapSelection(view, '*'), preventDefault: true },
@@ -82,6 +89,7 @@ export const MarkdownEditor = forwardRef(function MarkdownEditor({ text, documen
   useEffect(() => {
     editor.current.dispatch({ effects: lock.current.reconfigure([EditorState.readOnly.of(disabled), EditorView.editable.of(!disabled), EditorView.contentAttributes.of({ 'aria-disabled': String(disabled) })]) });
   }, [disabled]);
+  useEffect(() => { editor.current?.dispatch({ effects: language.current.reconfigure(languageExtensions()) }); }, [locale]);
   return <div className="corilo-markdown-editor">
     <div ref={parent} className="corilo-codemirror" />
   </div>;

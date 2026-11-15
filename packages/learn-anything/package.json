@@ -19,7 +19,8 @@
     "skills",
     "locale",
     "icon.svg",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "README.en.md"
   ],
   "engines": {
     "node": ">=24.9.0",

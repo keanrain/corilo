@@ -1,3 +1,4 @@
+import { uiText, useTodosLocale } from './i18n.mjs';
 import React, { useRef, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGrid from "@fullcalendar/daygrid";
@@ -9,6 +10,7 @@ import zh from "@fullcalendar/core/locales/zh-cn";
 import { Temporal } from "./planner-dates.mjs";
 import { strip } from "./planner-record.mjs";
 export function PlannerCalendar({ s, set, open, refresh }) {
+  const language = useTodosLocale();
   const cal = useRef(),
     drags = useRef();
   useEffect(() => {
@@ -56,9 +58,7 @@ export function PlannerCalendar({ s, set, open, refresh }) {
   }
   return (
     <>
-      <label>
-        跳转日期
-        <input
+      <label>{uiText("跳转日期")}<input
           type="date"
           onChange={(e) =>
             e.target.value && cal.current?.getApi().gotoDate(e.target.value)
@@ -66,7 +66,7 @@ export function PlannerCalendar({ s, set, open, refresh }) {
         />
       </label>
       <div className="planner-calendar">
-        <aside ref={drags} aria-label="可安排任务">
+        <aside ref={drags} aria-label={uiText("可安排任务")}>
           {s.items.map((t) => (
             <div key={t.id} data-task-id={t.id} data-title={t.title}>
               <button
@@ -74,18 +74,17 @@ export function PlannerCalendar({ s, set, open, refresh }) {
                   open("event", null, { title: t.title, taskId: t.id })
                 }
               >
-                {t.title} · 安排
-              </button>
+                {t.title}{" "}{uiText("· 安排")}</button>
             </div>
           ))}
           {s.cursor && (
-            <button onClick={() => refresh(true)}>加载更多可安排任务</button>
+            <button onClick={() => refresh(true)}>{uiText("加载更多可安排任务")}</button>
           )}
         </aside>
         <FullCalendar
           ref={cal}
           plugins={[dayGrid, timeGrid, listPlugin, interaction, luxon]}
-          locale={zh}
+          locale={language.startsWith("zh") ? zh : "en"}
           initialView={window.innerWidth < 700 ? "listWeek" : "dayGridMonth"}
           headerToolbar={{
             left: "prev,next today",
@@ -108,7 +107,7 @@ export function PlannerCalendar({ s, set, open, refresh }) {
             })),
             ...s.deadlines.map((t) => ({
               id: `due-${t.id}`,
-              title: `截止 · ${t.title}`,
+              title: uiText("截止 · {title}", { title: t.title }),
               start: t.due.kind === "date" ? t.due.date : t.due.at,
               allDay: t.due.kind === "date",
               editable: false,
@@ -156,7 +155,7 @@ export function PlannerCalendar({ s, set, open, refresh }) {
           }}
         />
       </div>
-      <p>网格显示所选时区；详情保留事件原时区。拖动后需确认保存。</p>
+      <p>{uiText("网格显示所选时区；详情保留事件原时区。拖动后需确认保存。")}</p>
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { uiText } from './i18n.mjs';
 import React from "react";
 import { options, priorities } from "./planner-fields.jsx";
 import { strip } from "./planner-record.mjs";
@@ -33,15 +34,13 @@ export function PlannerEditor({
   return (
     <form
       className="planner-editor"
-      aria-label="事项详情"
+      aria-label={uiText("事项详情")}
       onSubmit={save}
       onCompositionStart={() => (composing.current = true)}
       onCompositionEnd={() => (composing.current = false)}
     >
-      <h2>{s.editor.kind === "task" ? "任务详情" : "日程详情"}</h2>
-      <label>
-        标题
-        <input
+      <h2>{s.editor.kind === "task" ? uiText("任务详情") : uiText("日程详情")}</h2>
+      <label>{uiText("标题")}<input
           ref={title}
           required
           maxLength={200}
@@ -49,54 +48,46 @@ export function PlannerEditor({
           onChange={(e) => edit("title", e.target.value)}
         />
       </label>
-      <label>
-        说明
-        <textarea
-          aria-label="说明"
+      <label>{uiText("说明")}<textarea
+          aria-label={uiText("说明")}
           maxLength={20000}
           value={s.editor.value.body}
           onChange={(e) => edit("body", e.target.value)}
         />
       </label>
-      <label>
-        状态
-        <select
-          aria-label="状态"
+      <label>{uiText("状态")}<select
+          aria-label={uiText("状态")}
           value={s.editor.value.status}
           onChange={(e) => edit("status", e.target.value)}
         >
           {options(
             s.editor.kind === "task"
               ? [
-                  ["open", "未完成／恢复"],
-                  ["done", "完成"],
-                  ["cancelled", "取消"],
+                  ["open", uiText("未完成／恢复")],
+                  ["done", uiText("完成")],
+                  ["cancelled", uiText("取消")],
                 ]
               : [
-                  ["active", "有效"],
-                  ["cancelled", "取消"],
+                  ["active", uiText("有效")],
+                  ["cancelled", uiText("取消")],
                 ],
           )}
         </select>
       </label>
       {s.editor.kind === "task" ? (
         <>
-          {field("计划日期", "plannedDate", "date")}
-          {field("清单", "list")}
-          <label>
-            优先级
-            <select
-              aria-label="优先级"
+          {field(uiText("计划日期"), "plannedDate", "date")}
+          {field(uiText("清单"), "list")}
+          <label>{uiText("优先级")}<select
+              aria-label={uiText("优先级")}
               value={s.editor.value.priority}
               onChange={(e) => edit("priority", e.target.value)}
             >
-              {options(priorities)}
+              {options(priorities())}
             </select>
           </label>
-          <label>
-            截止类型
-            <select
-              aria-label="截止类型"
+          <label>{uiText("截止类型")}<select
+              aria-label={uiText("截止类型")}
               value={s.editor.value.due?.kind ?? ""}
               onChange={(e) =>
                 edit(
@@ -118,17 +109,15 @@ export function PlannerEditor({
               }
             >
               {options([
-                ["", "无截止"],
-                ["date", "日期"],
-                ["instant", "精确时间"],
+                ["", uiText("无截止")],
+                ["date", uiText("日期")],
+                ["instant", uiText("精确时间")],
               ])}
             </select>
           </label>
           {s.editor.value.due && (
             <>
-              <label>
-                截止
-                <input
+              <label>{uiText("截止")}<input
                   type={s.editor.value.due.kind === "date" ? "date" : "text"}
                   value={s.editor.value.due.date ?? s.editor.value.due.at}
                   onChange={(e) =>
@@ -140,9 +129,7 @@ export function PlannerEditor({
                   }
                 />
               </label>
-              <label>
-                截止时区
-                <input
+              <label>{uiText("截止时区")}<input
                   value={s.editor.value.due.timeZone}
                   onChange={(e) =>
                     edit("due", {
@@ -157,9 +144,7 @@ export function PlannerEditor({
         </>
       ) : (
         <>
-          <label>
-            全天
-            <input
+          <label>{uiText("全天")}<input
               type="checkbox"
               checked={s.editor.value.allDay}
               onChange={(e) => {
@@ -184,9 +169,7 @@ export function PlannerEditor({
               }}
             />
           </label>
-          <label>
-            开始
-            <input
+          <label>{uiText("开始")}<input
               type={s.editor.value.allDay ? "date" : "text"}
               value={s.editor.value.start}
               onChange={(e) => {
@@ -205,21 +188,19 @@ export function PlannerEditor({
             />
           </label>
           {field(
-            "结束（全天结束日期不含当天）",
+            uiText("结束（全天结束日期不含当天）"),
             "end",
             s.editor.value.allDay ? "date" : "text",
           )}
-          {field("日程原时区", "timeZone")}
-          {field("地点", "location")}
-          <label>
-            关联任务
-            <select
-              aria-label="关联任务"
+          {field(uiText("日程原时区"), "timeZone")}
+          {field(uiText("地点"), "location")}
+          <label>{uiText("关联任务")}<select
+              aria-label={uiText("关联任务")}
               value={s.editor.value.taskId ?? ""}
               onChange={(e) => edit("taskId", e.target.value || null)}
             >
               {options([
-                ["", "独立事件"],
+                ["", uiText("独立事件")],
                 ...s.items.map((t) => [t.id, t.title]),
               ])}
             </select>
@@ -247,15 +228,14 @@ export function PlannerEditor({
                   }
                 }}
               >
-                {minutes} 分钟
-              </button>
+                {minutes}{" "}{uiText("分钟")}</button>
             ))}
         </>
       )}
-      {field("提醒时间（含 UTC 或偏移，留空关闭）", "reminderAt")}
+      {field(uiText("提醒时间（含 UTC 或偏移，留空关闭）"), "reminderAt")}
       {s.editor.latest && (
         <section>
-          <h3>服务器最新内容</h3>
+          <h3>{uiText("服务器最新内容")}</h3>
           <pre>{JSON.stringify(s.editor.latest, null, 2)}</pre>
           <button
             type="button"
@@ -268,9 +248,7 @@ export function PlannerEditor({
                 },
               })
             }
-          >
-            保留输入，按最新版本编辑
-          </button>
+          >{uiText("保留输入，按最新版本编辑")}</button>
           <button
             type="button"
             onClick={() =>
@@ -283,49 +261,39 @@ export function PlannerEditor({
                 },
               })
             }
-          >
-            采用服务器内容
-          </button>
+          >{uiText("采用服务器内容")}</button>
         </section>
       )}
       <footer>
         <button type="submit" disabled={s.busy || Boolean(s.pending)}>
-          {s.busy ? "保存中…" : "保存"}
+          {s.busy ? uiText("保存中…") : uiText("保存")}
         </button>
         <button
           type="button"
           disabled={s.busy || Boolean(s.pending)}
           onClick={() => {
-            if (window.confirm("关闭编辑并放弃未提交的修改？")) {
+            if (window.confirm(uiText("关闭编辑并放弃未提交的修改？"))) {
               set({ editor: null });
               returnFocus.current?.focus();
             }
           }}
-        >
-          关闭
-        </button>
+        >{uiText("关闭")}</button>
         {s.editor.item && (
           <button
             type="button"
             disabled={s.busy || Boolean(s.pending)}
             onClick={latest}
-          >
-            查看最新记录
-          </button>
+          >{uiText("查看最新记录")}</button>
         )}
         {s.pending && (
           <>
-            <button type="button" disabled={s.busy} onClick={reconcile}>
-              核对操作
-            </button>
+            <button type="button" disabled={s.busy} onClick={reconcile}>{uiText("核对操作")}</button>
             {s.notice === "未找到回执，可重试原请求" && (
               <button
                 type="button"
                 disabled={s.busy}
                 onClick={() => submit(s.pending)}
-              >
-                重试原请求
-              </button>
+              >{uiText("重试原请求")}</button>
             )}
           </>
         )}

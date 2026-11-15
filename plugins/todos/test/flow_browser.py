@@ -32,7 +32,7 @@ def main():
                 origin = url.split('/?')[0]
                 with sync_playwright() as p:
                     browser = p.chromium.launch(headless=True, executable_path=shutil.which('chromium') or None)
-                    context = browser.new_context(viewport={'width': 1400, 'height': 950})
+                    context = browser.new_context(locale='zh-CN', viewport={'width': 1400, 'height': 950})
                     errors, external, updates = [], [], []
                     context.on('request', lambda req: external.append(req.url.split('?')[0]) if req.url.startswith('http') and not req.url.startswith(origin + '/') else None)
                     context.on('request', lambda req: updates.append(req.post_data_json) if '/api/corilo-todos/update' in req.url else None)
@@ -40,13 +40,13 @@ def main():
                     page.on('pageerror', lambda error: errors.append(str(error)))
                     def enter(target, first=False):
                         target.goto(url if first else origin)
-                        target.get_by_role('button', name='Continue', exact=True).or_(target.get_by_role('button', name='Close', exact=True)).first.wait_for()
-                        if target.get_by_role('button', name='Continue', exact=True).is_visible():
-                            target.get_by_role('button', name='Continue', exact=True).click()
-                        target.get_by_role('button', name='Close', exact=True).click()
+                        target.get_by_role('button', name=re.compile(r'^(Continue|继续)$'), exact=True).or_(target.get_by_role('button', name=re.compile(r'^(Close|关闭)$'), exact=True)).first.wait_for()
+                        if target.get_by_role('button', name=re.compile(r'^(Continue|继续)$'), exact=True).is_visible():
+                            target.get_by_role('button', name=re.compile(r'^(Continue|继续)$'), exact=True).click()
+                        target.get_by_role('button', name=re.compile(r'^(Close|关闭)$'), exact=True).click()
                         narrow = target.viewport_size['width'] <= 700
                         if narrow:
-                            target.get_by_role('button', name='Open sidebar', exact=True).click()
+                            target.get_by_role('button', name=re.compile(r'^(Open sidebar|打开侧边栏)$'), exact=True).click()
                         target.get_by_role('button', name='待办', exact=True).click()
                         if narrow:
                             target.touchscreen.tap(target.viewport_size['width'] - 8, 220)
@@ -101,7 +101,7 @@ def main():
                     # Leaving for the host's other panel still saves through the
                     # bound store actions; return does not overwrite the edit.
                     body.fill('带相机、轻便外套和一本书。')
-                    page.get_by_role('button', name='Plugins', exact=True).click()
+                    page.get_by_role('button', name=re.compile(r'^(Plugins|插件)$'), exact=True).click()
                     wait_for(lambda: api('get', {'id': second['id']})['body'] == '带相机、轻便外套和一本书。')
                     page.get_by_role('button', name='待办', exact=True).click()
                     expect(body).to_have_value('带相机、轻便外套和一本书。')
@@ -115,7 +115,7 @@ def main():
 
                     # Mobile uses a dedicated content view and a single close
                     # action. The edited body persists before the list returns.
-                    phone = browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
+                    phone = browser.new_context(locale='zh-CN', viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
                     phone.on('request', lambda req: external.append(req.url.split('?')[0]) if req.url.startswith('http') and not req.url.startswith(origin + '/') else None)
                     mobile_page = phone.new_page()
                     mobile_page.on('pageerror', lambda error: errors.append(str(error)))
@@ -259,7 +259,7 @@ def main():
                     expect(search).to_have_value('')
                     expect(library.get_by_role('button', name='搜索后新建也能看见', exact=True)).to_be_visible()
                     panel.screenshot(path=str(shots / 'desktop-list.png'))
-                    phone = browser.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
+                    phone = browser.new_context(locale='zh-CN', viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
                     phone.on('request', lambda req: external.append(req.url.split('?')[0]) if req.url.startswith('http') and not req.url.startswith(origin + '/') else None)
                     phone_page = phone.new_page()
                     phone_page.on('pageerror', lambda error: errors.append(str(error)))

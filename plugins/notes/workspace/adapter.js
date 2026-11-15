@@ -11,14 +11,14 @@ async function coriloJSON(route, data) {
         if(!response.ok) throw new Error('Transport failure');
         result=await response.json();
         if(!result||typeof result.ok!=='boolean'||result.ok&&!Object.hasOwn(result,'value')||!result.ok&&!result.error)throw new Error('Invalid response');
-    } catch { const error=Object.assign(new Error('连接失败，结果可能未知，当前输入仍保留，请核对文件'),{unknown:true,status:503,request:args});if(args.method==='write')coriloUnknownWrite=error;throw error; }
-    if(!result.ok){const error=Object.assign(new Error(result.error.message),{status:result.error.status,unknown:result.error.status===503,name:result.error.status===404?'NotFoundError':'Error',request:args});if(error.unknown&&args.method==='write')coriloUnknownWrite=error;throw error;}
+    } catch { const error=Object.assign(new Error(coriloNotesUI.t("连接失败，结果可能未知，当前输入仍保留，请核对文件")),{unknown:true,status:503,request:args});if(args.method==='write')coriloUnknownWrite=error;throw error; }
+    if(!result.ok){const error=Object.assign(new Error(coriloNotesUI.t(result.error.message)),{status:result.error.status,unknown:result.error.status===503,name:result.error.status===404?'NotFoundError':'Error',request:args});if(error.unknown&&args.method==='write')coriloUnknownWrite=error;throw error;}
     return result.value;
 }
 const coriloEncode = bytes => { let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(binary); };
 const coriloDecode = value => Uint8Array.from(atob(value), char=>char.charCodeAt(0));
 const coriloPath = (parent, name) => {
-    if (!name || name.includes('/') || name.includes('\\') || name === '.' || name === '..') throw new Error('无效文件名');
+    if (!name || name.includes('/') || name.includes('\\') || name === '.' || name === '..') throw new Error(coriloNotesUI.t("无效文件名"));
     return parent ? `${parent}/${name}` : name;
 };
 // Retain versions from displayed listings/reads; never refresh a version just to delete/move.
@@ -34,7 +34,7 @@ function coriloExpected(path) {
 }
 const coriloRemove = async (path, recursive = false) => coriloJSON('/api/fs/remove', { path, recursive, expected: coriloExpected(path) || (await coriloJSON('/api/fs/version', {path})).version });
 class CoriloHandle {
-    constructor(path, kind) { this.path = path; this.kind = kind; this.name = path.split('/').pop() || '知识库'; }
+    constructor(path, kind) { this.path = path; this.kind = kind; this.name = path.split('/').pop() || coriloNotesUI.t("知识库"); }
     async queryPermission() { return 'granted'; }
     async requestPermission() { return 'granted'; }
     async isSameEntry(other) { return this.path === other.path && this.kind === other.kind; }
@@ -46,7 +46,7 @@ class CoriloDirectory extends CoriloHandle {
         const path = coriloPath(this.path, name);
         const stat = options.create ? await coriloJSON('/api/fs/create', { path, kind }) : await coriloJSON(`/api/fs/stat?path=${encodeURIComponent(path)}`);
         if (stat.version && !coriloVersions.has(coriloKey(path))) coriloVersions.set(coriloKey(path), stat.version);
-        if (stat.kind !== kind) throw new Error('文件类型不匹配');
+        if (stat.kind !== kind) throw new Error(coriloNotesUI.t("文件类型不匹配"));
         return kind === 'file' ? new CoriloFile(path) : new CoriloDirectory(path);
     }
     getFileHandle(name, options) { return this.child(name, 'file', options); }
@@ -79,7 +79,7 @@ class CoriloFile extends CoriloHandle {
         return {
             seek: async n => { offset = n; },
             write: async value => {
-                if (closed) throw new Error('写入已关闭');
+                if (closed) throw new Error(coriloNotesUI.t("写入已关闭"));
                 if (value && typeof value === 'object' && value.type === 'write') {
                     if (value.position !== undefined) offset = value.position;
                     value = value.data;
@@ -105,8 +105,8 @@ hasLastServerOk = () => false;
 syncFilesWithServer = async () => {};
 syncLocalFileWithServer = async () => {};
 syncMediaFiles = async () => {};
-post = async () => { throw new Error('请使用工作区上方的 Agent 入口操作资料；外部机器人服务未连接'); };
-openDir = async () => showToast('当前使用 Corilo 本机知识库；目录由启动器管理');
+post = async () => { throw new Error(coriloNotesUI.t("请使用工作区上方的 Agent 入口操作资料；外部机器人服务未连接")); };
+openDir = async () => showToast(coriloNotesUI.t("当前使用 Corilo 本机知识库；目录由启动器管理"));
 rename = async (from, to) => {
     const expected = coriloExpected(from) || (await coriloJSON('/api/fs/version', {path:from})).version;
     const result = await coriloJSON('/api/fs/rename', { from, to, expected });

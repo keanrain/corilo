@@ -1,5 +1,7 @@
 # Corilo 可里设计索引
 
+**简体中文** | [English](README.en.md)
+
 2026-11-15 仓库更新：notes／todos 升级固定 DSH rc.3；独立学习导师见 [packages/learn-anything](../packages/learn-anything/README.md)。Python 原型已按用户要求删除，历史实现可从 Git 查阅，本地数据保留。
 
 > 当前补丁版本：todos 0.6.1。提醒、跨日分类、日历任务分页与代码结构修复见 [交接文档](HANDOFF.md)；旧配置和数据库不自动迁移。

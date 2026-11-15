@@ -1,8 +1,9 @@
+import { uiText } from './i18n.mjs';
 import React from "react";
 export function PlannerReminders({ s, set, open, refresh, call, notify }) {
   return (
     <>
-      <p>持久站内提醒；网页通知只在页面打开时尝试发送，关闭页面不推送。</p>
+      <p>{uiText("持久站内提醒；网页通知只在页面打开时尝试发送，关闭页面不推送。")}</p>
       <button
         onClick={async () => {
           if (!("Notification" in window)) {
@@ -15,14 +16,12 @@ export function PlannerReminders({ s, set, open, refresh, call, notify }) {
           });
           if (p === "granted") void notify();
         }}
-      >
-        允许网页通知
-      </button>
+      >{uiText("允许网页通知")}</button>
       <ul>
         {s.notifications.map((n) => (
           <li key={n.id}>
             <span>
-              {n.readAt ? "已读" : "未读"} {n.missed ? "离线期间到期 · " : ""}
+              {n.readAt ? uiText("已读") : uiText("未读")} {n.missed ? uiText("离线期间到期 · ") : ""}
               {n.source.title}{" "}
               {n.source.allDay
                 ? `${n.source.start} (${n.source.timeZone})`
@@ -42,9 +41,7 @@ export function PlannerReminders({ s, set, open, refresh, call, notify }) {
                   set({ error: e.message });
                 }
               }}
-            >
-              查看来源
-            </button>
+            >{uiText("查看来源")}</button>
             <button
               onClick={async () => {
                 try {
@@ -54,14 +51,12 @@ export function PlannerReminders({ s, set, open, refresh, call, notify }) {
                   set({ error: e.message });
                 }
               }}
-            >
-              标为已读
-            </button>
+            >{uiText("标为已读")}</button>
           </li>
         ))}
       </ul>
       {s.offset !== null && (
-        <button onClick={() => refresh(true)}>加载更多提醒</button>
+        <button onClick={() => refresh(true)}>{uiText("加载更多提醒")}</button>
       )}
     </>
   );

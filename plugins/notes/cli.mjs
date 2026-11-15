@@ -207,7 +207,7 @@ async function start(configPath, port) {
   }
 }
 
-const usage = `Corilo 可里笔记 (Harness ${pinnedHarness})\n\n无需模型密钥即可直接记笔记。最短初始化：\ncorilo-notes init --directory /absolute/corilo-instance\ncorilo-notes check --config /absolute/corilo-instance/notes.patch.json\ncorilo-notes start --config /absolute/corilo-instance/notes.patch.json [--port 3000]\n\n已有目录可显式指定：\ncorilo-notes init --root /absolute/notes --config /absolute/notes.patch.json\n\n安装到新目录后生成新配置（保留原配置以便回退）：\ncorilo-notes rebind --config /absolute/previous.patch.json --output /absolute/next.patch.json\n\n初始化不覆盖配置、不迁移笔记。启动后使用 Harness 打印的鉴权地址；首次提示中的 API Key 配置可关闭。\n`;
+const usage = `Corilo Notes (Harness ${pinnedHarness})\n\nDirect note editing requires no model key. Quick start:\ncorilo-notes init --directory /absolute/corilo-instance\ncorilo-notes check --config /absolute/corilo-instance/notes.patch.json\ncorilo-notes start --config /absolute/corilo-instance/notes.patch.json [--port 3000]\n\nSpecify existing directories explicitly:\ncorilo-notes init --root /absolute/notes --config /absolute/notes.patch.json\n\nCreate a new configuration after moving the installation (keep the original for rollback):\ncorilo-notes rebind --config /absolute/previous.patch.json --output /absolute/next.patch.json\n\nInitialization does not overwrite configuration or migrate notes. Open the authenticated URL printed by Harness; the initial API key prompt can be dismissed.\n`;
 
 export async function main(args) {
   if (!args.length || args.length === 1 && ['--help', '-h'].includes(args[0])) { process.stdout.write(usage); return; }
@@ -223,7 +223,7 @@ export async function main(args) {
   if (command === 'init' && options['--directory']) {
     if (['--root', '--state-root', '--config'].some(key => options[key])) fail('--directory cannot be combined with explicit root/state/config options.');
     const result = await initializeDirectory(options['--directory']);
-    process.stdout.write(`已创建配置：${result.configPath}\n直接笔记无需模型密钥。下一步：corilo-notes start --config ${quoteArgument(result.configPath)}\n`);
+    process.stdout.write(`Created configuration: ${result.configPath}\nDirect note editing requires no model key. Next: corilo-notes start --config ${quoteArgument(result.configPath)}\n`);
     return;
   }
   if (!options['--config']) fail('--config is required and must be an absolute path.');
@@ -234,7 +234,7 @@ export async function main(args) {
     process.stdout.write(`Created notes overlay: ${result.configPath}\nRun corilo-notes check --config ${quoteArgument(result.configPath)} before starting.\n`);
   } else if (command === 'rebind') {
     const result = await rebind(options['--config'], options['--output']);
-    process.stdout.write(`已创建新安装配置：${result.configPath}\n原配置及资料保持不变。下一步：corilo-notes check --config ${quoteArgument(result.configPath)}\n`);
+    process.stdout.write(`Created configuration for the new installation: ${result.configPath}\nThe original configuration and data are unchanged. Next: corilo-notes check --config ${quoteArgument(result.configPath)}\n`);
   } else if (command === 'check') {
     const { entry, ...report } = await inspect(options['--config']);
     process.stdout.write(JSON.stringify({ ok: true, ...report }, null, 2) + '\n');

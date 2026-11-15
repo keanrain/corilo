@@ -35,14 +35,16 @@
     "workspace-api.mjs",
     "workspace/",
     "vendor/filesmd/",
-    "import-todos.mjs"
+    "import-todos.mjs",
+    "README.zh-CN.md",
+    "QUICKSTART.en.md"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "build": "node build.mjs",
     "prepack": "npm run build",
     "pretest": "npm run build",
-    "test:browser": "python3 test/workspace_browser.py && python3 test/core_browser.py",
+    "test:browser": "python3 test/workspace_browser.py && python3 test/core_browser.py && python3 test/i18n_browser.py",
     "test:distribution": "node --test test/distribution.test.mjs",
     "benchmark": "node test/benchmark.mjs"
   },
@@ -75,7 +77,8 @@
       "inject": [
         "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-sidebar",
-        "@deepseek-ai/dsh-client-connection"
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-locale"
       ]
     }
   },

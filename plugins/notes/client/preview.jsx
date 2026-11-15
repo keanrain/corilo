@@ -1,10 +1,11 @@
+import { t, useLocale } from './i18n.mjs';
 import React, { useDeferredValue, useMemo } from 'react';
 import MarkdownIt from 'markdown-it';
 import DOMPurify from 'dompurify';
 
 const parser = new MarkdownIt({ html: false, linkify: false, typographer: false });
 // An image is a label, never a network request, even for an authenticated URL.
-parser.renderer.rules.image = (tokens, index) => parser.utils.escapeHtml(`[图片：${tokens[index].content || '无说明'}]`);
+parser.renderer.rules.image = (tokens, index) => parser.utils.escapeHtml(`[${t("图片：")}${tokens[index].content || t("无说明")}]`);
 const link = parser.renderer.rules.link_open || ((tokens, index, options, env, renderer) => renderer.renderToken(tokens, index, options));
 parser.renderer.rules.link_open = (tokens, index, options, env, renderer) => {
   tokens[index].attrSet('target', '_blank');
@@ -26,14 +27,15 @@ export function safeMarkdown(text) {
 }
 
 export function MarkdownPreview({ text }) {
+  const locale=useLocale();
   // This component is only mounted while preview is visible. Defer large edits
   // and cap preview independently from the 1 MiB storage/editor limit.
   const deferred = useDeferredValue(text);
   const oversized = text.length > PREVIEW_LIMIT;
-  const html = useMemo(() => deferred.length <= PREVIEW_LIMIT ? safeMarkdown(deferred) : '', [deferred]);
-  return <section className="corilo-notes-preview" aria-label="Markdown 实时预览" aria-busy={text !== deferred}>
-    {oversized ? <p>正文超过 128 Ki 字符，已暂停预览；仍可完整编辑和保存。</p>
-      : !text ? <p className="corilo-notes-hint">写下 Markdown，在这里查看排版。</p>
+  const html = useMemo(() => deferred.length <= PREVIEW_LIMIT ? safeMarkdown(deferred) : '', [deferred, locale]);
+  return <section className="corilo-notes-preview" aria-label={t("Markdown 实时预览")} aria-busy={text !== deferred}>
+    {oversized ? <p>{t("正文超过 128 Ki 字符，已暂停预览；仍可完整编辑和保存。")}</p>
+      : !text ? <p className="corilo-notes-hint">{t("写下 Markdown，在这里查看排版。")}</p>
         : <div dangerouslySetInnerHTML={{ __html: html }} />}
   </section>;
 }

@@ -1,3 +1,4 @@
+import { t, useUiLocale } from './locale.js'
 // DSH adapter for the pure Exercise card (./exercise.js): restores drafts and the
 // confirmed lifecycle from the Session, sends answers/controls through the composer,
 // and keeps the old QuizCard + QUIZ_CSS exports. Answer formatting and control
@@ -43,6 +44,7 @@ function loadSubmitted(id) {
  * read-only.
  */
 export function QuizCard({ view, useInput, useConversation, inputActions, isStreaming = false }) {
+  useUiLocale()
   const submitted = react.useMemo(() => loadSubmitted(view.id), [view.id])
   const saved = react.useMemo(() => loadMeta(view.id), [view.id])
   const [answers, setAnswers] = react.useState(() => submitted ?? saved.answers ?? {})
@@ -62,7 +64,7 @@ export function QuizCard({ view, useInput, useConversation, inputActions, isStre
   const queued = input?.queue?.some((item) => parseQuizAction(item.content.filter((block) => block.type === 'text').map((block) => block.text).join(''))?.id === view.id)
   const canSend = !isStreaming && !closed && !queued && Boolean(inputActions) &&
     Boolean(input && !busy && input.attachmentIds.length === 0 && (input.draft.trim() === '' || input.draft === pending?.text))
-  const blocked = !inputActions ? '这里不能作答' : queued ? '已接收，正在等待处理' : busy ? '正在提交，请稍候' : '输入框里有内容，先清空再提交'
+  const blocked = !inputActions ? t('这里不能作答') : queued ? t('已接收，正在等待处理') : busy ? t('正在提交，请稍候') : t('输入框里有内容，先清空再提交')
 
   const send = (text, action) => {
     if (closed || isStreaming || queued || !inputActions) return

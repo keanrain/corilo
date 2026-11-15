@@ -1,6 +1,8 @@
+import { t, useUiLocale } from './locale.js'
 import { createElement as h } from 'react'
 
-export function Sources({ sources = [], label = '来源' }) {
+export function Sources({ sources = [], label = t('来源') }) {
+  useUiLocale()
   if (!sources.length) return null
   return h('div', { className: 'la-sources', 'aria-label': label },
     h('span', null, label),

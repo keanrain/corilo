@@ -92,7 +92,7 @@ const source = buildSync({ entryPoints: ['src/client/flashcard.js'], bundle: tru
 function card() {
   let cursor = 0, states = [], chat = history(), input = { phase: 'plain', draft: '', attachmentIds: [] }, sent = null, fail = false
   const storage = new Map()
-  const runtime = { ...react, useState(initial) {
+  const runtime = { ...react, useSyncExternalStore: (_subscribe, snapshot) => snapshot(), useState(initial) {
     const index = cursor++
     if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial
     return [states[index], (next) => { states[index] = typeof next === 'function' ? next(states[index]) : next }]

@@ -1,5 +1,7 @@
 # Corilo 可里技术说明
 
+**简体中文** | [English](TECHNICAL_DESIGN.en.md)
+
 2026-11-15。本文描述当前代码结构；产品规则见 [业务规格](PRODUCT-SPEC.md)，命令与验证入口见 [开发指南](DEVELOPMENT.md)。原设计保存在 [v0.34 技术方案](history/v0.34/TECHNICAL_DESIGN.md)。
 
 ## 运行与依赖边界

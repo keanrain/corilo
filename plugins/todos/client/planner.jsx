@@ -1,3 +1,4 @@
+import { uiText } from './i18n.mjs';
 import React from "react";
 import { Temporal } from "./planner-dates.mjs";
 import { usePlanner } from "./use-planner.mjs";
@@ -21,10 +22,8 @@ export function Planner({ identity }) {
   return (
     <section className="corilo-planner">
       <header>
-        <h1>任务与日历</h1>
-        <label>
-          显示时区
-          <input
+        <h1>{uiText("任务与日历")}</h1>
+        <label>{uiText("显示时区")}<input
             value={s.zone}
             onChange={(e) => set({ zone: e.target.value, confirmed: false })}
           />
@@ -39,28 +38,28 @@ export function Planner({ identity }) {
             }
           }}
         >
-          {s.confirmed ? "时区已确认" : "确认时区"}
+          {s.confirmed ? uiText("时区已确认") : uiText("确认时区")}
         </button>
       </header>
-      <nav aria-label="任务视图">
+      <nav aria-label={uiText("任务视图")}>
         {Object.entries(views).map(([k, v]) => (
           <button
             key={k}
             aria-pressed={s.view === k}
             onClick={() => set({ view: k })}
           >
-            {v}
+            {uiText(v)}
           </button>
         ))}
       </nav>
-      {s.error && <p role="alert">{s.error}</p>}
-      {s.notice && <p role="status">{s.notice}</p>}
+      {s.error && <p role="alert">{uiText(s.error)}</p>}
+      {s.notice && <p role="status">{uiText(s.notice)}</p>}
       {s.confirmed && (
         <>
           <div className="planner-toolbar">
-            <button onClick={() => open("task")}>新建任务</button>
-            <button onClick={() => open("event")}>新建日程</button>
-            <button onClick={() => refresh()}>刷新</button>
+            <button onClick={() => open("task")}>{uiText("新建任务")}</button>
+            <button onClick={() => open("event")}>{uiText("新建日程")}</button>
+            <button onClick={() => refresh()}>{uiText("刷新")}</button>
             <button
               onClick={async () => {
                 try {
@@ -79,9 +78,7 @@ export function Planner({ identity }) {
                   set({ error: e.message });
                 }
               }}
-            >
-              导出
-            </button>
+            >{uiText("导出")}</button>
           </div>
           {!["calendar", "reminders"].includes(s.view) && (
             <PlannerTaskList {...planner} />

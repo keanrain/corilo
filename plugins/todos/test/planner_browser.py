@@ -20,12 +20,12 @@ def main():
     assert url,'No Harness address'
     with sync_playwright() as p:
      browser=p.chromium.launch(headless=True,executable_path=shutil.which('chromium'))
-     context=browser.new_context(viewport={'width':1400,'height':950})
+     context=browser.new_context(locale='zh-CN', viewport={'width':1400,'height':950})
      page=context.new_page();errors=[];page.on('pageerror',lambda e:(errors.append(str(e)),print('PAGE ERROR',str(e),flush=True)))
      page.goto(url)
-     first=page.get_by_role('button',name='Continue',exact=True).or_(page.get_by_role('button',name='Close',exact=True)).first;first.wait_for()
-     if page.get_by_role('button',name='Continue',exact=True).is_visible():page.get_by_role('button',name='Continue',exact=True).click()
-     page.get_by_role('button',name='Close',exact=True).click()
+     first=page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).or_(page.get_by_role('button',name=re.compile(r'^(Close|关闭)$'),exact=True)).first;first.wait_for()
+     if page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).is_visible():page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).click()
+     page.get_by_role('button',name=re.compile(r'^(Close|关闭)$'),exact=True).click()
      page.get_by_role('button',name='待办',exact=True).click()
      page.get_by_role('button',name='确认时区',exact=True).click(timeout=20000)
      page.get_by_role('button',name='新建任务',exact=True).click()

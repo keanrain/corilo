@@ -31,7 +31,7 @@ function client(reactRuntime = react) {
     focus: (id) => opened.push(['focus', id]),
     openTab: (kind, options) => { expanded = true; openTabs = [{ sessionId: 'session-1', tabId: 'learning-tab', kind }]; opened.push([kind, options]) },
   }
-  const runtime = { ...reactRuntime, useEffect: () => {},
+  const runtime = { ...reactRuntime, useSyncExternalStore: (_subscribe, snapshot) => snapshot(), useEffect: () => {},
     useMemo: reactRuntime.useMemo === react.useMemo ? (fn) => fn() : reactRuntime.useMemo,
     useState: reactRuntime.useState === react.useState ? (initial) => [typeof initial === 'function' ? initial() : initial, () => {}] : reactRuntime.useState }
   runInNewContext(bundle, {

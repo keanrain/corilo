@@ -1,5 +1,9 @@
 # learn-anything
 
+**简体中文** | [English](README.en.md)
+
+Corilo 自有界面跟随 DSH 语言设置（中文／English），切换不改变用户内容或草稿。教学材料、提示词和作答协议保持原有语言。
+
 学习导师：DeepSeek Harness (dsh) 的个人学习插件包，按渐构方法规划路线、诊断、出材料、新情况验证、间隔复习。
 
 本项目位于 [Corilo 大仓](../../README.md) 的 `packages/learn-anything/`，独立以 `@corilo/learn-anything` 分发，版本与 notes／todos 分开维护。

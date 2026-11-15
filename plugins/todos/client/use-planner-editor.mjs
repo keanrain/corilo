@@ -1,3 +1,4 @@
+import { uiText } from './i18n.mjs';
 import { useRef } from "react";
 import { v4 as uuid } from "uuid";
 import { Temporal } from "./planner-dates.mjs";
@@ -8,7 +9,7 @@ export function usePlannerEditor({ s, set, ref, call, refresh }) {
     composing = useRef(false);
   function open(kind, item = null, defaults = {}) {
     if (ref.current.pending || ref.current.busy) return;
-    if (ref.current.editor && !window.confirm("放弃当前未提交的编辑？")) return;
+    if (ref.current.editor && !window.confirm(uiText("放弃当前未提交的编辑？"))) return;
     returnFocus.current = document.activeElement;
     const day = Temporal.Now.plainDateISO(s.zone).toString();
     const value = item

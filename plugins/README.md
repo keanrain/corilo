@@ -1,5 +1,7 @@
 # Corilo 插件
 
+**简体中文** | [English](README.en.md)
+
 当前源码组合为 notes＋todos planner v2，运行在固定 DSH 0.2.2-rc.3 上。[学习导师](../packages/learn-anything/README.md) 是大仓中的另一个独立插件，仅供已有 DSH 用户安装，不加入默认组合。
 
 | 目录 | 包 | 状态 |

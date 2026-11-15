@@ -1,3 +1,4 @@
+import { uiText } from './i18n.mjs';
 import { loadPlannerTasks } from "./planner-queries.mjs";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPlannerApi } from "./planner-api.mjs";
@@ -86,7 +87,7 @@ export function usePlanner(identity) {
         for (const n of p.items)
           new Notification(n.source.title, {
             tag: n.id,
-            body: "可里站内提醒，请打开页面查看",
+            body: uiText("可里站内提醒，请打开页面查看"),
           });
         more = p.hasMore;
       }

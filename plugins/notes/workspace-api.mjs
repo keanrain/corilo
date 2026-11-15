@@ -42,7 +42,7 @@ function transform(name, data) {
       .replace(/    <script src="welcome.js[^\n]+\n/, '')
       .replace(/    \/\/ Allow offline mode\.[\s\S]*?\.catch\([^\n]+\n/, '')
       .replace('    init();', '    init().catch(coriloError);');
-    source = requirePatch(source, '<script>\n    window.COMMIT_HASH', '<link rel="stylesheet" href="host.css">\n<script src="adapter.js"></script>\n<script src="host.js"></script>\n<script>\n    window.COMMIT_HASH');
+    source = requirePatch(source, '<script>\n    window.COMMIT_HASH', '<link rel="stylesheet" href="host.css">\n<script src="i18n.js"></script>\n<script src="adapter.js"></script>\n<script src="host.js"></script>\n<script>\n    window.COMMIT_HASH');
   }
   return Buffer.from(source);
 }
@@ -61,7 +61,7 @@ export async function registerWorkspaceApi(ctx, store) {
     }
   };
   await walk(path.join(directory, 'vendor/filesmd/web'));
-  for (const name of ['adapter.js','host.js','host.css']) {
+  for (const name of ['i18n.js','adapter.js','host.js','host.css']) {
     register({ path:prefix+name, methods:['GET'], requestBody:'buffered', async fetch() { return new Response(await fs.readFile(path.join(directory,'workspace',name)), { headers:{'content-type':mime[path.extname(name)],'cache-control':'no-store','x-content-type-options':'nosniff'} }); } });
   }
   // The streaming carrier is bounded here before parsing or allocating a file.
