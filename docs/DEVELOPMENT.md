@@ -91,3 +91,11 @@ npm_config_cache=/workspace/work/npm-cache node plugins/notes/test/upgrade.mjs /
 | 旧云端／worker 检查 | `npm run test:cloud`、`npm run test:worker` | 仅可丢弃 `CORILO_TEST_DATABASE_URL`；worker 另需真实镜像 |
 
 完整旧启动、GitHub 同步、原型和导出说明见[旧应用档案](history/LEGACY-APP.md)，当时架构与数据库测试证据见 [v0.16 技术档案](history/TECHNICAL-DESIGN-v0.16.md)。不要用历史“下一步”扩展当前范围。
+
+## 版本检查与独立发版准备
+
+运行 `npm run check:dsh` 检查三包的 DSH 固定版本、各自锁文件、已登记的 CLI／测试引用及导师当前市场条目；参考版本为导师包 `engines.dsh`。添加新的固定源码引用时同步登记检查脚本，历史文档与历史市场版本不参与当前一致性检查。该命令只读，不统一或重写独立锁文件。
+
+`npm run test:tooling` 验证检查器和分发准备脚本的失败场景，无需安装根应用依赖。`repository-checks.yml` 在相关改动时执行这两项。
+
+先从所选包的锁文件安装依赖，再执行 `npm run prepare:release -- notes`、`todos` 或 `learn-anything`，生成该包的 tgz、SHA-256、版本信息及版本说明。也可手动运行 **Prepare independent package** workflow，选择一个产品后下载构建产物。两种方式均不执行 npm 发布，不修改包的 private 状态，也不自动升级实例。完整流程与验证边界见 [分发指南](RELEASING.md)。

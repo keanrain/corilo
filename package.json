@@ -24,7 +24,10 @@
     "test:learn-anything": "npm --prefix packages/learn-anything test",
     "build:learn-anything": "npm --prefix packages/learn-anything run build",
     "pack:learn-anything": "npm pack ./packages/learn-anything --pack-destination .",
-    "test:boot:learn-anything": "npm --prefix packages/learn-anything run test:boot"
+    "test:boot:learn-anything": "npm --prefix packages/learn-anything run test:boot",
+    "check:dsh": "node scripts/check-dsh-versions.mjs",
+    "test:tooling": "node --test scripts/test/*.test.mjs",
+    "prepare:release": "npm run check:dsh && node scripts/prepare-release.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "1.1.0",

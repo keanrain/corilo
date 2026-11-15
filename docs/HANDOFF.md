@@ -1,5 +1,15 @@
 # Corilo 可里交接文档
 
+## 兼容版本、独立发版准备与导师工具拆分（2026-11-15）
+
+- `npm run check:dsh` 只读检查三包清单、独立锁、已登记 CLI／测试版本与导师当前市场条目；参考导师 `engines.dsh`，不改变安装依赖。新源码固定引用需登记。新增 repository-checks CI。
+- `npm run prepare:release -- notes|todos|learn-anything` 先做版本一致性检查，再按目标包构建、测试、打包。产出 tgz、SHA256SUMS、release.json 和 RELEASE_NOTES.md；检查 exports、bin、bundle patch、文件清单及当前 CHANGELOG，不覆盖既有输出、不执行 npm 发布。新增手动 Prepare independent package workflow，各包版本与 private 状态不变。
+- 导师 `src/host/tools.js` 从 842 行改为 22 行入口，按 course、knowledge、assessment、review 与 shared 拆分。工具顺序、全部公开导出、描述、schema、execute 函数体及公开辅助函数体均与拆分前比较一致，无业务或数据行为修改。
+
+本轮本地验证：开发工具 15 项测试通过；导师 172 项及真实 DSH mock boot 通过（7 次请求、导师 34 工具、考官 16 工具、原生提醒）。三个包均实际完成构建／测试／打包，notes 59 项中 58 通过、1 项因本机无 restic 跳过，todos 33 项全部通过；更新后的入口检查再次校验三个实际 tgz 通过。重复输出目录实际拒绝并确认旧包哈希不变。新增 workflow YAML／Shell 语法及文档本地链接检查通过，远端 CI 结果另行查看。未验证新部署、真实模型或导师 Web 端到端；未发布 npm，未合入 main。
+
+本轮验证产物分别在 `/tmp/corilo-release-notes-review/`、`/tmp/corilo-release-todos-review/`、`/tmp/corilo-release-tutor-review/`。正式重新准备会使用独立输出目录，分发流程见 [指南](RELEASING.md)。
+
 ## 当前文档与 CI 对齐（2026-11-15）
 
 当前入口文档统一为 notes 0.7.0＋todos 0.6.1 planner 默认组合，学习导师只供已有 DSH 用户独立安装；旧单插件与 v1 模式保留。原 v0.34 产品、规格、技术与交互文档完整存档于 `docs/history/v0.34/`，当前路径改为实际能力与明确未实现范围。未修改业务源码、数据格式或依赖锁。

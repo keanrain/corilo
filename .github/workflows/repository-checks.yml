@@ -1,0 +1,38 @@
+name: Repository compatibility checks
+
+on:
+  push:
+    paths:
+      - 'package.json'
+      - 'scripts/**'
+      - 'launcher/**'
+      - 'plugins/notes/**'
+      - 'plugins/todos/**'
+      - 'packages/learn-anything/**'
+      - '.github/workflows/repository-checks.yml'
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'scripts/**'
+      - 'launcher/**'
+      - 'plugins/notes/**'
+      - 'plugins/todos/**'
+      - 'packages/learn-anything/**'
+      - '.github/workflows/repository-checks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+      # These checks use Node built-ins; no root or plugin install is needed.
+      - run: npm run check:dsh
+      - run: npm run test:tooling

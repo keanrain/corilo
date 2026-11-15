@@ -1,0 +1,49 @@
+name: Prepare independent package
+
+on:
+  workflow_dispatch:
+    inputs:
+      product:
+        description: Package to build and validate (no publication)
+        required: true
+        type: choice
+        options:
+          - notes
+          - todos
+          - learn-anything
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_PRODUCT: ${{ inputs.product }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+      - run: npm run check:dsh
+      - name: Install only the selected package dependencies
+        run: |
+          case "$RELEASE_PRODUCT" in
+            notes|todos) release_package_dir="plugins/$RELEASE_PRODUCT" ;;
+            learn-anything) release_package_dir="packages/learn-anything" ;;
+            *) exit 1 ;;
+          esac
+          npm ci --prefix "$release_package_dir" --ignore-scripts
+      - name: Install notes backup test dependency
+        if: inputs.product == 'notes'
+        run: sudo apt-get update && sudo apt-get install -y restic
+      - name: Build, test, and prepare the package
+        run: npm run prepare:release -- "$RELEASE_PRODUCT" --output "$RUNNER_TEMP/release-artifacts"
+        env:
+          CORILO_REQUIRE_RESTIC: '1'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.product }}-release-candidate
+          path: ${{ runner.temp }}/release-artifacts/
+          if-no-files-found: error

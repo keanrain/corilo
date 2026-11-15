@@ -15,6 +15,7 @@
 | [交互设计](DESIGN.md) | 笔记、planner 与导师的当前交互边界 |
 | [技术设计](TECHNICAL_DESIGN.md) | 当前架构、依赖与存储兼容边界 |
 | [开发指南](DEVELOPMENT.md) | 目录、命令、检查和分发 |
+| [分发指南](RELEASING.md) | 三个产品的独立版本、变更记录与发版准备 |
 | [插件导航](../plugins/README.md) | 笔记与任务／日程包 |
 
 新实例生成双插件 planner 配置；已有单插件／v1 双插件配置、SQLite 数据库及旧应用保留。planner 只能使用新的空资料目录，旧库升级工具尚未实现，不自动迁移或删除。`corilo-import-todos` 默认预览，`--apply` 将记录导入 Markdown，原 SQLite 不改写、不删除。这是可选单向导出，已不作为待办插件退役路径。完整操作见包内指南。
