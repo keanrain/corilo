@@ -1,0 +1,15 @@
+/* Retain the upstream workspace below a small Harness status/Agent bar. */
+body{padding-top:44px;box-sizing:border-box}
+#corilo-workspace-status{position:fixed;z-index:9999;top:0;left:0;right:0;min-height:44px;box-sizing:border-box;font:12px/1.5 system-ui;background:var(--col-bg-alt,#fafaf8);color:var(--col-tx,#222);border-bottom:1px solid var(--col-border,#8884);padding:5px 12px 5px 44px}
+#corilo-workspace-status>button{float:right}
+#corilo-workspace-status button{margin-left:8px;cursor:pointer;font:inherit;background:transparent;color:inherit;border:1px solid #8885;border-radius:5px;padding:4px 8px;min-height:32px}
+#corilo-status{display:inline-block;padding-top:5px}
+#corilo-error:empty{display:none}#corilo-error{clear:both;color:#b42f35;white-space:pre-wrap;max-height:100px;overflow:auto}
+#corilo-latest textarea{width:100%;min-height:100px;box-sizing:border-box}
+#content{max-height:calc(100vh - 44px)}
+#editor2-container{top:44px;height:calc(100vh - 44px)}
+#chat-container{height:calc(100vh - 44px)!important}
+@media(max-width:600px){body{padding-top:54px}#corilo-workspace-status{min-height:54px}#corilo-workspace-status button{min-height:44px}#content{max-height:calc(100vh - 54px)}#editor2-container{top:54px;height:calc(100vh - 54px)}#chat-container{height:calc(100vh - 54px)!important}}
+
+#corilo-workspace-status>#corilo-files{display:none}
+@media(max-width:670px){#corilo-workspace-status>#corilo-files{display:inline-block;float:none;margin-left:0;margin-right:8px;vertical-align:middle}#corilo-status{vertical-align:middle}}

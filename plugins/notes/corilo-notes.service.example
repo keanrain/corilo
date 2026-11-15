@@ -1,0 +1,27 @@
+# User service: copy to ~/.config/systemd/user/corilo-notes.service only after
+# replacing every /absolute/... path. See LINUX.zh-CN.md. Never run as root.
+[Unit]
+Description=Corilo notes on DeepSeek Harness
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+WorkingDirectory=/absolute/corilo-instance
+Environment="DSH_HOME=/absolute/corilo-runtime/harness"
+Environment="DSH_AGENTS_HOME=/absolute/corilo-runtime/agents"
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+UMask=0077
+ExecStartPre="/absolute/node" "/absolute/corilo-install/node_modules/@corilo/dsh-notes/cli.mjs" check --config "/absolute/corilo-instance/notes.patch.json"
+ExecStart="/absolute/node" "/absolute/corilo-install/node_modules/@corilo/dsh-notes/cli.mjs" start --config "/absolute/corilo-instance/notes.patch.json" --port 3000
+Restart=on-failure
+RestartSec=5s
+# The CLI forwards SIGTERM to Harness. Signal the wrapper once; on timeout,
+# systemd kills remaining processes in the unit's cgroup.
+KillMode=mixed
+TimeoutStopSec=20s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

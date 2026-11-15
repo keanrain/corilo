@@ -1,0 +1,9 @@
+# DeepSeek Harness 0.2.2-rc.1 external plugin overlay.
+# Replace all absolute paths. Keep SQLite outside notes and Harness homes.
+- insert:
+    - id: corilo-todos
+      name: /absolute/corilo-install/node_modules/@corilo/dsh-todos/index.mjs
+      config:
+        root: /absolute/corilo-instance/todos
+        # Optional: existing Markdown root; prevents accidental storage overlap.
+        notesRoot: /absolute/corilo-instance/notes

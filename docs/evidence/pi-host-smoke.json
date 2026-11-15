@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-08T12:21:58.467Z",
+  "platform": "linux",
+  "arch": "x64",
+  "node": "v24.19.0",
+  "pi": "1.1.0",
+  "checks": [
+    "default write tool writes real UTF-8 Markdown",
+    "default read tool reads saved Markdown",
+    "default edit tool updates exact text",
+    "default bash tool executes installed Git"
+  ],
+  "modelCalls": 0,
+  "androidDeviceTest": false
+}

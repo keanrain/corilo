@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-15",
+  "base_commit": "74deb0d55c9d90266ea446ed24491aed6cd674a4",
+  "provenance": "Rebuilt from user-supplied feature inventory; original 36ea6e9 and d09a00d unavailable. No claim of byte-identical recovery.",
+  "package": {
+    "name": "@corilo/dsh-todos",
+    "version": "0.6.0",
+    "sha256": "692e85aa260298b9fac0b4d32c15569b60ebec58bb8c1652aadcbca25b1b7a51"
+  },
+  "checks": [
+    {
+      "command": "npm --prefix plugins/todos test",
+      "passed": 24,
+      "failed": 0,
+      "includes": [
+        "legacy Harness boot and independent package installation",
+        "new real Cordis planner tool pipeline",
+        "v2 persistence and conflict receipts",
+        "DST gap and ambiguity refusal",
+        "v1 byte-preservation on rejected opening",
+        "reminder restart scan and 105-item atomic claim handling"
+      ]
+    },
+    {
+      "command": "npm run test:startup",
+      "passed": 4,
+      "failed": 0
+    },
+    {
+      "command": "python3 plugins/todos/test/planner_browser.py",
+      "result": "passed",
+      "coverage": [
+        "task create/cancel/restore",
+        "lost response receipt reconciliation",
+        "concurrent writer conflict preserves draft",
+        "all-day event",
+        "month/week/day/agenda",
+        "390px editor"
+      ]
+    },
+    {
+      "command": "npm --prefix plugins/todos run test:browser",
+      "result": "three legacy browser suites passed"
+    },
+    {
+      "command": "npm test",
+      "passed": 59,
+      "failed": 0
+    },
+    {
+      "command": "python3 app/tests/browser_smoke.py; python3 app/tests/browser_review.py; python3 app/tests/browser_sync.py",
+      "result": "all three passed"
+    }
+  ],
+  "not_verified": [
+    "physical mobile devices",
+    "real model",
+    "OS notification display",
+    "target DSH deployment",
+    "drag-and-resize browser gesture regression",
+    "full instance backup/restore"
+  ],
+  "not_implemented": [
+    "recurrence",
+    "CalDAV/ICS",
+    "note source linking",
+    "external notification channels",
+    "v1 upgrade tool"
+  ]
+}

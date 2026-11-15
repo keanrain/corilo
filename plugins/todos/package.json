@@ -1,0 +1,79 @@
+{
+  "name": "@corilo/dsh-todos",
+  "version": "0.6.1",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.9.0"
+  },
+  "exports": {
+    ".": "./index.mjs",
+    "./store": "./storage.mjs",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.mjs",
+    "storage.mjs",
+    "api.mjs",
+    "core.mjs",
+    "lib/client.js",
+    "README.md",
+    "todos.patch.example.yml",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "task-service.mjs",
+    "task-tools.mjs",
+    "schedule-schema.mjs",
+    "schedule-service.mjs",
+    "schedule-api.mjs",
+    "schedule-tools.mjs",
+    "date-values.mjs",
+    "reminders.mjs",
+    "schedule-queries.mjs"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "build": "node build.mjs",
+    "prepack": "npm run build",
+    "pretest": "npm run build",
+    "test:browser": "python3 test/core_browser.py && python3 test/visual_browser.py && python3 test/flow_browser.py",
+    "test:planner:browser": "python3 test/planner_browser.py"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "3.19.0",
+    "@fullcalendar/core": "6.1.19",
+    "@fullcalendar/daygrid": "6.1.19",
+    "@fullcalendar/interaction": "6.1.19",
+    "@fullcalendar/list": "6.1.19",
+    "@fullcalendar/luxon3": "6.1.19",
+    "@fullcalendar/react": "6.1.19",
+    "@fullcalendar/timegrid": "6.1.19",
+    "@js-temporal/polyfill": "0.5.1",
+    "luxon": "3.7.2"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1",
+    "esbuild": "0.25.12",
+    "lucide-react": "1.70.0",
+    "react-textarea-autosize": "8.5.9",
+    "uuid": "11.1.0"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-connection"
+      ]
+    }
+  },
+  "overrides": {
+    "react": "18.3.1"
+  }
+}

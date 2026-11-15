@@ -1,0 +1,246 @@
+import test, { before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { execFile, spawn } from 'node:child_process';
+import { promisify } from 'node:util';
+import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { initialize, initializeDirectory, inspect, maintain, rebind } from '../cli.mjs';
+import { NotesStore } from '../storage.mjs';
+
+const exec = promisify(execFile);
+const packageRoot = fileURLToPath(new URL('../', import.meta.url));
+
+// CLI readiness now resolves native homes too. Keep these tests independent of
+// the developer's real Harness/shared-agent configuration, even before boot.
+const nativeHomes = await mkdtemp(path.join(os.tmpdir(), 'corilo-cli-homes-'));
+const previousHomes = { DSH_HOME: process.env.DSH_HOME, DSH_AGENTS_HOME: process.env.DSH_AGENTS_HOME };
+before(() => {
+  process.env.DSH_HOME = path.join(nativeHomes, 'harness');
+  process.env.DSH_AGENTS_HOME = path.join(nativeHomes, 'agents');
+});
+after(async () => {
+  for (const [key, value] of Object.entries(previousHomes)) {
+    if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  }
+  await rm(nativeHomes, { recursive: true, force: true });
+});
+
+test('CLI creates a private reviewable overlay without touching notes and rejects unsafe/rebound configuration', async t => {
+  const base = await mkdtemp(path.join(os.tmpdir(), 'corilo-config-'));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const root = path.join(base, 'notes'), stateRoot = path.join(base, 'state'), configPath = path.join(base, 'notes.patch.json');
+  await initialize({ root, stateRoot, configPath });
+  await assert.rejects(access(root), { code: 'ENOENT' });
+  await assert.rejects(access(stateRoot), { code: 'ENOENT' });
+  const original = await readFile(configPath, 'utf8');
+  assert.equal(JSON.parse(original)[0].insert[0].config.stateRoot, stateRoot);
+  assert.equal((await inspect(configPath)).state, 'unused');
+  await assert.rejects(initialize({ root, stateRoot, configPath }), /already exists/);
+  assert.equal(await readFile(configPath, 'utf8'), original);
+  await assert.rejects(initialize({ root, stateRoot: path.join(root, 'state'), configPath: path.join(base, 'nested.json') }), /non-overlapping/);
+  await assert.rejects(initialize({ root, stateRoot, configPath: path.join(root, 'config.json') }), /outside/);
+  await assert.rejects(initialize({ root: 'relative', stateRoot, configPath }), /absolute/);
+  await mkdir(root);
+  await symlink(root, path.join(base, 'linked-notes'));
+  await assert.rejects(initialize({ root: path.join(base, 'linked-notes'), stateRoot, configPath }), /links/);
+  await mkdir(stateRoot);
+  const marker = { format: 'corilo-notes-state-v1', rootId: createHash('sha256').update(root).digest('hex') };
+  await writeFile(path.join(stateRoot, 'corilo-notes-state.json'), JSON.stringify(marker));
+  assert.equal((await inspect(configPath)).state, 'bound');
+  await writeFile(path.join(stateRoot, 'corilo-notes-state.json'), JSON.stringify({ ...marker, rootId: '0'.repeat(64) }));
+  await assert.rejects(inspect(configPath), /different notes root/);
+});
+
+test('single-directory setup preserves existing configuration and maintenance preserves real notes/history', async t => {
+  const base = await mkdtemp(path.join(os.tmpdir(), 'corilo-simple-setup-'));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const instance = path.join(base, 'instance');
+  await exec(process.execPath, [path.join(packageRoot, 'cli.mjs'), 'init', '--directory', instance]);
+  const result = await inspect(path.join(instance, 'notes.patch.json'));
+  assert.equal(result.root, path.join(instance, 'notes'));
+  const original = await readFile(result.configPath, 'utf8');
+  await assert.rejects(access(result.root), { code: 'ENOENT' });
+  await assert.rejects(maintain(result.configPath), /not been initialized/);
+  await assert.rejects(initializeDirectory(path.join(base, 'instance')), /already exists/);
+  assert.equal(await readFile(result.configPath, 'utf8'), original);
+  assert.equal(result.state, 'disabled');
+  assert.equal(result.stateRoot, undefined);
+  const legacyConfig = path.join(instance, 'legacy.patch.json');
+  const legacyState = path.join(instance, 'old-state');
+  await initialize({ root: result.root, stateRoot: legacyState, configPath: legacyConfig });
+  const store = await NotesStore.open(result.root, {}, { stateRoot: legacyState });
+  await store.save({ path: 'keep.md', text: 'all versions remain', expected: null });
+  const before = await store.history('keep.md');
+  assert.deepEqual(await maintain(legacyConfig), { packed: true, historyPruned: false });
+  assert.deepEqual(await store.history('keep.md'), before);
+  assert.equal((await store.read('keep.md')).text, 'all versions remain');
+});
+
+test('rebind creates a new install overlay without executing its old entry or changing data', async t => {
+  const base = await mkdtemp(path.join(os.tmpdir(), 'corilo-rebind-'));
+  t.after(() => rm(base, { recursive: true, force: true }));
+  const oldConfig = path.join(base, 'previous.json'), nextConfig = path.join(base, 'next.json');
+  const root = path.join(base, 'notes'), stateRoot = path.join(base, 'state');
+  await initialize({ root, stateRoot, configPath: oldConfig });
+  const store = await NotesStore.open(root, {}, { stateRoot });
+  await store.save({ path: 'keep.md', text: '已有资料', expected: null });
+  const history = await store.history('keep.md');
+  const old = JSON.parse(await readFile(oldConfig, 'utf8'));
+  // The old install need not exist. Its entry is data, never executable input.
+  old[0].insert[0].name = path.join(base, 'removed-install', 'index.mjs');
+  await writeFile(oldConfig, JSON.stringify(old));
+  const original = await readFile(oldConfig, 'utf8');
+  await assert.rejects(inspect(oldConfig), /this installed package/);
+  await rebind(oldConfig, nextConfig);
+  assert.equal((await inspect(nextConfig)).root, root);
+  assert.equal(await readFile(oldConfig, 'utf8'), original);
+  assert.equal((await store.read('keep.md')).text, '已有资料');
+  assert.deepEqual(await store.history('keep.md'), history);
+  const next = await readFile(nextConfig, 'utf8');
+  await assert.rejects(rebind(oldConfig, nextConfig), /already exists/);
+  await assert.rejects(rebind(oldConfig, oldConfig), /already exists/);
+  await assert.rejects(rebind(oldConfig, path.join(root, 'unsafe.json')), /outside/);
+  await assert.rejects(rebind(oldConfig), /--output/);
+  assert.equal(await readFile(nextConfig, 'utf8'), next);
+  old[0].insert.push({ id: 'unexpected-plugin', name: 'arbitrary' });
+  await writeFile(oldConfig, JSON.stringify(old));
+  await assert.rejects(rebind(oldConfig, path.join(base, 'rejected.json')), /single Corilo notes overlay/);
+  await assert.rejects(access(path.join(base, 'rejected.json')), { code: 'ENOENT' });
+});
+
+test('npm tarball installs outside the checkout with production dependencies and its CLI boots published Harness', { timeout: 180000 }, async t => {
+  const base = await mkdtemp(path.join(os.tmpdir(), 'corilo-distribution-'));
+  let child;
+  t.after(async () => {
+    if (child && child.exitCode === null && child.signalCode === null) {
+      child.kill('SIGKILL');
+      await new Promise(resolve => child.once('exit', resolve));
+    }
+    await rm(base, { recursive: true, force: true });
+  });
+  const env = { ...process.env, npm_config_cache: process.env.npm_config_cache || path.join(base, 'npm-cache') };
+  const packed = await exec('npm', ['pack', '--json', '--pack-destination', base], { cwd: packageRoot, env, maxBuffer: 8 * 1024 * 1024 });
+  const report = JSON.parse(packed.stdout)[0];
+  const files = report.files.map(file => file.path);
+  for (const file of ['workspace-api.mjs', 'workspace-store.mjs', 'workspace/adapter.js', 'workspace/host.js', 'workspace/host.css', 'vendor/filesmd/web/index.html', 'vendor/filesmd/LICENSE', 'vendor/filesmd/web/lib/LICENSES.txt', 'import-todos.mjs', 'cli.mjs', 'index.mjs', 'api.mjs', 'storage.mjs', 'library.mjs', 'history.mjs', 'recovery-tools.mjs', 'lib/client.js', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'QUICKSTART.zh-CN.md', 'restore.mjs', 'BACKUP.zh-CN.md', 'LINUX.zh-CN.md', 'corilo-notes.service.example']) assert.ok(files.includes(file), `Missing runtime file: ${file}`);
+  assert.ok(files.every(file => !/^(client\/|test\/|node_modules\/|\.env|.*\.patch\.json$)/.test(file)), 'Distribution excludes sources/tests/user configs');
+  const installRoot = path.join(base, 'independent-install');
+  await mkdir(installRoot);
+  await writeFile(path.join(installRoot, 'package.json'), JSON.stringify({ name: 'notes-consumer', private: true }));
+  await exec('npm', ['install', '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', '--prefer-offline', path.join(base, report.filename)], { cwd: installRoot, env, maxBuffer: 8 * 1024 * 1024, timeout: 120000 });
+  const cli = path.join(installRoot, 'node_modules/@corilo/dsh-notes/cli.mjs');
+  const installed = JSON.parse(await readFile(path.join(installRoot, 'node_modules/@corilo/dsh-notes/package.json'), 'utf8'));
+  assert.equal(installed.dependencies['@deepseek-ai/dsh'], '0.2.2-rc.1');
+  assert.equal(installed.license, 'MIT');
+  const restoreExport = await exec(process.execPath, ['--input-type=module', '-e', `
+    import {pathToFileURL} from 'node:url';
+    const helper=await import(pathToFileURL(process.argv[2]));
+    if(typeof helper.prepareRestore!=='function') throw new Error('Missing recovery preparation export');
+  `, 'corilo-import-probe', path.join(installRoot, 'node_modules/@corilo/dsh-notes/restore.mjs')], { cwd: installRoot, env });
+  assert.equal(restoreExport.stdout, '');
+  await assert.rejects(access(path.join(installRoot, 'node_modules/esbuild')), { code: 'ENOENT' });
+  const root = path.join(base, 'notes'), state = path.join(base, 'state'), config = path.join(base, 'notes.patch.json');
+  await exec(process.execPath, [cli, 'init', '--root', root, '--state-root', state, '--config', config], { cwd: installRoot, env });
+  const checked = await exec(process.execPath, [cli, 'check', '--config', config], { cwd: installRoot, env });
+  assert.equal(JSON.parse(checked.stdout).harness, '0.2.2-rc.1');
+  // Simulate a side-by-side upgrade: an earlier installation keeps its own
+  // overlay; the installed tarball generates a separate overlay for shared data.
+  const previousConfig = path.join(base, 'previous-install.patch.json');
+  await initialize({ root, stateRoot: state, configPath: previousConfig });
+  const previousBytes = await readFile(previousConfig, 'utf8');
+  const previousStore = await NotesStore.open(root, {}, { stateRoot: state });
+  await previousStore.save({ path: 'previous.md', text: 'upgrade keeps existing notes', expected: null });
+  const previousHistory = await previousStore.history('previous.md');
+  const nextConfig = path.join(base, 'next-install.patch.json');
+  await exec(process.execPath, [cli, 'rebind', '--config', previousConfig, '--output', nextConfig], { cwd: installRoot, env });
+  const nextChecked = await exec(process.execPath, [cli, 'check', '--config', nextConfig], { cwd: installRoot, env });
+  assert.equal(JSON.parse(nextChecked.stdout).root, root);
+  assert.equal(await readFile(previousConfig, 'utf8'), previousBytes);
+  assert.equal((await inspect(previousConfig)).root, root, 'previous install remains usable for rollback');
+  for (const directory of ['home', 'user-home', 'config']) await mkdir(path.join(base, directory));
+  child = spawn(process.execPath, [cli, 'start', '--config', nextConfig, '--port', '0'], {
+    cwd: installRoot, env: { ...env, HOME: path.join(base, 'user-home'), XDG_CONFIG_HOME: path.join(base, 'config'), DSH_HOME: path.join(base, 'home') }, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let output = '';
+  for (const stream of [child.stdout, child.stderr]) stream.on('data', part => { output += part; if (output.length > 262144) child.kill('SIGKILL'); });
+  const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
+  let address;
+  const deadline = Date.now() + 40000;
+  while (Date.now() < deadline) {
+    assert.equal(child.exitCode, null, 'Installed launcher exited before readiness');
+    address = /dsh web: (http:\/\/127\.0\.0\.1:\d+\/)/.exec(output)?.[1];
+    if (address) break;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.ok(address, 'Installed tarball did not launch the real Harness Web profile');
+  assert.equal((await fetch(address)).status, 401);
+  assert.equal((await fetch(address + 'api/corilo-notes/list', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 401);
+  const launch = /dsh web: (http:\/\/127\.0\.0\.1:\d+\/\?[^\s\x1b]+)/.exec(output)?.[1];
+  assert.ok(launch);
+  const login = await fetch(launch, {redirect:'manual'}), cookie = login.headers.getSetCookie()[0]?.split(';')[0];
+  assert.ok(cookie);
+  const html = await fetch(address+'api/corilo-notes/workspace/index.html',{headers:{cookie}});
+  assert.equal(html.status,200);assert.match(await html.text(),/host\.js/);
+  assert.equal((await fetch(address+'api/corilo-notes/workspace/adapter.js',{headers:{cookie}})).status,200);
+  const identity = await (await fetch(address+'api/corilo-notes/identity',{method:'POST',headers:{cookie,'content-type':'application/json'},body:'{}'})).json();
+  assert.equal(identity.value.interface,'filesmd');
+  const file = await (await fetch(address+'api/corilo-notes/workspace/fs',{method:'POST',headers:{cookie,'content-type':'application/json','x-corilo-workspace-id':identity.value.workspaceId},body:JSON.stringify({method:'read',path:'previous.md'})})).json();
+  assert.equal(Buffer.from(file.value.data,'base64').toString(),'upgrade keeps existing notes');
+  // Proof that the package's host loaded and initialized its separately bound
+  // recovery state, rather than merely booting an empty Harness profile.
+  const marker = JSON.parse(await readFile(path.join(state, 'corilo-notes-state.json'), 'utf8'));
+  assert.equal(marker.rootId, createHash('sha256').update(root).digest('hex'));
+  child.kill('SIGTERM');
+  const result = await Promise.race([exited, new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error('Installed launcher did not stop')), 10000); timer.unref(); })]);
+  assert.equal(result.code, 0, 'CLI forwards shutdown to Harness cleanly');
+  // The packaged ripgrep optional binary must work even with install scripts
+  // disabled. Search the real installed store, not a source-tree dependency.
+  const proof = await exec(process.execPath, ['--input-type=module', '-e', `
+    import {pathToFileURL} from 'node:url';
+    const {NotesStore}=await import(pathToFileURL(process.argv[1]));
+    const store=await NotesStore.open(process.argv[2],{}, {stateRoot:process.argv[3]});
+    await store.capture('独立安装的蓝鲸正文');
+    console.log(JSON.stringify(await store.search({query:'蓝鲸'})));
+  `, path.join(installRoot, 'node_modules/@corilo/dsh-notes/storage.mjs'), root, state], { cwd: installRoot, env });
+  assert.ok(JSON.parse(proof.stdout).items.some(item => item.kind === 'content' && item.text.includes('蓝鲸')));
+  const compacted = await exec(process.execPath, [cli, 'maintain', '--config', config], { cwd: installRoot, env });
+  assert.equal(JSON.parse(compacted.stdout).historyPruned, false);
+  // Roll back by launching the original installation and original overlay.
+  // This verifies install-path relocation, not compatibility with an untested
+  // future data-format migration or an arbitrary older Harness release.
+  output = '';
+  child = spawn(process.execPath, [path.join(packageRoot, 'cli.mjs'), 'start', '--config', previousConfig, '--port', '0'], {
+    cwd: packageRoot, env: { ...env, HOME: path.join(base, 'user-home'), XDG_CONFIG_HOME: path.join(base, 'config'), DSH_HOME: path.join(base, 'home') }, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  for (const stream of [child.stdout, child.stderr]) stream.on('data', part => { output += part; if (output.length > 262144) child.kill('SIGKILL'); });
+  const rolledBack = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })));
+  address = undefined;
+  const rollbackDeadline = Date.now() + 40000;
+  while (Date.now() < rollbackDeadline) {
+    assert.equal(child.exitCode, null, 'Previous installation exited before readiness');
+    address = /dsh web: (http:\/\/127\.0\.0\.1:\d+\/)/.exec(output)?.[1];
+    if (address) break;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.ok(address, 'Previous installation failed to restart with its unchanged config');
+  assert.equal((await fetch(address)).status, 401);
+  assert.equal(await readFile(previousConfig, 'utf8'), previousBytes);
+  child.kill('SIGTERM');
+  const rollbackResult = await Promise.race([rolledBack, new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error('Previous launcher did not stop')), 10000); timer.unref(); })]);
+  assert.equal(rollbackResult.code, 0);
+  assert.equal((await previousStore.read('previous.md')).text, 'upgrade keeps existing notes');
+  assert.deepEqual(await previousStore.history('previous.md'), previousHistory);
+  assert.ok((await previousStore.search({ query: '蓝鲸' })).items.some(item => item.kind === 'content'));
+});
+
+test('explicit classic interface is validated and preserved by declarative rebind',async t=>{
+ const base=await mkdtemp(path.join(os.tmpdir(),'corilo-classic-config-'));t.after(()=>rm(base,{recursive:true,force:true}));
+ const original=path.join(base,'old.json'),next=path.join(base,'new.json');
+ await initialize({root:path.join(base,'notes'),configPath:original,interface:'classic'});
+ assert.equal((await inspect(original)).interface,'classic');
+ await rebind(original,next);assert.equal((await inspect(next)).interface,'classic');
+ await assert.rejects(initialize({root:path.join(base,'notes'),configPath:path.join(base,'bad.json'),interface:'unknown'}),/Unsupported workspace interface/);
+});

@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, writeFile, readFile, mkdir, readdir, rm } from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { Context } from '@deepseek-ai/cordis';
+import Tools from '@deepseek-ai/dsh-tools';
+import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
+import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline';
+import * as notes from '../index.mjs';
+
+test('current plugin ignores legacy recovery configuration and exposes only core tools', async t => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), 'corilo-core-pipeline-'));
+  const root = path.join(temporary, 'notes'), stateRoot = path.join(temporary, 'state');
+  await mkdir(stateRoot);
+  await writeFile(path.join(stateRoot, 'keep'), 'existing history stays byte-for-byte');
+  const ctx = new Context();
+  t.after(async () => { await ctx.fiber.dispose(); await rm(temporary, { recursive: true, force: true }); });
+  await ctx.plugin(SystemPrompt); await ctx.plugin(Tools);
+  const fiber = await ctx.plugin(notes, { root, stateRoot });
+  assert.equal(ctx.tools.definitions().length, 8);
+  const pipeline = new ToolExecutionPipeline(ctx);
+  const prepared = await pipeline.prepare({ callId: 'one', name: 'corilo_notes_save', arguments: { path: '普通.md', text: 'only Markdown', expected: null }, signal: new AbortController().signal });
+  const result = await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared);
+  assert.equal(result.isError, false);
+  assert.equal(await readFile(path.join(root, '普通.md'), 'utf8'), 'only Markdown');
+  assert.equal(await readFile(path.join(stateRoot, 'keep'), 'utf8'), 'existing history stays byte-for-byte');
+  assert.deepEqual(await readdir(stateRoot), ['keep']);
+  await fiber.dispose();
+  assert.equal(ctx.tools.definitions().length, 0);
+});

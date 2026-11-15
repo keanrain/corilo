@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-11",
+  "timezone": "Asia/Taipei",
+  "baselineCommit": "6d33cbc",
+  "scope": "Disposable independent DSH, two local 0.7.0 builds; no npm publication or user-instance deployment",
+  "browserRegression": {
+    "baseline": "failed: navigation discarded input typed during save",
+    "fixed": "passed: file navigation and joining capture navigation preserve later input"
+  },
+  "checks": {
+    "notesNode": {
+      "passed": 58,
+      "skipped": 1,
+      "skipReason": "restic unavailable"
+    },
+    "filesmdBrowser": "passed",
+    "classicBrowser": "passed",
+    "legacyBrowsers": [
+      "smoke passed",
+      "review passed",
+      "sync passed"
+    ]
+  },
+  "harness": "0.2.2-rc.1",
+  "independentHostBoot": true,
+  "upgradeRestart": true,
+  "overlayPreserved": true,
+  "notesPreserved": true,
+  "assets": [
+    {
+      "version": "0.7.0",
+      "archiveSha256": "a92113622daa6570b5d7162a4208de5df7f71e189b0b76b8dd4e52685eca6f98",
+      "hostSha256": "aafb9f5480011c9959c5da73133173b556d24235ea5aae4ad042422644e053ad"
+    },
+    {
+      "version": "0.7.0",
+      "archiveSha256": "2e663d0a5d9bdb4fb8e3637260698c2efe9a02868085f3b3cfe495fdcfcfd666",
+      "hostSha256": "85277ff33883b0568cdb59a5cbafb20e12ef682330f0cf4b82915dc1dd7d5554"
+    }
+  ],
+  "modelCalls": 0
+}

@@ -1,91 +1,48 @@
 # Corilo 可里
 
-**接住想法，接着往前。**
+> 当前补丁版本：todos 0.6.1。提醒、跨日分类、日历任务分页与代码结构修复见 [交接文档](docs/HANDOFF.md)；旧配置和数据库不自动迁移。
 
-> 2026-09-24 名称确认：英文 **Corilo**，中文 **可里**。原名为「续页 · Xuye」，更早代号为 PersonalOS。本次同步品牌和本地导出目录，不改变业务范围或已有数据格式。
+> 2026-11-15：todos 0.6.0 已按用户提供清单重建。`npm run setup:corilo` 构建 notes＋todos，新的 `init:corilo` 默认启用双插件 planner v2。已有配置继续按原模式运行；旧 v1 目录不能直接启用 planner。安装与兼容说明见 [任务插件](plugins/todos/README.md)，本轮验证见 [交接](docs/HANDOFF.md)。下方旧版单插件说明仅适用于已有单插件配置。
 
-本地优先的个人知识与行动助手。Markdown 是真实内容，同步可选，目标是桌面和手机共用 Web 页面。
+**设计更新 v0.34：** 下一阶段恢复独立任务与日程插件，采用 notes＋todos，并保留 Files.md 菜单。[产品方案](docs/PRODUCT.md)与[技术方案](docs/TECHNICAL_DESIGN.md)已写入仓库；以下安装说明描述当前可运行代码，日期、日历和提醒仍待开发。
 
-## 现在可以启动的内容
+运行在 **DeepSeek Harness** 中的 Files.md 工作区：笔记、待办清单、日记和附件都保存在自己的设备，既能直接操作，也能交给原生 Agent。
 
-2026-09-20 增加了独立的本地开发原型：随手保存原话、新建 Markdown、打开并修改、标题与正文关键词查找、重开读取已保存文件。输入不会自动生成任务；没有调用模型或同步服务。
+当前主包 **`@corilo/dsh-notes` 0.7.0** 完整移植 Files.md 前端，保留其菜单和交互；新实例只加载这一个插件。普通编辑、勾选、收集与日记不用模型。Harness 负责模型、会话、登录和权限，不运行旧 Pi、Telegram Bot 或另一套同步服务。
 
-这次不再只是函数补丁，但**仍不是完整可里应用**。`prototype/` 是 Python 标准库的临时本机宿主和普通 HTML/CSS/JS 入口，不是 Tauri 容器；编辑区暂用原生 textarea，尚未集成 Files.md 的完整页面、CodeMirror/HyperMD、Agent、Today 或通知。没有把这个替代入口冒充原定的上游复用已经完成。
+## 三步启动
 
-## 启动（不需要 npm、Go、模型密钥或同步账号）
+需要 Node.js ≥24.9.0。在仓库根执行，实例路径使用仓库外的绝对路径：
 
-需要 Python 3.10+。在仓库根目录执行：
-
-```bash
-python3 scripts/run_local.py --init
+```sh
+npm run setup:corilo
+npm run init:corilo -- --directory /absolute/corilo-instance
+npm run start:corilo -- --directory /absolute/corilo-instance
 ```
 
-在浏览器打开终端打印的本机地址，默认是 `http://127.0.0.1:8765`。只监听本机，不提供公网部署入口。
+`setup` 只安装并构建工作区包。`init` 只创建配置，不覆盖或迁移已有实例；以后直接 `start`。使用 Harness 打印的鉴权地址，关闭模型配置引导后点击侧栏“笔记”。默认回环端口 3000，Ctrl+C 停止；预检使用 `npm run check:corilo -- --directory /absolute/corilo-instance`。
 
-默认测试库仍位于仓库下 `.local/xuye-prototype/`，已加入 Git 忽略。此路径及 `.xuye-local/`、库识别标记和会话键是保留的兼容标识，品牌改名不会自动搬迁已有测试数据。只用虚构测试资料。`--init` 拒绝接管非空的未标记目录；没有读取或迁移你现有的知识库。
+界面保留 Files.md 原生文件树、新建、查找、标题内改名、移动／归档、分栏、收集、日记和 Markdown 清单。Agent 按钮先保存当前输入，再切到 Harness 会话；返回时保留编辑区。文件由小主机统一保存，其他电脑／手机通过浏览器访问，不需要每台设备选择本地文件夹。
 
-试用流程：保存一句原话 → 点击“打开原文” → 修改并点“保存修改” → 关闭服务后重新启动 → 内容仍从 Markdown 读取。笔记修改需要显式保存，Ctrl/Cmd+S 也可保存。原话存入 `收集/<操作UUID>.md`，不是浏览器内存或数据库里的隐藏正文。
+## 旧实例与待办
 
-Ctrl+C 停止。再次启动使用相同命令即可，已有测试文件不会被清空。端口占用时可指定 `--port 8766`；更换端口会改变浏览器草稿缓存的站点范围，但已保存 Markdown 不受影响。
+旧双插件配置和 `plugins/todos` 0.5.2 保留，后续任务／日程在此扩展，不自动改写配置或删除 SQLite。Files.md 仍支持 Markdown 清单；下面是可选单向导出，不再是默认退役流程：
 
-## 数据保护范围
-
-同一文件的保存经过版本 hash 核对、暂存写入和替换；操作日志用于恢复“已经写入但还没收到回执”的情况。新建不覆盖同名文件；读取失败不是删除。恢复遇到未知外部字节时保留文件并阻止继续覆盖。
-
-这是**单文件原型**，不是多文件事务或完整同步引擎。一个库限制一个宿主进程；不支持其他编辑器/同步器同时写入。混合或特殊换行文件在界面暂为只读。不支持正式任务语义、文件删除/移动、完整导出或生产数据迁移；不要用本原型管理真实资料。
-
-## 实际验证
-
-```bash
-python3 -m unittest discover -s prototype/tests -v
+```sh
+# 先停止源、目标服务并备份；默认仅预览
+node plugins/notes/import-todos.mjs --source /absolute/old/todos/todos.sqlite --root /absolute/corilo-instance/notes
+# 核对预览后执行
+node plugins/notes/import-todos.mjs --source /absolute/old/todos/todos.sqlite --root /absolute/corilo-instance/notes --apply
 ```
 
-本轮在 Linux 中完成 30 项测试，包括真实临时文件、真实 loopback HTTP、实际子进程退出和 CLI 重启恢复。Python 编译和 JavaScript 语法检查通过。
+导入保留原 SQLite，已完成／未完成转为清单，取消记录及原字段保存在 archive/ 的迁移记录中；重试不会重复追加。仅在用户明确选择以后使用 Markdown 管理这些事项时，才考虑移除旧入口；继续使用独立任务的用户保留原 SQLite 与插件。原文清单与数据库不自动同步。[完整说明](plugins/notes/README.md)。
 
-历史交付中的浏览器导航曾被管理员策略拒绝，证据仍保留在 [verification.json](prototype/verification.json) 和 [原始日志](prototype/verification.log)。本次云环境已通过 Chromium 的输入、编辑和重载检查，并修复冒烟脚本的 CSP 兼容问题；这不代表视觉、Windows/macOS、Tauri、手机、模型或通知验收完成。
+## 分发与边界
 
-浏览器验证安装及执行方式见下节；这个入口使用独立临时库，不接真实资料。
+插件可独立打包，不需要旧 app/：进入 `plugins/notes` 执行 `npm pack`，收到包的人只需安装生产依赖并初始化。包仍为 private，尚未公开发布 npm。[快速开始](plugins/notes/QUICKSTART.zh-CN.md)。
 
-## 开发与自动检查
+Files.md 固定为源码记录中的版本，Harness 固定 `0.2.2-rc.1`。当前真实 Harness／Chromium 与迁移验收不代表真实 DeepSeek、物理手机、原生输入法／WebKit、麦克风、目标 Linux 常驻部署或 NAS 已验收。没有可靠提醒或自动记忆；NAS 先做备份，未经验证的 SMB/NFS 不作为工作盘。
 
-基础开发只需要 Python 3.10+，应用没有第三方运行依赖。在仓库根目录运行：
+目录保持：`plugins/notes` 当前工作区包，`plugins/todos` 当前基础待办及后续日程扩展，`launcher/` 源码入口，`docs/` 当前文档与归档。旧 app/、Android、原型与用户数据保留，根 `npm start/test` 仍运行旧应用。
 
-```bash
-python3 -m unittest discover -s prototype/tests -v
-python3 scripts/run_local.py --init
-```
-
-浏览器验证是单独的开发依赖，建议放入隔离环境（Mac/Linux）：
-
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python -m playwright install chromium
-.venv/bin/python -m prototype.browser_smoke
-```
-
-Linux 若缺 Chromium 系统库，可使用 Playwright 官方 `install --with-deps chromium` 命令；需要安装系统包的权限。Windows 使用 `.venv\Scripts\python.exe` 替代 `.venv/bin/python`。已有 Chromium 时可加 `--executable /实际浏览器路径`。
-
-浏览器检查使用独立临时测试库，验证输入、真实 Markdown 保存、编辑及页面重载，不需要先启动默认服务。结果在被 Git 忽略的 `.local/browser-result.json`，失败以非零状态退出。定位器断言保持页面 CSP，不要求开启 `unsafe-eval`。
-
-GitHub Actions 在推送和 PR 时自动运行 Python 3.10/3.12/3.13 的现有测试、JavaScript 语法检查和 Chromium 冒烟验证，并保留浏览器结果。工作流文件已配置不代表远端运行已经通过，需查看对应提交的 Actions 结果。P0 历史红/绿对照不算当前原型的产品验收，不纳入基础 CI。
-
-## Git 状态与发布边界
-
-当前工作区面向 `keanrain/corilo`。开发基线从用户提供的 Corilo 本地交接包导入，保留初始、原型和品牌改名三个提交；原包中的 `keanrain/xuye` 及旧授权结果是历史记录。
-
-后续在开发分支提交并经审阅合入。此开发基础不创建网站部署，不修改仓库可见性，不自动推送 `main`，不调用历史 `scripts/publish_github.py` 或用 `repository-bootstrap.json` 重复建库。推送成功与否以真实 Git 返回及远端 ref 核对为准。
-
-## 开发依据
-
-[知识库索引](docs/README.md) · [产品](docs/PRODUCT.md) · [业务规格](docs/PRODUCT-SPEC.md) · [技术](docs/TECHNICAL_DESIGN.md) · [交互](docs/DESIGN.md)
-
-产品规则仍由 v0.11 文档定义。`p0/` 保留过去的固定源码、候选补丁与历史日志；不把它们当作本原型已集成代码。上游许可声明仍保留在原位置，可里整体发行许可尚未确定。
-
-下一步先在真实浏览器完成这条本地体验，再把已经验证的存储/命令边界接回实际上游页面或容器；不能用这个临时宿主替代正式架构决定，也不要重新无限扩大上游排查。
-
-## 本轮改名与已有本地开发
-
-2026-09-24 交接包的开发目录为 `corilo/`，当时分支为 `feat/local-prototype`、origin 为 `keanrain/xuye`。当前云环境的远端和提交边界见上节。此前提交和上游许可、P0 固定源码、历史测试/日志及 `.fig` 保留。
-
-已有本地改动时，不用整个新目录覆盖旧目录或 `.git/`；从导出包的 `integration/` 读取改名提交并在本地审阅合入。历史 `scripts/publish_github.py` 仍针对原仓库初始化，不是改名工具，不应因本次品牌调整再次运行。
+[设计索引](docs/README.md) · [业务规则](docs/PRODUCT-SPEC.md) · [架构](docs/TECHNICAL_DESIGN.md) · [开发指南](docs/DEVELOPMENT.md) · [插件导航](plugins/README.md)

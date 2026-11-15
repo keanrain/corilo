@@ -1,0 +1,37 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'io.corilo.app'
+    compileSdk 36
+    buildToolsVersion "36.0.0"
+    defaultConfig {
+        applicationId 'io.corilo.app'
+        // Writable private executables require the Termux-style target 28 sideload model.
+        // Runtime entry restricts supported devices to Android 15+. This is not a Play build.
+        minSdk 28
+        targetSdk 28
+        versionCode 1
+        versionName '0.1.0-dev'
+        ndk { abiFilters 'arm64-v8a' }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    androidResources { noCompress 'zip' }
+    buildTypes { release { minifyEnabled false } }
+}
+// A compilable Activity without Node/Git is not a usable Corilo APK. Never package that silently.
+tasks.register('verifyRuntimePayload') {
+    doLast {
+        def assets = file('src/main/assets')
+        def manifest = new File(assets, 'payload.json')
+        if (!manifest.isFile()) throw new GradleException('Run android/scripts/prepare-payload.py with a verified Corilo-prefix bootstrap first.')
+        def data = new groovy.json.JsonSlurper().parse(manifest)
+        if (data.applicationId != 'io.corilo.app' || data.arch != 'aarch64' || data.prefix != '/data/data/io.corilo.app/files/usr') throw new GradleException('Wrong Android runtime identity')
+        ['runtime', 'app'].each { key ->
+            def archive = new File(assets, key + '.zip')
+            if (!archive.isFile()) throw new GradleException('Missing ' + key + '.zip')
+            def digest = java.security.MessageDigest.getInstance('SHA-256')
+            archive.withInputStream { input -> byte[] buffer = new byte[65536]; int n; while ((n=input.read(buffer))>0) digest.update(buffer,0,n) }
+            if (digest.digest().encodeHex().toString() != data[key].sha256) throw new GradleException('Payload checksum mismatch: ' + key)
+        }
+    }
+}
+tasks.configureEach { if (name.startsWith('merge') && name.endsWith('Assets')) dependsOn('verifyRuntimePayload') }
