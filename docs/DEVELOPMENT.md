@@ -16,7 +16,8 @@ v0.34 · 2026-11-11。此页命令描述现有运行代码，任务／日程方�
 | [scripts/](../scripts/README.md) | 设计资产生成、历史开发工具；`scripts/corilo.mjs` 只兼容转发至新入口 |
 | `docs/`、`docs/history/` | 当前设计／开发文档与不可混用的历史记录 |
 | `app/host/`、`app/cloud/`、`app/vendor/` | 保留的本机 Pi／云端服务与固定 vendor；根 npm 依赖用于这套应用 |
-| `android/`、`prototype/`、`p0/` | 暂停的工程、原型和历史验收证据 |
+| `android/`、`p0/` | 暂停的工程和历史验收证据 |
+| `packages/learn-anything/` | 独立学习产品；setup/test/build/pack:learn-anything 为根便捷命令 |
 
 实例目录必须在仓库之外。不要提交用户笔记、SQLite、运行 home、token、模型密钥或真实测试资料；保留已有旧应用数据，不自动迁移。
 
@@ -24,13 +25,14 @@ v0.34 · 2026-11-11。此页命令描述现有运行代码，任务／日程方�
 
 当前插件和源码组合入口需要 **Node.js ≥24.9.0**（Git 仅供旧存量恢复工具使用）；旧待办和迁移工具使用 Node 原生 SQLite。根 `package.json` 的 `engines >=22.19.0` 是保留的旧应用约定，不能据此用 Node 22 启动当前插件。根命令是便捷入口，不代表所有命令拥有同一运行时要求。
 
-仓库保留三个 npm 锁文件：
+仓库保留四个 npm 锁文件：
 
+- `packages/learn-anything/package-lock.json` 固定独立学习导师依赖，不加入默认双插件配置。
 - 根 `package-lock.json` 固定旧应用 Pi／云端依赖，不参与当前插件发布。
 - `plugins/notes/package-lock.json` 固定笔记包运行／构建／测试依赖。
 - `plugins/todos/package-lock.json` 固定待办包运行／构建／测试依赖。
 
-两包必须可在仓库外仅装生产依赖运行，因此不改为 npm workspace 或依赖根目录 hoist。安装、构建与升级分别在包目录操作；不单独升级 Harness 运行时或依据 `latest` 猜兼容版本。固定 Harness 为 `0.2.2-rc.1`。
+两包必须可在仓库外仅装生产依赖运行，因此不改为 npm workspace 或依赖根目录 hoist。安装、构建与升级分别在包目录操作；不单独升级 Harness 运行时或依据 `latest` 猜兼容版本。固定 Harness 为 `0.2.2-rc.3`。
 
 ## 当前命令
 
@@ -69,7 +71,7 @@ v0.34 · 2026-11-11。此页命令描述现有运行代码，任务／日程方�
 npm_config_cache=/workspace/work/npm-cache node plugins/notes/test/upgrade.mjs /absolute/previous.tgz /absolute/next.tgz
 ```
 
-脚本先在临时目录用 --save-exact 仅安装固定 DSH 0.2.2-rc.1 并实际启动，再安装旧包、通过鉴权 API 写入合成资料，停止服务、安装新包并重启。检查既有 overlay 字节不变、旧资料保留、服务返回的 host.js 与新安装文件完全一致且哈希改变、未认证请求为 401、SIGTERM 正常退出。它从独立 DSH 的原生入口启动，不依赖源码 launcher。两个包须已包含构建资源；可以是同版本的不同本地构建，不能把这种演练写成 npm 公开版本升级。
+脚本先在临时目录用 --save-exact 仅安装固定 DSH 0.2.2-rc.3 并实际启动，再安装旧包、通过鉴权 API 写入合成资料，停止服务、安装新包并重启。检查既有 overlay 字节不变、旧资料保留、服务返回的 host.js 与新安装文件完全一致且哈希改变、未认证请求为 401、SIGTERM 正常退出。它从独立 DSH 的原生入口启动，不依赖源码 launcher。两个包须已包含构建资源；可以是同版本的不同本地构建，不能把这种演练写成 npm 公开版本升级。
 
 整个演练使用可丢弃实例并在结束后清理，输出只有包版本、哈希和检查结果；不会替用户升级真实实例。目标用户 DSH 的路径、overlay 和部署环境仍须单独核对。真实浏览器行为继续由 workspace_browser.py 验收，HTTP 资源检查不等于第二实例浏览器验收。
 

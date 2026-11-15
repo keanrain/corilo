@@ -1,5 +1,7 @@
 # Corilo 可里开发约束
 
+2026-11-15 更新：notes／todos 与学习导师固定 DSH 0.2.2-rc.3（npm next 标签，本次验证见 docs/HANDOFF.md 顶部）。学习导师位于 packages/learn-anything，独立依赖锁、构建、测试与分发，不加入默认 notes＋todos 启动组合。根旧应用命令与依赖保留，不引入 npm workspaces。用户已要求删除 Python prototype 及其启动脚本和专用 CI；.local 数据保留，requirements-dev.txt 继续供其他浏览器测试使用。
+
 当前执行：按用户清单重建 todos 0.6.0，详见 docs/PRODUCT-SPEC.md 第 0 节。新实例双插件及 planner v2，旧配置／v1 保留；无升级工具、重复、来源关联或外部推送。下文 v0.34 分阶段要求不覆盖本次明确恢复范围。
 
 当前方向 v0.34（2026-11-11）：用户恢复独立任务与日程需求。目标为一个 Harness、notes 笔记插件与 todos 任务／日程插件；保留 Files.md 完整菜单，机器人能力使用 Harness 原生 Agent。本轮文档是待实现方案，当前 notes 0.7.0、todos 0.5.2 和启动器尚未交付日期、日历或提醒。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，命令见 docs/DEVELOPMENT.md。
@@ -14,7 +16,7 @@
 
 正文为普通 Markdown 与附件。首期常开电脑/主机本机磁盘作为工作目录，NAS 为独立备份目标；不把未经验证的 SMB/NFS 或双向同步目录宣称为可用工作目录。个人版不依赖 Supabase、Corilo 官方账号或 GitHub 绑定；远程访问鉴权、版本保护、资料导出与备份恢复仍需交付。Tailscale 为建议，尚未部署。用户已选 Linux 小主机/常开电脑为首个部署方向；具体硬件、发行版及远程方式未定，不能宣称所有 NAS 或移动端已兼容。
 
-当前可运行笔记主包是 plugins/notes（Files.md 工作区）；plugins/todos 保留存量能力并规划扩展。正式任务以其 SQLite 为权威，Markdown 清单保持原文，不自动双向同步。未来 v2 仅显式离线升级到新目录，保留旧库与配置，不在启动时自动改 schema。Markdown 勾选清单不是可靠提醒，日期/调度/通知并未因此交付。新代码位于 plugins/；旧 app/host、app/cloud、app/vendor、android、prototype 和既有配置/数据原样保留，作为迁移前实现，不默认删除或转换数据。旧 Pi 会话、PostgreSQL 任务和 Harness 会话不是同一格式，不自动重放历史工具。品牌与兼容标识（.personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/ 等）保留。旧版本文档标注历史，不继续作为当前路线扩展。
+当前可运行笔记主包是 plugins/notes（Files.md 工作区）；plugins/todos 保留存量能力并规划扩展。正式任务以其 SQLite 为权威，Markdown 清单保持原文，不自动双向同步。未来 v2 仅显式离线升级到新目录，保留旧库与配置，不在启动时自动改 schema。Markdown 勾选清单不是可靠提醒，日期/调度/通知并未因此交付。新代码位于 plugins/；旧 app/host、app/cloud、app/vendor、android 和既有配置/数据原样保留，作为迁移前实现，不默认删除或转换数据。旧 Pi 会话、PostgreSQL 任务和 Harness 会话不是同一格式，不自动重放历史工具。品牌与兼容标识（.personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/ 等）保留。旧版本文档标注历史，不继续作为当前路线扩展。
 
 使用现有 checkout，不擅自创建 worktree。保留其他改动；按已授权范围在开发分支提交推送，不 force-push。部署、公开可见性变更及破坏性操作需要对应授权。代码仓库与知识库分开。使用虚构资料和合成凭据测试，不提交或输出真实密钥和用户笔记。
 

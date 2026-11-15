@@ -1,5 +1,17 @@
 # Corilo 可里
 
+> 运行时更新：notes／todos 和独立学习导师固定使用 DSH **0.2.2-rc.3**。此版本当前在 npm `next` 标签，`latest` 仍为 rc.1；请按锁文件安装。Python 原型及其专用启动、CI 已移除，本地数据保留。
+
+## 大仓中的独立产品
+
+| 目录 | 产品 | 开发入口 |
+|---|---|---|
+| `plugins/notes` | 笔记工作区 `@corilo/dsh-notes` | `npm run test:notes` |
+| `plugins/todos` | 任务与日程 `@corilo/dsh-todos` | `npm run test:todos` |
+| [`packages/learn-anything`](packages/learn-anything/README.md) | 独立学习导师 `@corilo/learn-anything` | `npm run setup:learn-anything`、`npm run test:learn-anything` |
+
+各包独立依赖锁、安装和分发。学习导师通过 `npm run pack:learn-anything` 打包，不随默认 notes＋todos 组合自动启用。`app/`、`android/`、`p0/` 保留旧实现与研究；根 `npm start/test` 仍服务旧应用。
+
 > 当前补丁版本：todos 0.6.1。提醒、跨日分类、日历任务分页与代码结构修复见 [交接文档](docs/HANDOFF.md)；旧配置和数据库不自动迁移。
 
 > 2026-11-15：todos 0.6.0 已按用户提供清单重建。`npm run setup:corilo` 构建 notes＋todos，新的 `init:corilo` 默认启用双插件 planner v2。已有配置继续按原模式运行；旧 v1 目录不能直接启用 planner。安装与兼容说明见 [任务插件](plugins/todos/README.md)，本轮验证见 [交接](docs/HANDOFF.md)。下方旧版单插件说明仅适用于已有单插件配置。
@@ -41,8 +53,8 @@ node plugins/notes/import-todos.mjs --source /absolute/old/todos/todos.sqlite --
 
 插件可独立打包，不需要旧 app/：进入 `plugins/notes` 执行 `npm pack`，收到包的人只需安装生产依赖并初始化。包仍为 private，尚未公开发布 npm。[快速开始](plugins/notes/QUICKSTART.zh-CN.md)。
 
-Files.md 固定为源码记录中的版本，Harness 固定 `0.2.2-rc.1`。当前真实 Harness／Chromium 与迁移验收不代表真实 DeepSeek、物理手机、原生输入法／WebKit、麦克风、目标 Linux 常驻部署或 NAS 已验收。没有可靠提醒或自动记忆；NAS 先做备份，未经验证的 SMB/NFS 不作为工作盘。
+Files.md 固定为源码记录中的版本，Harness 固定 `0.2.2-rc.3`。当前真实 Harness／Chromium 与迁移验收不代表真实 DeepSeek、物理手机、原生输入法／WebKit、麦克风、目标 Linux 常驻部署或 NAS 已验收。没有可靠提醒或自动记忆；NAS 先做备份，未经验证的 SMB/NFS 不作为工作盘。
 
-目录保持：`plugins/notes` 当前工作区包，`plugins/todos` 当前基础待办及后续日程扩展，`launcher/` 源码入口，`docs/` 当前文档与归档。旧 app/、Android、原型与用户数据保留，根 `npm start/test` 仍运行旧应用。
+目录保持：`plugins/notes` 当前工作区包，`plugins/todos` 当前基础待办及后续日程扩展，`launcher/` 源码入口，`docs/` 当前文档与归档。旧 app/、Android 与用户数据保留，根 `npm start/test` 仍运行旧应用。
 
 [设计索引](docs/README.md) · [业务规则](docs/PRODUCT-SPEC.md) · [架构](docs/TECHNICAL_DESIGN.md) · [开发指南](docs/DEVELOPMENT.md) · [插件导航](plugins/README.md)

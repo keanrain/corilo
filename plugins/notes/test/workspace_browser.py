@@ -151,8 +151,9 @@ def run():
      page.get_by_role('button',name='笔记',exact=True).click();expect(iframe).to_be_visible()
      assert actual.evaluate('window.frameProof')=='retained'
      # Stale writes preserve both editor text and external disk content.
-     actual.evaluate('()=>clearInterval(window.saver)')
-     actual.evaluate("()=>editor.replaceRange('待核对输入',{line:editor.lastLine(),ch:0})")
+     # Returning to the panel starts a read-only reload. Programmatic CodeMirror
+     # edits bypass that lock, unlike user input; finish the reload before editing.
+     actual.evaluate("async()=>{clearInterval(window.saver);await coriloReloading;await coriloNavigation;editor.replaceRange('待核对输入',{line:editor.lastLine(),ch:0});}")
      (notes/'Hello.md').write_text('外部新版本')
      actual.evaluate('async()=>{try{await syncCurrentFile()}catch(e){coriloError(e)}}')
      expect(frame.locator('#corilo-error')).to_contain_text('其他位置修改')

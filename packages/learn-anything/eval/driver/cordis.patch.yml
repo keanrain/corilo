@@ -1,0 +1,66 @@
+- id: headless-runner
+  disabled: true
+# Like dsh-web-app: the agent-facing rows of the base profile are disabled so
+# the tutor sees exactly the tools its preset mounts (what users get under `dsh web`).
+- id: tool-plugin-manager
+  disabled: true
+# DeepSeek-only request extensions (session-log deltas, plugin inventory): the eval
+# has no use for them, and other Messages endpoints reject the extra fields. The
+# registry itself stays on: under --anthropic with LA_EVAL_PROMPT_CACHE=1 the driver contributes `cache_control`.
+- id: session-log-deepseek
+  disabled: true
+- id: plugin-package-inventory-deepseek
+  disabled: true
+- id: tool-bash
+  disabled: true
+- id: tool-pwsh
+  disabled: true
+- id: tool-jobs
+  disabled: true
+- id: tool-fs
+  disabled: true
+- id: tool-fs-search
+  disabled: true
+- id: skill-filesystem
+  disabled: true
+- id: tool-skill
+  disabled: true
+- id: command-goal
+  disabled: true
+- id: tool-goal
+  disabled: true
+- id: plan-mode
+  disabled: true
+- id: compaction-basic
+  disabled: true
+- id: command-compact
+  disabled: true
+- id: tool-result-pruner
+  disabled: true
+- id: tool-subagent-control
+  disabled: true
+- id: tool-subagent-list-agents
+  disabled: true
+- id: tool-subagent
+  disabled: true
+- id: tool-subagent-fork
+  disabled: true
+- id: workflow-ptc
+  disabled: true
+- id: tool-workflow
+  disabled: true
+- id: agent-instructions
+  disabled: true
+- id: tool-todo
+  disabled: true
+- id: tool-web
+  disabled: true
+- insert:
+    - id: agent-preset-registry
+      name: '@deepseek-ai/dsh-agent-preset-registry'
+      config:
+        default: learn-tutor
+    - id: subagent-model-selection-settings
+      name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
+    - id: la-eval-driver
+      name: la-eval-driver

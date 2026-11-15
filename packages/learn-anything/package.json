@@ -1,0 +1,77 @@
+{
+  "name": "@corilo/learn-anything",
+  "version": "0.1.0",
+  "description": "Personal learning tutor for DeepSeek Harness, built on the 渐构 (incremental construction) learning method",
+  "type": "module",
+  "icon": "./icon.svg",
+  "license": "MIT",
+  "bin": {
+    "learn-anything": "./bin/learn-anything.mjs"
+  },
+  "exports": {
+    ".": "./src/host/ui.js",
+    "./tools": "./src/host/index.js",
+    "./client": "./src/client/index.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "bin",
+    "src",
+    "prompts",
+    "skills",
+    "locale",
+    "icon.svg",
+    "cordis.patch.yml"
+  ],
+  "engines": {
+    "node": ">=24.9.0",
+    "dsh": "0.2.2-rc.3"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.js",
+    "test:browser": "npm run build && node test/browser/smoke.mjs",
+    "test:boot": "node test/boot/run.mjs",
+    "eval": "node eval/run.mjs",
+    "eval:mock": "node eval/run.mjs --mock"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "~3.18.4",
+    "fflate": "^0.8.3",
+    "ts-fsrs": "^5.4.2",
+    "unpdf": "^1.8.1",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.3",
+    "@deepseek-ai/dsh-plugin-market-index": "0.2.2-rc.3",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.3",
+    "@openuidev/lang-core": "1.0.1",
+    "@openuidev/react-lang": "1.0.1",
+    "esbuild": "^0.28.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
