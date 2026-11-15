@@ -51,3 +51,10 @@ test('published CLI commands and DSH bundle patches must be present', () => {
   assert.throws(() => validatePack(pack, bundled), /Executable or bundle patch missing/)
   assert.equal(validatePack({ ...pack, files: [...pack.files, { path: 'cordis.patch.yml' }] }, bundled), 4)
 })
+
+test('wildcard locale exports require matching files in the archive', () => {
+  const localized = { ...pkg, exports: { ...pkg.exports, './locale/*.json': './locale/*.json' } }
+  assert.throws(() => validatePack(pack, localized), /Export missing.*locale/)
+  assert.throws(() => validatePack({ ...pack, files: [...pack.files, { path: 'locale/zh-CN-json' }] }, localized), /Export missing.*locale/)
+  assert.equal(validatePack({ ...pack, files: [...pack.files, { path: 'locale/zh-CN.json' }] }, localized), 4)
+})

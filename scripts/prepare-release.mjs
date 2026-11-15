@@ -43,7 +43,10 @@ export function validatePack(pack, pkg) {
   }
   if (!paths.has('package.json') || !paths.has('README.md')) throw new Error('Package manifest or README is missing from tarball')
   for (const entry of Object.values(pkg.exports ?? {})) {
-    if (typeof entry === 'string' && entry.startsWith('./') && !entry.includes('*') && !paths.has(entry.slice(2))) throw new Error(`Export missing from tarball: ${entry}`)
+    if (typeof entry !== 'string' || !entry.startsWith('./')) continue
+    const target = entry.slice(2)
+    const pattern = new RegExp(`^${target.split('*').map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`)
+    if (![...paths].some((path) => pattern.test(path))) throw new Error(`Export missing from tarball: ${entry}`)
   }
   const bins = typeof pkg.bin === 'string' ? [pkg.bin] : Object.values(pkg.bin ?? {})
   for (const entry of [...bins, pkg.dsh?.bundle?.patch].filter(Boolean)) {
