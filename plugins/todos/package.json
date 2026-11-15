@@ -1,6 +1,6 @@
 {
   "name": "@corilo/dsh-todos",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -30,7 +30,8 @@
     "schedule-api.mjs",
     "schedule-tools.mjs",
     "date-values.mjs",
-    "reminders.mjs"
+    "reminders.mjs",
+    "schedule-queries.mjs"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",

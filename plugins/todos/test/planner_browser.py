@@ -84,6 +84,21 @@ def main():
      expect(page.locator('.fc')).to_be_visible()
      for name in ['周','日','日程','月']:
       page.locator('.fc').get_by_role('button',name=name,exact=True).click()
+     # The calendar must allow arranging a task beyond its first 100 rows.
+     page.evaluate("""async () => {
+       const send=async(method,args,id)=>(await(await fetch('api/corilo-todos/v2/'+method,{method:'POST',headers:{'content-type':'application/json',...(id?{'x-corilo-todos-id':id}:{})},body:JSON.stringify(args)})).json()).value;
+       const identity=await send('identity',{});
+       for(let i=0;i<105;i++)await send('tasks/create',{requestId:crypto.randomUUID(),value:{title:'分页合成 '+i}},identity.id);
+     }""")
+     page.get_by_role('button',name='刷新',exact=True).click()
+     sidebar=page.get_by_label('可安排任务',exact=True)
+     sidebar.get_by_role('button',name='加载更多可安排任务',exact=True).wait_for()
+     expect(sidebar.get_by_role('button',name='恢复的任务 · 安排',exact=True)).to_have_count(0)
+     sidebar.get_by_role('button',name='加载更多可安排任务',exact=True).click()
+     sidebar.get_by_role('button',name='恢复的任务 · 安排',exact=True).click()
+     expect(form.get_by_label('标题',exact=True)).to_have_value('恢复的任务')
+     expect(form.get_by_label('关联任务',exact=True)).not_to_have_value('')
+     form.get_by_role('button',name='关闭',exact=True).click()
      page.set_viewport_size({'width':390,'height':844})
      page.get_by_role('button',name='新建任务',exact=True).click()
      expect(form.get_by_role('button',name='保存',exact=True)).to_be_visible()
@@ -91,7 +106,7 @@ def main():
      page.screenshot(path='/tmp/corilo-planner-mobile.png')
      assert not errors,errors
      browser.close()
-     print('PASS: real Harness planner task save/cancel/restore, lost response reconciliation, all-day event, calendar views, 390px editor')
+     print('PASS: real Harness planner task save/cancel/restore, lost response reconciliation, all-day event, calendar views, beyond-100 task scheduling, 390px editor')
    finally:
     host.terminate()
     try:host.wait(timeout=15)

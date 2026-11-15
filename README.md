@@ -1,5 +1,7 @@
 # Corilo 可里
 
+> 当前补丁版本：todos 0.6.1。提醒、跨日分类、日历任务分页与代码结构修复见 [交接文档](docs/HANDOFF.md)；旧配置和数据库不自动迁移。
+
 > 2026-11-15：todos 0.6.0 已按用户提供清单重建。`npm run setup:corilo` 构建 notes＋todos，新的 `init:corilo` 默认启用双插件 planner v2。已有配置继续按原模式运行；旧 v1 目录不能直接启用 planner。安装与兼容说明见 [任务插件](plugins/todos/README.md)，本轮验证见 [交接](docs/HANDOFF.md)。下方旧版单插件说明仅适用于已有单插件配置。
 
 **设计更新 v0.34：** 下一阶段恢复独立任务与日程插件，采用 notes＋todos，并保留 Files.md 菜单。[产品方案](docs/PRODUCT.md)与[技术方案](docs/TECHNICAL_DESIGN.md)已写入仓库；以下安装说明描述当前可运行代码，日期、日历和提醒仍待开发。

@@ -1,0 +1,75 @@
+{
+  "date": "2026-11-15",
+  "base_commit": "093cc5697c4f6ef8b8698c6eff6a4a0790411a5a",
+  "package": {
+    "name": "@corilo/dsh-todos",
+    "version": "0.6.1",
+    "sha256": "6e570c833929485b9f9199424f02d3421341a51a812383d7a22ffa51befcebff"
+  },
+  "red_green": {
+    "before": {
+      "tests": 5,
+      "passed": 1,
+      "failed": 4
+    },
+    "failures_fixed": [
+      "ordinary edit between reminder due time and scheduler scan",
+      "ordinary parent task edit drops due block reminder",
+      "ongoing all-day block absent from today/future",
+      "timed overlap missing across local midnight and DST"
+    ]
+  },
+  "checks": [
+    {
+      "command": "npm --prefix plugins/todos test",
+      "passed": 33,
+      "failed": 0,
+      "includes": [
+        "real Harness boot",
+        "independent production package installation",
+        "real Cordis planner tools",
+        "reminder race regressions",
+        "DST and exclusive interval ends",
+        "query pagination and range limits",
+        "calendar page loading and poll retention"
+      ]
+    },
+    {
+      "command": "npm run test:startup",
+      "passed": 4,
+      "failed": 0
+    },
+    {
+      "command": "python3 plugins/todos/test/planner_browser.py",
+      "result": "passed",
+      "includes": [
+        "concurrent edit draft preservation",
+        "lost-response reconciliation",
+        "cancel/restore",
+        "calendar views",
+        "arranging a task beyond first 100 rows",
+        "390px editor"
+      ]
+    },
+    {
+      "command": "npm --prefix plugins/todos run test:browser",
+      "result": "all three legacy suites passed"
+    },
+    {
+      "command": "npm test",
+      "passed": 59,
+      "failed": 0
+    },
+    {
+      "command": "python3 app/tests/browser_smoke.py; python3 app/tests/browser_review.py; python3 app/tests/browser_sync.py",
+      "result": "all three passed"
+    }
+  ],
+  "compatibility": "v1 and v2 schema definitions unchanged; no migration, real user data changes, or npm publication",
+  "performance_evidence": "todos-061-query-benchmark.json",
+  "limitations": [
+    "derived date views still scan projected metadata; no new persistent indexes or relational schema migration",
+    "physical devices, OS notification display and target deployment not tested",
+    "original limitations on recurring items, external calendar/notification channels and old-data upgrade remain"
+  ]
+}

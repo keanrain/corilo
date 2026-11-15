@@ -3,6 +3,7 @@ import {
   dueValue,
   dueInstant,
   dayAt,
+  dayStart,
   Temporal,
   fail,
   instant,
@@ -64,30 +65,71 @@ export function taskValue(value) {
     reminderAt: reminderAt === null ? null : instant(reminderAt),
   };
 }
-export function classify(task, events, timeZone, now) {
-  const today = dayAt(now, timeZone),
+// Compute once per task's blocks; callers can group a single event scan by task.
+export function taskClock(timeZone, now) {
+  const today = dayAt(now, timeZone);
+  const tomorrow = Temporal.PlainDate.from(today).add({ days: 1 }).toString();
+  const startOfToday = dayStart(today, timeZone),
+    startOfTomorrow = dayStart(tomorrow, timeZone);
+  return { today, tomorrow, startOfToday, startOfTomorrow };
+}
+export function summarizeBlocks(
+  blocks,
+  timeZone,
+  now,
+  clock = taskClock(timeZone, now),
+) {
+  const { today, tomorrow, startOfToday, startOfTomorrow } = clock;
+  let scheduled = false,
+    upcoming = false,
+    future = null;
+  for (const event of blocks) {
+    if (event.status !== "active") continue;
+    let futureDay = null;
+    if (event.allDay) {
+      scheduled ||= event.start < tomorrow && event.end > today;
+      upcoming ||= event.end > today;
+      if (event.end > tomorrow)
+        futureDay = event.start > tomorrow ? event.start : tomorrow;
+    } else {
+      scheduled ||=
+        Temporal.Instant.compare(event.start, startOfTomorrow) < 0 &&
+        Temporal.Instant.compare(event.end, startOfToday) > 0;
+      upcoming ||= Temporal.Instant.compare(event.end, now) > 0;
+      if (Temporal.Instant.compare(event.end, startOfTomorrow) > 0)
+        futureDay =
+          Temporal.Instant.compare(event.start, startOfTomorrow) > 0
+            ? dayAt(event.start, timeZone)
+            : tomorrow;
+    }
+    if (futureDay && (!future || futureDay < future)) future = futureDay;
+  }
+  return { scheduled, upcoming, future };
+}
+export function classifyWithSchedule(
+  task,
+  schedule,
+  timeZone,
+  now,
+  clock = taskClock(timeZone, now),
+) {
+  const today = clock.today,
     due = dueInstant(task.due);
   const dueDay = task.due
     ? task.due.kind === "date"
       ? task.due.date
       : dayAt(task.due.at, timeZone)
     : null;
-  const blocks = events.filter(
-    (e) => e.taskId === task.id && e.status === "active",
-  );
-  const days = blocks.map((e) =>
-    e.allDay ? e.start : dayAt(e.start, timeZone),
-  );
-  const overdue = due && Temporal.Instant.compare(now, due) >= 0;
+  const overdue = Boolean(due && Temporal.Instant.compare(now, due) >= 0);
   const earlier = task.plannedDate && task.plannedDate < today;
   const scheduled =
-    task.plannedDate === today || dueDay === today || days.includes(today);
+    task.plannedDate === today || dueDay === today || schedule.scheduled;
   const future =
-    [task.plannedDate, dueDay, ...days]
+    [task.plannedDate, dueDay, schedule.future]
       .filter((d) => d && d > today)
       .sort()[0] ?? null;
   return {
-    overdue: Boolean(overdue),
+    overdue,
     group: overdue
       ? "逾期截止"
       : scheduled
@@ -96,12 +138,18 @@ export function classify(task, events, timeZone, now) {
           ? "此前计划未完成"
           : null,
     future,
-    inbox:
-      !task.list &&
-      !task.plannedDate &&
-      !task.due &&
-      !blocks.some((e) =>
-        e.allDay ? e.end > today : Temporal.Instant.compare(e.end, now) > 0,
-      ),
+    inbox: !task.list && !task.plannedDate && !task.due && !schedule.upcoming,
   };
+}
+export function classify(task, events, timeZone, now) {
+  return classifyWithSchedule(
+    task,
+    summarizeBlocks(
+      events.filter((e) => e.taskId === task.id),
+      timeZone,
+      now,
+    ),
+    timeZone,
+    now,
+  );
 }

@@ -1,16 +1,13 @@
+import {
+  installQueryFunctions,
+  queryTasks,
+  queryCalendar,
+} from "./schedule-queries.mjs";
 import { randomUUID, createHash } from "node:crypto";
 import { TodoStore } from "./storage.mjs";
 import { scheduleSchema } from "./schedule-schema.mjs";
-import { fields, text, taskValue, classify } from "./task-service.mjs";
-import {
-  fail,
-  range,
-  zone,
-  instant,
-  dayStart,
-  dayAt,
-  Temporal,
-} from "./date-values.mjs";
+import { fields, text, taskValue } from "./task-service.mjs";
+import { fail, range, instant, Temporal } from "./date-values.mjs";
 const uuid = (value) => {
   if (
     typeof value !== "string" ||
@@ -76,13 +73,15 @@ function eventValue(value) {
   };
 }
 export class ScheduleService extends TodoStore {
-  static open(root, options = {}) {
-    return TodoStore.open(root, {
+  static async open(root, options = {}) {
+    const store = await TodoStore.open(root, {
       ...options,
       schemaDefinition: scheduleSchema,
       format: 2,
       StoreClass: ScheduleService,
     });
+    installQueryFunctions(store.db);
+    return store;
   }
   row(kind, id) {
     const row = this.db
@@ -170,38 +169,61 @@ export class ScheduleService extends TodoStore {
               "INSERT INTO records VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET version=excluded.version,data=excluded.data",
             )
             .run(next.id, kind, next.version, JSON.stringify(next));
-          this.scheduleReminder(next, kind, now);
-          if (kind === "task")
-            for (const e of this.all("event").filter(
-              (e) => e.taskId === next.id,
-            ))
-              this.scheduleReminder(e, "event", now);
+          this.scheduleReminder(next, kind, now, old);
+          if (kind === "task" && old?.status !== next.status)
+            for (const { data } of this.db
+              .prepare(
+                "SELECT data FROM records WHERE kind='event' AND json_extract(data, '$.taskId')=?",
+              )
+              .all(next.id))
+              this.scheduleReminder(JSON.parse(data), "event", now);
           return next;
         }),
       args.signal,
     );
   }
-  scheduleReminder(item, kind, now) {
-    this.db
-      .prepare(
-        "UPDATE reminders SET state='cancelled' WHERE owner_id=? AND state='pending'",
-      )
-      .run(item.id);
-    if (
-      !item.reminderAt ||
-      !["open", "active"].includes(item.status) ||
-      (kind === "event" &&
+  scheduleReminder(item, kind, now, old = null) {
+    const enabled =
+      item.reminderAt &&
+      ["open", "active"].includes(item.status) &&
+      !(
+        kind === "event" &&
         item.taskId &&
-        this.row("task", item.taskId).status !== "open")
-    )
+        this.row("task", item.taskId).status !== "open"
+      );
+    const pending = this.db
+      .prepare(
+        "SELECT id, due_at FROM reminders WHERE owner_id=? AND state='pending'",
+      )
+      .all(item.id);
+    // An ordinary edit must retain even an already-due job until the scanner
+    // delivers it. Refresh its version/snapshot in the same business transaction.
+    const retained = enabled
+      ? pending.find(
+          (job) => Temporal.Instant.compare(job.due_at, item.reminderAt) === 0,
+        )
+      : null;
+    for (const job of pending) {
+      if (job.id !== retained?.id)
+        this.db
+          .prepare("UPDATE reminders SET state='cancelled' WHERE id=?")
+          .run(job.id);
+    }
+    if (retained) {
+      this.db
+        .prepare("UPDATE reminders SET revision=?, snapshot=? WHERE id=?")
+        .run(item.version, JSON.stringify({ kind, ...item }), retained.id);
       return;
-    // A change/restoration schedules only future reminders, never replays history.
-    if (Temporal.Instant.compare(item.reminderAt, now) <= 0) return;
-    const id = randomUUID();
+    }
+    if (!enabled || Temporal.Instant.compare(item.reminderAt, now) <= 0) return;
+    // Do not replay a previously delivered reminder on unrelated edits,
+    // including when the machine clock moves backwards.
+    if (old?.reminderAt === item.reminderAt && old.status === item.status)
+      return;
     this.db
       .prepare("INSERT INTO reminders VALUES (?,?,?,?,'pending',?)")
       .run(
-        id,
+        randomUUID(),
         item.id,
         item.version,
         item.reminderAt,
@@ -209,156 +231,12 @@ export class ScheduleService extends TodoStore {
       );
   }
   async tasks(args = {}) {
-    fields(args, [
-      "view",
-      "query",
-      "list",
-      "priority",
-      "cursor",
-      "timeZone",
-      "now",
-    ]);
-    const {
-      view = "all",
-      query = "",
-      list = "",
-      priority = "",
-      cursor = null,
-      timeZone = "UTC",
-    } = args;
-    if (
-      !["inbox", "today", "future", "all", "done", "cancelled"].includes(view)
-    )
-      throw fail("任务视图无效");
-    text(query, 256);
-    text(list, 100);
-    if (priority && !["normal", "high", "urgent"].includes(priority))
-      throw fail("优先级无效");
-    zone(timeZone);
-    const now = instant(args.now ?? new Date().toISOString());
     await this.check();
-    const events = this.all("event");
-    let items = this.all("task")
-      .map((t) => ({
-        ...t,
-        classification: classify(t, events, timeZone, now),
-      }))
-      .filter(
-        (t) =>
-          (["done", "cancelled"].includes(view)
-            ? t.status === view
-            : t.status === "open") &&
-          (!list || t.list === list) &&
-          (!priority || t.priority === priority) &&
-          (t.title + "\n" + t.body)
-            .toLowerCase()
-            .includes(query.toLowerCase()) &&
-          (view === "inbox"
-            ? t.classification.inbox
-            : view === "today"
-              ? t.classification.group
-              : view === "future"
-                ? t.classification.future
-                : true),
-      );
-    const rank = { 逾期截止: 0, 今日安排: 1, 此前计划未完成: 2 };
-    items.sort(
-      (a, b) =>
-        (view === "today"
-          ? rank[a.classification.group] - rank[b.classification.group]
-          : view === "future"
-            ? a.classification.future.localeCompare(b.classification.future)
-            : 0) ||
-        (view === "today"
-          ? (a.due?.kind === "instant" ? a.due.at : "~").localeCompare(
-              b.due?.kind === "instant" ? b.due.at : "~",
-            ) ||
-            { urgent: 0, high: 1, normal: 2 }[a.priority] -
-              { urgent: 0, high: 1, normal: 2 }[b.priority]
-          : 0) ||
-        b.createdAt.localeCompare(a.createdAt) ||
-        a.id.localeCompare(b.id),
-    );
-    const filter = digest({
-      identity: this.identity,
-      view,
-      query,
-      list,
-      priority,
-      timeZone,
-      day: dayAt(now, timeZone),
-      snapshot: items.map((item) => [item.id, item.version]),
-    });
-    let offset = 0;
-    if (cursor !== null) {
-      try {
-        if (typeof cursor !== "string" || cursor.length > 1024) throw 0;
-        const c = JSON.parse(Buffer.from(cursor, "base64url"));
-        if (
-          c.filter !== filter ||
-          !Number.isSafeInteger(c.offset) ||
-          c.offset < 0
-        )
-          throw 0;
-        offset = c.offset;
-      } catch {
-        throw fail("分页或筛选已改变，请刷新");
-      }
-    }
-    const total = items.length,
-      counts = {};
-    for (const t of items) {
-      const g = t.classification.group;
-      if (g) counts[g] = (counts[g] ?? 0) + 1;
-    }
-    return {
-      items: items.slice(offset, offset + 100),
-      total,
-      counts,
-      nextCursor:
-        offset + 100 < total
-          ? Buffer.from(
-              JSON.stringify({ filter, offset: offset + 100 }),
-            ).toString("base64url")
-          : null,
-    };
+    return queryTasks(this, args);
   }
   async calendar(args) {
-    fields(args, ["start", "end", "timeZone"]);
-    zone(args.timeZone);
-    const start = instant(args.start),
-      end = instant(args.end);
-    const duration =
-      Temporal.Instant.from(end).epochMilliseconds -
-      Temporal.Instant.from(start).epochMilliseconds;
-    if (duration <= 0 || duration > 367 * 86400000)
-      throw fail("日历查询范围需在一年以内");
     await this.check();
-    const items = this.all("event").filter(
-      (e) =>
-        e.status === "active" &&
-        Temporal.Instant.compare(
-          e.allDay ? dayStart(e.end, e.timeZone) : e.end,
-          start,
-        ) > 0 &&
-        Temporal.Instant.compare(
-          e.allDay ? dayStart(e.start, e.timeZone) : e.start,
-          end,
-        ) < 0,
-    );
-    if (items.length > 2000) throw fail("日程过多，请缩小查询范围", 413);
-    const tasks = this.all("task").filter((t) => {
-      if (t.status !== "open" || !t.due) return false;
-      const at =
-        t.due.kind === "date" ? dayStart(t.due.date, args.timeZone) : t.due.at;
-      return (
-        Temporal.Instant.compare(at, start) >= 0 &&
-        Temporal.Instant.compare(at, end) < 0
-      );
-    });
-    if (items.length + tasks.length > 2000)
-      throw fail("日程及截止过多，请缩小查询范围", 413);
-    return { items, tasks };
+    return queryCalendar(this, args);
   }
   async export() {
     await this.check();

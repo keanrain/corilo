@@ -1,0 +1,40 @@
+{
+  "node": "v24.19.0",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "tasks": 10000,
+  "events": 500,
+  "bodyBytes": 1024,
+  "method": "one warmup then five sequential queries per view; median and max; no performance guarantee",
+  "measurements": {
+    "current": {
+      "all": {
+        "medianMs": 49.03,
+        "maxMs": 49.27,
+        "returned": 100,
+        "total": 10000
+      },
+      "today": {
+        "medianMs": 71.01,
+        "maxMs": 114.18,
+        "returned": 100,
+        "total": 5250
+      }
+    },
+    "baseline": {
+      "all": {
+        "medianMs": 242.53,
+        "maxMs": 246.3,
+        "returned": 100,
+        "total": 10000
+      },
+      "today": {
+        "medianMs": 218.64,
+        "maxMs": 266.78,
+        "returned": 100,
+        "total": 5250
+      }
+    }
+  },
+  "baseline_commit": "093cc5697c4f6ef8b8698c6eff6a4a0790411a5a",
+  "date": "2026-11-15"
+}
