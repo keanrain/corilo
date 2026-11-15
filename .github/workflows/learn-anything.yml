@@ -1,0 +1,41 @@
+name: Learning tutor checks
+
+on:
+  push:
+    paths:
+      - 'packages/learn-anything/**'
+      - 'package.json'
+      - 'packages/learn-anything/package-lock.json'
+      - '.github/workflows/learn-anything.yml'
+  pull_request:
+    paths:
+      - 'packages/learn-anything/**'
+      - 'package.json'
+      - 'packages/learn-anything/package-lock.json'
+      - '.github/workflows/learn-anything.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+          cache: npm
+          cache-dependency-path: packages/learn-anything/package-lock.json
+      - run: npm run setup:learn-anything
+      # Tests check committed bundles against a fresh build before packaging.
+      - run: npm run test:learn-anything
+      - run: npm run build:learn-anything
+      - run: npm run pack:learn-anything
+      - uses: actions/upload-artifact@v4
+        with:
+          name: learn-anything-package
+          path: corilo-learn-anything-*.tgz
+          if-no-files-found: error

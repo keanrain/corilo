@@ -1,0 +1,9 @@
+{
+  "name": "la-eval-driver",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "peerDependencies": { "@deepseek-ai/dsh-llm-deepseek": "0.2.2-rc.3" },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

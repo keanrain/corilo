@@ -1,5 +1,7 @@
 # Corilo 可里设计索引
 
+2026-11-15 仓库更新：notes／todos 升级固定 DSH rc.3；独立学习导师见 [packages/learn-anything](../packages/learn-anything/README.md)。Python 原型已按用户要求删除，历史实现可从 Git 查阅，本地数据保留。
+
 > 当前补丁版本：todos 0.6.1。提醒、跨日分类、日历任务分页与代码结构修复见 [交接文档](HANDOFF.md)；旧配置和数据库不自动迁移。
 
 > 2026-11-15：正在按用户提供的功能清单重建 todos 0.6.0；当前范围以 PRODUCT-SPEC.md 第 0 节为准。下方 v0.34 方案与旧版本执行记录保留历史语境，最新验证见 HANDOFF.md 顶部。
@@ -23,6 +25,6 @@ v0.34 · 2026-11-11。目标为 **一个 Harness、两个业务插件**：Files.
 
 真实 Harness、Chromium 工作区流程、工具管线、包外生产安装及迁移测试分别记录；不代表真实 DeepSeek、物理手机、WebKit、目标 Linux 常驻部署或 NAS 已验收。个人自部署不依赖 Corilo 账号、Supabase 或 GitHub 绑定。
 
-旧规则见 [v0.32 业务规格](history/PRODUCT-SPEC-v0.32.md)、[v0.32 技术记录](history/TECHNICAL_DESIGN-v0.32.md)、[v0.32 交互](history/DESIGN-v0.32.md)。这些极简自定义页面规则已被本轮 Files.md 移植方向替代。更早档案仍保留在 history/，旧 app/、Android、原型和凭据不自动迁移。旧云端提交继续关闭。
+旧规则见 [v0.32 业务规格](history/PRODUCT-SPEC-v0.32.md)、[v0.32 技术记录](history/TECHNICAL_DESIGN-v0.32.md)、[v0.32 交互](history/DESIGN-v0.32.md)。这些极简自定义页面规则已被本轮 Files.md 移植方向替代。更早档案仍保留在 history/，旧 app/、Android 和凭据不自动迁移。旧云端提交继续关闭。
 
 本轮 v0.34 取代 v0.33 中只使用 Markdown 管理个人待办的方向；Files.md 保留要求不变。[v0.33 产品](history/PRODUCT-v0.33.md)、[规格](history/PRODUCT-SPEC-v0.33.md)、[技术](history/TECHNICAL_DESIGN-v0.33.md)、[交互](history/DESIGN-v0.33.md) 留作历史，不继续作为当前需求。实施顺序见技术方案第 9 节。

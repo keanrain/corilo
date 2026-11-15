@@ -1,0 +1,147 @@
+# learn-anything bundle: one agent preset「学习导师」. Its plugin list starts from
+# dsh-web-app's `standard` preset with the coding persona replaced by the tutor
+# persona, plus the learn-anything tools (including `examiner` / `checker`, which
+# run a child under the two presets at the end of this file) and the package's
+# skills directory. Coding-agent tools a tutor never needs (shell, jobs, goals,
+# todo, generic subagents, workflows) are left out: every tool schema is resent on
+# each request, so they cost ~4k tokens per LLM call.
+# The top-level `learn-anything` row only serves the Web cards (src/client);
+# the tools mount inside the preset.
+- insert:
+    - id: learn-anything-ui
+      name: '@corilo/learn-anything'
+    - id: preset-learn-tutor
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: learn-tutor
+        name: 学习导师
+        description: 按渐构方法带你把一个目标真正学会：规划路线、诊断、出材料、新情况验证、间隔复习
+        order: 0
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@corilo/learn-anything/package.json')), 'prompts', 'persona.md'), 'utf8')
+              suffix: 学习数据保存在会话所在工作区的 .learn/ 目录。
+          - id: learn-anything
+            name: '@corilo/learn-anything/tools'
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              customSkillDirs:
+                - !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@corilo/learn-anything/package.json')), 'skills')
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+    # Child of the tutor's `examiner` tool: own persona, read-only tools. dsh has no
+    # hidden presets, so it is listed last in the picker and says it is internal.
+    - id: preset-learn-examiner
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: learn-examiner
+        name: 考官（学习导师内部用）
+        description: 学习导师出题、判题时调用的子 agent，不要直接选它开会话
+        order: 90
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@corilo/learn-anything/package.json')), 'prompts', 'examiner.md'), 'utf8')
+          - id: learn-anything
+            name: '@corilo/learn-anything/tools'
+            config:
+              readOnly: true
+              quizLang: true
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              write: false
+              edit: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+    # Child of the tutor's `checker` tool: own persona, read-only tools. dsh has no
+    # hidden presets, so it is listed last in the picker and says it is internal.
+    - id: preset-learn-checker
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: learn-checker
+        name: 校验员（学习导师内部用）
+        description: 学习导师校验新例子时调用的子 agent，不要直接选它开会话
+        order: 91
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@corilo/learn-anything/package.json')), 'prompts', 'checker.md'), 'utf8')
+          - id: learn-anything
+            name: '@corilo/learn-anything/tools'
+            config:
+              readOnly: true
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              write: false
+              edit: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+# Profile defaults, here rather than in the launcher so a Plugins-page / market install
+# behaves like `npx @corilo/learn-anything`: new sessions open with the「学习导师」preset, and the
+# learning record stays local (no session-log deltas or plugin inventory sent with LLM
+# requests). The profile's own cordis.patch.yml applies after this layer, so a user can
+# pick another default or switch the uploads back on there (or from the Plugins page).
+- id: agent-preset-registry
+  config:
+    default: learn-tutor
+- id: session-log-deepseek
+  disabled: true
+- id: plugin-package-inventory-deepseek
+  disabled: true

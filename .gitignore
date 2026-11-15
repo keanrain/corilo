@@ -38,3 +38,7 @@ target/
 
 # Local npm pack archives are release artifacts, not repository source.
 *.tgz
+
+# Independent learning product data and release archives.
+.learn/
+*.tgz

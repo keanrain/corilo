@@ -22,7 +22,7 @@ v0.34 · 2026-11-11。目标是复用 Harness 和现有插件，把独立任务�
                                             阶段 B 才启用
 ```
 
-Harness 固定 0.2.2-rc.1，Node ≥24.9.0，精确依赖与各包锁文件保留。使用原生认证、Connection Fetch、工具注册和 UI layout，不改宿主 Agent loop。两个业务包继续独立安装；launcher 只组合配置，不成为共享运行包。任务插件保留包名 `@corilo/dsh-todos` 和目录 `plugins/todos`，避免无必要的改名迁移。
+Harness 固定 0.2.2-rc.3，Node ≥24.9.0，精确依赖与各包锁文件保留。使用原生认证、Connection Fetch、工具注册和 UI layout，不改宿主 Agent loop。两个业务包继续独立安装；launcher 只组合配置，不成为共享运行包。任务插件保留包名 `@corilo/dsh-todos` 和目录 `plugins/todos`，避免无必要的改名迁移。
 
 | 部分 | 推荐方案 | 理由与限制 |
 |---|---|---|

@@ -1,0 +1,36 @@
+{
+  "format": 1,
+  "title": { "en": "learn-anything", "zh": "learn-anything" },
+  "description": {
+    "en": "Plugin market index for the learn-anything learning tutor.",
+    "zh": "learn-anything 学习导师的插件市场索引。"
+  },
+  "metadata": {
+    "categories": {
+      "learning": { "title": { "en": "Learning", "zh": "学习" } }
+    }
+  },
+  "plugins": [
+    {
+      "name": "@corilo/learn-anything",
+      "title": { "en": "Learning Tutor", "zh": "学习导师" },
+      "description": {
+        "en": "Personal learning tutor built on the 渐构 (incremental construction) method: plans a route, diagnoses, prepares material, verifies understanding on new cases, and schedules spaced review.",
+        "zh": "按渐构方法带你把一个目标真正学会：规划路线、诊断、出材料、新情况验证、间隔复习。"
+      },
+      "icon": "../icon.svg",
+      "metadata": {
+        "category": "learning",
+        "keywords": ["learning", "tutor", "spaced-repetition", "学习", "复习"]
+      },
+      "versions": [
+        {
+          "version": "0.1.0",
+          "publishTimestamp": 1792638036,
+          "source": { "type": "npm" },
+          "engines": { "dsh": "0.2.2-rc.3" }
+        }
+      ]
+    }
+  ]
+}

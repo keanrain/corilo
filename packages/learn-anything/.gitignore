@@ -1,0 +1,7 @@
+node_modules
+.tmp/
+.learn/
+eval/results/
+.claude/
+dist/
+*.tgz

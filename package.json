@@ -19,7 +19,12 @@
     "init:corilo": "node launcher/corilo.mjs init",
     "check:corilo": "node launcher/corilo.mjs check",
     "start:corilo": "node launcher/corilo.mjs start",
-    "test:startup": "node --test launcher/test/cli.test.mjs"
+    "test:startup": "node --test launcher/test/cli.test.mjs",
+    "setup:learn-anything": "npm --prefix packages/learn-anything ci --ignore-scripts",
+    "test:learn-anything": "npm --prefix packages/learn-anything test",
+    "build:learn-anything": "npm --prefix packages/learn-anything run build",
+    "pack:learn-anything": "npm pack ./packages/learn-anything --pack-destination .",
+    "test:boot:learn-anything": "npm --prefix packages/learn-anything run test:boot"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "1.1.0",

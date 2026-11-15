@@ -1,5 +1,27 @@
 # Corilo 可里交接文档
 
+## DSH rc.3 与独立学习导师（2026-11-15）
+
+本地 `work` 从旧基线快进到远端 main 的 `51f2624` 后，整合学习导师迁移、Python 原型删除及 DSH 升级。以下是本次本地执行结果，不表示已推送、部署或发布。整合前的改动另保存在 Git stash 中。
+
+- notes、todos 的直接 DSH 依赖及锁文件统一到 `0.2.2-rc.3`，笔记 CLI 预检、启动器测试、独立分发测试和升级演练同步固定该版本。核对 npm 标签：`latest` 是 rc.1，`next` 是 rc.3；安装使用明确版本，不依赖标签漂移。
+- `packages/learn-anything/` 保留独立包名、依赖锁、构建、测试与分发，使用同一 DSH rc.3。根新增 setup/test/build/pack:learn-anything 命令及独立 CI；默认 notes＋todos 组合不加载导师。根旧应用依赖、锁文件及 start/test 命令保留，没有引入 npm workspaces。
+- 按用户要求删除 `prototype/`、`scripts/run_local.py` 和专用 CI；本地 `.local/` 数据、旧 app、Android 与 P0 保留。`requirements-dev.txt` 继续供现有插件和旧应用的浏览器测试使用。
+
+本次验证：
+
+| 检查 | 结果 |
+|---|---|
+| notes Node／真实 Harness 工具管线／包外生产安装启动 | 59 项中 58 通过，1 项 restic 备份演练因缺程序跳过 |
+| todos Node／真实 Harness 工具管线／包外生产安装启动 | 33 项通过 |
+| 统一启动器与旧入口 | 4 项通过 |
+| notes Files.md 与 classic 浏览器 | 两套通过，真实 rc.3 Harness、Chromium、合成资料 |
+| todos planner 与旧 core／visual／flow 浏览器 | 四套通过，覆盖任务日历、窄屏和旧待办兼容 |
+| 学习导师 | 173 项 Node 通过，独立 tgz 内容核对通过 |
+| 旧应用 | 59 项 Node 通过 |
+
+未验证真实模型、物理手机或目标部署；未迁移用户实例。独立导师与双插件组合共用同一宿主的三插件配置尚未验收。下方 rc.1、旧版本和旧默认配置记录仅保留历史语境，不覆盖本节。
+
 ## 最新修复：todos 0.6.1（2026-11-15）
 
 在用户要求修复代码审查问题后完成此补丁，基线为 `093cc56`。最新提交以 `git log -1` 为准。
