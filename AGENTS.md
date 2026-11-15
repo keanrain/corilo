@@ -1,5 +1,7 @@
 # Corilo 可里开发约束
 
+当前执行：按用户清单重建 todos 0.6.0，详见 docs/PRODUCT-SPEC.md 第 0 节。新实例双插件及 planner v2，旧配置／v1 保留；无升级工具、重复、来源关联或外部推送。下文 v0.34 分阶段要求不覆盖本次明确恢复范围。
+
 当前方向 v0.34（2026-11-11）：用户恢复独立任务与日程需求。目标为一个 Harness、notes 笔记插件与 todos 任务／日程插件；保留 Files.md 完整菜单，机器人能力使用 Harness 原生 Agent。本轮文档是待实现方案，当前 notes 0.7.0、todos 0.5.2 和启动器尚未交付日期、日历或提醒。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，命令见 docs/DEVELOPMENT.md。
 
 当前默认前端是 plugins/notes/vendor/filesmd 固定版本的原生 HTML／JS／CSS 与 CodeMirror 5／HyperMD，在独立 iframe 文档中运行，通过 Harness 鉴权路由和 workspace/ 适配主机文件。保留 vendor 原文，安全、宿主生命周期和存储差异通过 workspace-api.mjs 的校验式运行时转换与适配层实现，保留来源和全部第三方许可。不直接接入 Go 同步、Telegram 或旧 Pi，不外联上传资料，不放宽整个宿主的 CSP。

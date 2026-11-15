@@ -1,3 +1,8 @@
+import { ScheduleService } from './schedule-service.mjs';
+import { registerScheduleApi } from './schedule-api.mjs';
+import { taskTools } from './task-tools.mjs';
+import { scheduleTools } from './schedule-tools.mjs';
+import { startReminders } from './reminders.mjs';
 import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { TodoStore } from './storage.mjs';
@@ -7,6 +12,7 @@ import { coreTodos } from './core.mjs';
 export const name = 'corilo-todos';
 export const inject = ['tools'];
 export const Config = z.object({
+  planner: z.boolean().description('Enable the v2 planner in a new empty directory. Never migrates an existing v1 database.'),
   root: z.string().required().description('Absolute private directory for this personal todo SQLite database, outside the Markdown knowledge base.'),
   notesRoot: z.string().description('Optional absolute Markdown library directory. It must not overlap the todo data directory.'),
 });
@@ -50,6 +56,13 @@ export function todoTools(rawStore) {
 }
 
 export async function apply(ctx, config) {
+  if (config.planner) {
+    const store = await ScheduleService.open(config.root, { notesRoot: config.notesRoot });
+    ctx.effect(() => { const stop = startReminders(store); return () => { stop(); store.close(); }; });
+    for (const tool of [...taskTools(store), ...scheduleTools(store)]) ctx.tools.register(tool);
+    await ctx.inject(['connection'], scope => registerScheduleApi(scope, store));
+    return;
+  }
   const store = await TodoStore.open(config.root, { notesRoot: config.notesRoot });
   ctx.effect(() => () => store.close());
   for (const tool of todoTools(store)) ctx.tools.register(tool);

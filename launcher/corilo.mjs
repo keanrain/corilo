@@ -45,9 +45,9 @@ async function layout(input, existing = false) {
   return result;
 }
 const environment = locations => ({ ...process.env, DSH_HOME: locations.harness, DSH_AGENTS_HOME: locations.agents });
-const overlay = (locations, legacy = false, dual = false) => [{ insert: [
+const overlay = (locations, legacy = false, dual = false, planner = false) => [{ insert: [
   { id: 'corilo-notes', name: path.join(notesRoot, 'index.mjs'), config: { root: locations.notes, ...(legacy ? { stateRoot: locations.state } : {}) } },
-  ...(dual ? [{ id: 'corilo-todos', name: path.join(todosRoot, 'index.mjs'), config: { root: locations.todos, notesRoot: locations.notes } }] : []),
+  ...(dual ? [{ id: 'corilo-todos', name: path.join(todosRoot, 'index.mjs'), config: { root: locations.todos, notesRoot: locations.notes, ...(planner ? { planner: true } : {}) } }] : []),
 ] }, { id: 'workspace-controller', config: { documentsDirectory: locations.workspace } }];
 async function bundledClient(packageRoot, name) {
   const manifest = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
@@ -75,19 +75,19 @@ async function config(locations) {
   if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > 65536) fail('组合配置必须是普通独立文件，且不超过 64 KiB。');
   let data;
   try { data = JSON.parse(await readFile(locations.config, 'utf8')); } catch { fail('组合配置无效，请保留原文件并核对。'); }
-  if (![overlay(locations), overlay(locations, true), overlay(locations, false, true), overlay(locations, true, true)].some(expected => isDeepStrictEqual(data, expected))) fail('组合配置与当前源码/实例路径不匹配；不自动迁移或执行其他插件。');
+  if (![overlay(locations), overlay(locations, true), overlay(locations, false, true), overlay(locations, true, true), overlay(locations, false, true, true)].some(expected => isDeepStrictEqual(data, expected))) fail('组合配置与当前源码/实例路径不匹配；不自动迁移或执行其他插件。');
   return data[0].insert.some(entry => entry.id === 'corilo-todos');
 }
 
 export async function initialize(input) {
   const locations = await layout(input);
-  await dependencies();
+  await dependencies(true);
   for (const filename of [locations.config, locations.notesConfig]) {
     if (await lstat(filename).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; })) fail('配置已存在，不会覆盖。请直接运行 check/start；旧实例需按原指南管理。');
   }
   await mkdir(locations.instance, { recursive: true, mode: 0o700 });
   await runNotes('init', locations);
-  await writeFile(locations.config, JSON.stringify(overlay(locations), null, 2) + '\n', { flag: 'wx', mode: 0o600 }).catch(() => fail('组合配置创建失败；notes.patch.json 已保留。未删除或覆盖任何资料，请核对实例后重试。'));
+  await writeFile(locations.config, JSON.stringify(overlay(locations, false, true, true), null, 2) + '\n', { flag: 'wx', mode: 0o600 }).catch(() => fail('组合配置创建失败；notes.patch.json 已保留。未删除或覆盖任何资料，请核对实例后重试。'));
   return locations;
 }
 export async function inspect(input) {

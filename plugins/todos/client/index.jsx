@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import { Planner } from './planner.jsx';
+import React, { useEffect, useRef, useState } from 'react';
 import { defineStore } from '@deepseek-ai/dsh-client-store';
 import { v4 as uuidv4 } from 'uuid';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -303,6 +304,17 @@ function TodosPage({ useStore, actions, call, getState }) {
     {!model.editorOpen && model.error && <p role="alert">{model.error}</p>}
   </section>;
 }
+function PlannerOrLegacy(props) {
+  const [mode, setMode] = useState(null);
+  useEffect(() => { let active = true; fetch('api/corilo-todos/v2/identity', {method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:'{}'}).then(async response => {
+    if(response.status === 404) return {legacy:true};
+    if(!response.ok) throw Error('任务连接失败，请刷新');
+    const result = await response.json(); if(!result.ok) throw Error(result.error?.message ?? '任务不可用'); return result.value;
+  }).then(value => {if(active)setMode(value);}).catch(error => {if(active)setMode({error:error.message});}); return () => {active=false;}; }, []);
+  if(!mode) return <p>正在连接任务服务…</p>;
+  if(mode.error) return <p role="alert">{mode.error}</p>;
+  return mode.legacy ? <TodosPage {...props}/> : <Planner identity={mode.id}/>;
+}
 function TodoIcon() { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg>; }
 export const inject = ['slots', 'connection'];
 export function apply(ctx) {
@@ -331,6 +343,6 @@ export function apply(ctx) {
     window.addEventListener('beforeunload', guard);
     return () => { sheet.remove(); window.removeEventListener('beforeunload', guard); };
   });
-  ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'corilo-todos', store, inject: () => ({ call, getState: () => snapshot }) }, TodosPage));
+  ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'corilo-todos', store, inject: () => ({ call, getState: () => snapshot }) }, PlannerOrLegacy));
   ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist', id: 'corilo-todos', order: 6, label: '待办' }, TodoIcon));
 }

@@ -1,0 +1,140 @@
+.corilo-planner {
+  color: inherit;
+  padding: 20px;
+  max-width: 1500px;
+  margin: auto;
+  height: 100%;
+  overflow: auto;
+  font: inherit;
+}
+.corilo-planner * {
+  box-sizing: border-box;
+}
+.corilo-planner header,
+.planner-toolbar,
+.planner-filters,
+.corilo-planner nav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.corilo-planner h1 {
+  font-size: 22px;
+  margin-right: auto;
+}
+.corilo-planner button,
+.corilo-planner input,
+.corilo-planner select,
+.corilo-planner textarea {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid #8886;
+  border-radius: 7px;
+  padding: 10px;
+  min-height: 44px;
+}
+.corilo-planner button {
+  cursor: pointer;
+}
+.corilo-planner button[aria-pressed="true"] {
+  background: #3b82f622;
+  border-color: #3b82f6;
+}
+.corilo-planner button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.corilo-planner label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.corilo-planner ul {
+  list-style: none;
+  padding: 0;
+}
+.corilo-planner li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #8884;
+  flex-wrap: wrap;
+}
+.corilo-planner li span {
+  flex: 1;
+  font-size: 13px;
+}
+.planner-editor {
+  position: fixed;
+  z-index: 90;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: min(520px, 100vw);
+  overflow: auto;
+  padding: 24px;
+  background: light-dark(#fff, #202226);
+  box-shadow: -5px 0 30px #0003;
+  color-scheme: light dark;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.planner-editor textarea {
+  min-height: 100px;
+}
+.planner-editor footer {
+  position: sticky;
+  bottom: -24px;
+  background: inherit;
+  padding: 16px 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.planner-editor pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.planner-calendar {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 15px;
+}
+.corilo-planner .fc {
+  --fc-border-color: #8885;
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #8882;
+  min-width: 0;
+}
+.corilo-planner :focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 2px;
+}
+@media (max-width: 700px) {
+  .corilo-planner {
+    padding: 12px;
+  }
+  .planner-calendar {
+    display: block;
+  }
+  .planner-calendar aside {
+    max-height: 160px;
+    overflow: auto;
+  }
+  .corilo-planner .fc-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .planner-editor {
+    width: 100vw;
+    padding: 16px;
+  }
+  .planner-editor footer {
+    bottom: -16px;
+  }
+}

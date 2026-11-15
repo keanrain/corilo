@@ -53,7 +53,7 @@ test('one-directory setup and read-only preflight preserve data and reject alter
   assert.equal(report.harness, path.join(instance, 'runtime/harness'));
   assert.equal(report.agents, path.join(instance, 'runtime/agents'));
   assert.equal(report.harnessVersion, '0.2.2-rc.1');
-  assert.equal(report.todosValidation, 'not-loaded');
+  assert.equal(report.todosValidation, 'on-start');
   if (process.platform !== 'win32') assert.equal((await lstat(combined)).mode & 0o777, 0o600);
   for (const location of ['notes', 'state', 'todos', 'runtime', 'workspace']) await assert.rejects(access(path.join(instance, location)), { code: 'ENOENT' });
   await assert.rejects(access(env.DSH_HOME), { code: 'ENOENT' });
@@ -73,7 +73,7 @@ test('one-directory setup and read-only preflight preserve data and reject alter
   await mkdir(path.join(instance, 'state'));
   await writeFile(path.join(instance, 'state/corilo-notes-state.json'), JSON.stringify({ format: 'corilo-notes-state-v1', rootId: '0'.repeat(64) }));
   await run('check'); // New configs do not inspect or alter unused legacy state.
-  const legacyCombined = JSON.parse(initial); legacyCombined[0].insert[0].config.stateRoot = path.join(instance, 'state');
+  const legacyCombined = JSON.parse(initial); legacyCombined[0].insert = legacyCombined[0].insert.filter(e => e.id !== 'corilo-todos'); legacyCombined[0].insert[0].config.stateRoot = path.join(instance, 'state');
   const legacyNotes = JSON.parse(initialNotes); legacyNotes[0].insert[0].config.stateRoot = path.join(instance, 'state');
   await writeFile(combined, JSON.stringify(legacyCombined)); await writeFile(notes, JSON.stringify(legacyNotes));
   await assert.rejects(run('check'), /different notes root/);
@@ -96,6 +96,7 @@ for (const entry of [cli, legacyCli]) test(`${entry === cli ? 'canonical' : 'leg
   if (legacyDual) {
     const configPath = path.join(instance, 'corilo.patch.json');
     const config = JSON.parse(await readFile(configPath, 'utf8'));
+    config[0].insert = config[0].insert.filter(e => e.id !== 'corilo-todos');
     config[0].insert.push({ id: 'corilo-todos', name: path.join(checkout, 'plugins/todos/index.mjs'), config: { root: path.join(instance,'todos'), notesRoot: path.join(instance,'notes') } });
     await writeFile(configPath, JSON.stringify(config));
   }
@@ -142,6 +143,9 @@ for (const entry of [cli, legacyCli]) test(`${entry === cli ? 'canonical' : 'leg
   assert.equal(done.status, 'done');
   assert.equal((await call('todos', 'list', { status: 'all' }, todoIdentity.id)).items.length, 1);
   } else {
+    const plannerIdentity = await call('todos', 'v2/identity', {});
+    const task = await call('todos', 'v2/tasks/create', {requestId: randomUUID(), value:{title:'新版任务'}}, plannerIdentity.id);
+    assert.equal((await call('todos', 'v2/tasks/read', {id:task.id}, plannerIdentity.id)).title, '新版任务');
     await call('notes','save',{path:'Later.md',text:'- [ ] 统一工作区的个人待办\n',expected:null},notesIdentity.id);
     assert.equal((await call('notes','read',{path:'Later.md'},notesIdentity.id)).text,'- [ ] 统一工作区的个人待办\n');
   }
@@ -152,7 +156,7 @@ for (const entry of [cli, legacyCli]) test(`${entry === cli ? 'canonical' : 'leg
   await assert.rejects(fetch(origin));
   assert.equal(await readFile(path.join(instance, 'notes', saved.path), 'utf8'), '统一入口保存的虚构笔记');
   if (legacyDual) await access(path.join(instance, 'todos/todos.sqlite'));
-  else await assert.rejects(access(path.join(instance,'todos')),{code:'ENOENT'});
+  else await access(path.join(instance, 'todos/todos.sqlite'));
   await access(path.join(instance, 'runtime/harness/.credentials.yaml'));
   await assert.rejects(access(env.DSH_HOME), { code: 'ENOENT' });
   assert.equal(JSON.parse((await run('check')).stdout).noteState, 'disabled');

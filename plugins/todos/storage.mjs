@@ -20,7 +20,6 @@ const schema = [
   `CREATE INDEX todos_order ON todos(created_at DESC, id ASC)`,
   `CREATE INDEX todos_status_order ON todos(status, created_at DESC, id ASC)`,
 ];
-const expectedSchema = [...schema].sort().join('\n');
 
 function object(value, allowed, required = []) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(key => !allowed.includes(key)) || required.some(key => !Object.hasOwn(value, key))) throw fail(400, '待办请求格式无效');
@@ -78,11 +77,11 @@ async function files(root) {
     if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) throw fail(400, '待办数据库不支持链接或特殊文件');
   }
 }
-function validateDatabase(db) {
+function validateDatabase(db, definition = schema, format = FORMAT) {
   const version = db.prepare('PRAGMA user_version').get().user_version;
   const app = db.prepare('PRAGMA application_id').get().application_id;
   const actual = db.prepare("SELECT sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY sql").all().map(row => row.sql).sort().join('\n');
-  if (version !== FORMAT || app !== APPLICATION || actual !== expectedSchema) throw fail(400, '待办数据库格式未知，请保留原文件并使用兼容版本');
+  if (version !== format || app !== APPLICATION || actual !== [...definition].sort().join("\n")) throw fail(400, '待办数据库格式未知，请保留原文件并使用兼容版本');
   const metadata = db.prepare('SELECT id, identity FROM metadata').all();
   if (metadata.length !== 1 || metadata[0].id !== 1 || !uuid(metadata[0].identity)) throw fail(400, '待办数据库身份无效');
   if (db.prepare('PRAGMA quick_check(1)').get().quick_check !== 'ok') throw fail(400, '待办数据库校验失败，请保留原文件');
@@ -96,7 +95,7 @@ function sqliteFailure(error) {
 // SQLite provides persistence, locking and atomic transactions. This is a local
 // personal database, not a sandbox for default shell tools or external writers.
 export class TodoStore {
-  static async open(input, { notesRoot } = {}) {
+  static async open(input, { notesRoot, schemaDefinition = schema, format = FORMAT, StoreClass = TodoStore } = {}) {
     let db;
     try {
       const root = await directory(input);
@@ -110,7 +109,7 @@ export class TodoStore {
       const exists = await fs.lstat(filename).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
       if (exists) {
         const inspect = new DatabaseSync(filename, { readOnly: true, enableDoubleQuotedStringLiterals: false });
-        try { validateDatabase(inspect); } finally { inspect.close(); }
+        try { validateDatabase(inspect, schemaDefinition, format); } finally { inspect.close(); }
       } else {
         // Exclusive creation prevents accidentally adopting a concurrent creator
         // or truncating a pre-existing, unrecognised database.
@@ -123,15 +122,15 @@ export class TodoStore {
       if (!exists) {
         db.exec('BEGIN IMMEDIATE');
         try {
-          for (const statement of schema) db.exec(statement);
+          for (const statement of schemaDefinition) db.exec(statement);
           db.prepare('INSERT INTO metadata VALUES (1, ?)').run(randomUUID());
-          db.exec(`PRAGMA user_version=${FORMAT}; PRAGMA application_id=${APPLICATION}; COMMIT;`);
+          db.exec(`PRAGMA user_version=${format}; PRAGMA application_id=${APPLICATION}; COMMIT;`);
         } catch (error) { db.exec('ROLLBACK'); throw error; }
       }
-      const identity = validateDatabase(db);
+      const identity = validateDatabase(db, schemaDefinition, format);
       await files(root);
       const stat = await fs.lstat(filename);
-      return new TodoStore(root, db, identity, { dev: stat.dev, ino: stat.ino });
+      return new StoreClass(root, db, identity, { dev: stat.dev, ino: stat.ino });
     } catch (error) { db?.close(); throw sqliteFailure(error); }
   }
   constructor(root, db, identity, fileIdentity) { this.root = root; this.db = db; this.identity = identity; this.fileIdentity = fileIdentity; }

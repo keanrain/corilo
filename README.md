@@ -1,5 +1,7 @@
 # Corilo 可里
 
+> 2026-11-15：todos 0.6.0 已按用户提供清单重建。`npm run setup:corilo` 构建 notes＋todos，新的 `init:corilo` 默认启用双插件 planner v2。已有配置继续按原模式运行；旧 v1 目录不能直接启用 planner。安装与兼容说明见 [任务插件](plugins/todos/README.md)，本轮验证见 [交接](docs/HANDOFF.md)。下方旧版单插件说明仅适用于已有单插件配置。
+
 **设计更新 v0.34：** 下一阶段恢复独立任务与日程插件，采用 notes＋todos，并保留 Files.md 菜单。[产品方案](docs/PRODUCT.md)与[技术方案](docs/TECHNICAL_DESIGN.md)已写入仓库；以下安装说明描述当前可运行代码，日期、日历和提醒仍待开发。
 
 运行在 **DeepSeek Harness** 中的 Files.md 工作区：笔记、待办清单、日记和附件都保存在自己的设备，既能直接操作，也能交给原生 Agent。

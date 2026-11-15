@@ -1,5 +1,19 @@
 # Corilo 个人待办 for DeepSeek Harness
 
+## 0.6.0 重建版
+
+本版本依据用户提供的功能说明重建，并非找回原 36ea6e9 的代码。planner 提供任务日期、清单、优先级、六个视图与今天分组，FullCalendar 月／周／日／议程，独立事件与任务时间块，持久提醒和主动授权网页通知。
+
+独立 DSH overlay 配置 `planner: true` 并指定**新的空 root 目录**，启用新版。省略 planner 时继续原 v1 待办及页面；不能把 planner 打开在原库上，没有自动迁移。源码新实例由 `npm run setup:corilo`、`npm run init:corilo -- --directory /absolute/new-instance` 创建双插件。
+
+日期截止 `{kind:"date",date:"2026-11-20",timeZone:"Asia/Taipei"}`；精确截止 `{kind:"instant",at:"2026-11-20T09:00:00+08:00",timeZone:"Asia/Taipei"}`。全天结束排他。表单精确时间接受带偏移的 ISO 时间，提醒填写独立的精确时刻，空值关闭。开始时间有效变更保留时长，30／60 分钟按钮直接设置。拖动／拉伸先恢复日历位置并打开待保存表单，确认后更新；未知结果用回执只读核对，未找到时可重试原请求。
+
+提醒事实保存在 SQLite；服务每 30 秒及启动时补扫。网页通知需主动许可，原子认领防跨标签重复，仅表示一次尝试，标签崩溃后不重发；站内记录始终保留。超过 100 项分批处理。关闭页面不推送。取消或完成任务停用未来时间块提醒，恢复时重建仍在未来的提醒。
+
+`npm test` 验证旧／新存储和工具；`npm run test:planner:browser` 验证新版真实 Harness 页面；`npm run test:browser` 保护旧版页面。重复、笔记来源关联、CalDAV／ICS、旧库升级及外部通知未实现。
+
+以下为 v1 兼容模式文档。
+
 v0.34 恢复独立任务与日程方向，本包是扩展基础。下文描述 0.5.2 已实现能力；日期、日历、重复和提醒仍待实现，见[业务规格](../../docs/PRODUCT-SPEC.md)与[技术方案](../../docs/TECHNICAL_DESIGN.md)。当前新实例仍仅默认加载 notes，已有双插件配置继续使用，不再建议默认迁入 Markdown 并退役本插件。
 
 独立个人待办插件，固定支持 Harness **0.2.2-rc.1**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.5.2，目前没有发布到 npm。
