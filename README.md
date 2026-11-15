@@ -1,28 +1,28 @@
 # Corilo 可里
 
-**简体中文** | [English](README.en.md)
+**English** | [简体中文](README.zh-CN.md)
 
-> 运行时：notes／todos 和独立学习导师固定使用 DSH **0.2.2-rc.3**，请按各包锁文件安装，不依赖 npm 标签。Python 原型及其专用启动、CI 已移除，本地数据保留。
+> Runtime: notes, todos, and the independent learning tutor are pinned to DSH **0.2.2-rc.3**. Install from each package's lockfile rather than relying on npm tags. The Python prototype, its launcher, and its dedicated CI have been removed; local data is preserved.
 
-## 大仓中的独立产品
+## Independent products in one repository
 
-| 目录 | 产品 | 开发入口 |
+| Directory | Product | Development commands |
 |---|---|---|
-| `plugins/notes` | 笔记工作区 `@corilo/dsh-notes` | `npm run test:notes` |
-| `plugins/todos` | 任务与日程 `@corilo/dsh-todos` | `npm run test:todos` |
-| [`packages/learn-anything`](packages/learn-anything/README.md) | 独立学习导师 `@corilo/learn-anything` | `npm run setup:learn-anything`、`npm run test:learn-anything` |
+| `plugins/notes` | Notes workspace — `@corilo/dsh-notes` | `npm run test:notes` |
+| `plugins/todos` | Tasks and calendar — `@corilo/dsh-todos` | `npm run test:todos` |
+| [`packages/learn-anything`](packages/learn-anything/README.en.md) | Independent learning tutor — `@corilo/learn-anything` | `npm run setup:learn-anything`, `npm run test:learn-anything` |
 
-各包独立依赖锁、安装和分发。学习导师仅供已有 DSH 用户安装，通过 `npm run build:learn-anything` 构建、`npm run pack:learn-anything` 打包，不随默认 notes＋todos 组合自动启用。`app/`、`android/`、`p0/` 保留旧实现与研究；根 `npm start/test` 仍服务旧应用。
+Each package has its own lockfile, installation, and distribution. The learning tutor is a plugin for existing DSH users: build it with `npm run build:learn-anything` and package it with `npm run pack:learn-anything`. It is not enabled in the default notes + todos setup. `app/`, `android/`, and `p0/` retain legacy implementations and research; root `npm start/test` commands still serve the legacy application.
 
-当前版本为 **notes 0.7.0、todos 0.6.1**。源码新实例默认启用 notes＋todos planner v2；已有单插件或旧双插件配置按原模式运行，数据库不自动迁移。
+Current versions are **notes 0.7.0 and todos 0.6.1**. New instances created from this checkout enable notes + todos planner v2. Existing single-plugin and older dual-plugin configurations keep their original behavior; databases are not migrated automatically.
 
-笔记使用 Files.md 工作区，保留文件树、Markdown、清单、收集、日记、附件和分栏编辑。任务插件提供任务日期、清单、优先级、日历、时间块、持久提醒和主动授权网页通知。普通页面操作不需要模型；Harness 负责模型、会话、登录和权限。
+Notes uses the Files.md workspace, with its file tree, Markdown, checklists, capture, journals, attachments, and split editing. The task plugin provides task dates, lists, priorities, calendars, time blocks, persistent reminders, and browser notifications with explicit permission. Ordinary UI operations do not require a model; Harness manages models, sessions, authentication, and permissions.
 
-Corilo 自有界面跟随 DSH 的语言设置，支持中文与 English；切换语言不改变笔记、任务内容或导师作答。Files.md 上游界面和导师教学材料保持原有内容。
+Corilo-owned UI follows the DSH language setting and supports Chinese and English. Switching languages does not change notes, task content, or tutor answers. Upstream Files.md UI and tutor teaching materials retain their original content.
 
-## 三步启动
+## Start in three steps
 
-需要 Node.js ≥24.9.0。在仓库根执行，实例路径使用仓库外的绝对路径：
+Requires Node.js ≥24.9.0. Run from the repository root and use an absolute instance path outside the checkout:
 
 ```sh
 npm run setup:corilo
@@ -30,31 +30,31 @@ npm run init:corilo -- --directory /absolute/corilo-instance
 npm run start:corilo -- --directory /absolute/corilo-instance
 ```
 
-`setup` 安装并构建 notes 和 todos。`init` 只创建配置，不覆盖或迁移已有实例；以后直接 `start`。使用 Harness 打印的鉴权地址，关闭模型配置引导后使用侧栏的笔记和任务／日程入口。默认回环端口 3000，Ctrl+C 停止；预检使用 `npm run check:corilo -- --directory /absolute/corilo-instance`。
+`setup` installs and builds notes and todos. `init` creates configuration without overwriting or migrating an existing instance; subsequent launches only need `start`. Open the authenticated URL printed by Harness, dismiss the model setup prompt, and use the notes and task/calendar entries in the sidebar. The default address is loopback on port 3000; stop with Ctrl+C. Run the preflight check with `npm run check:corilo -- --directory /absolute/corilo-instance`.
 
-界面保留 Files.md 原生文件树、新建、查找、标题内改名、移动／归档、分栏、收集、日记和 Markdown 清单。Agent 按钮先保存当前输入，再切到 Harness 会话；返回时保留编辑区。文件由小主机统一保存，其他电脑／手机通过浏览器访问，不需要每台设备选择本地文件夹。
+The interface retains the native Files.md file tree, creation, search, inline title renaming, moving/archiving, split editing, capture, journals, and Markdown checklists. The Agent button saves current input before switching to a Harness conversation; returning preserves the editor. Files live on the host, and other computers or phones connect through a browser without selecting a local folder on each device.
 
-## 旧实例与待办
+## Existing instances and tasks
 
-旧单插件及双插件配置保留。todos 0.6.1 在省略 `planner` 时继续使用 v1 模式；启用 planner 必须使用新的空资料目录，不能直接打开旧 v1 库。Files.md 仍支持 Markdown 清单；下面是可选单向导出，不再是默认退役流程：
+Existing single-plugin and dual-plugin configurations remain supported. In todos 0.6.1, omitting `planner` retains v1 mode. Enabling planner requires a new, empty data directory; it cannot open a v1 database. Files.md still supports Markdown checklists. The following is an optional one-way export, not the default upgrade or retirement path:
 
 ```sh
-# 先停止源、目标服务并备份；默认仅预览
+# Stop both source and destination services and back up first; preview by default.
 node plugins/notes/import-todos.mjs --source /absolute/old/todos/todos.sqlite --root /absolute/corilo-instance/notes
-# 核对预览后执行
+# Apply after reviewing the preview.
 node plugins/notes/import-todos.mjs --source /absolute/old/todos/todos.sqlite --root /absolute/corilo-instance/notes --apply
 ```
 
-导入保留原 SQLite，已完成／未完成转为清单，取消记录及原字段保存在 archive/ 的迁移记录中；重试不会重复追加。仅在用户明确选择以后使用 Markdown 管理这些事项时，才考虑移除旧入口；继续使用独立任务的用户保留原 SQLite 与插件。原文清单与数据库不自动同步。[完整说明](plugins/notes/README.md)。
+Import preserves the source SQLite database. Completed and open tasks become checklist items; cancelled records and original fields are retained in migration records under `archive/`. Retrying does not append duplicates. Only consider removing the old task entry after explicitly choosing Markdown to manage those tasks going forward. Users keeping independent task management should retain their SQLite database and plugin. Markdown checklists and the database do not synchronize automatically. See the [full guide](plugins/notes/README.md).
 
-## 分发与边界
+## Distribution and limits
 
-notes 和 todos 可分别在各自目录执行 `npm pack`，不需要旧 app/；收到包的人按各包指南安装生产依赖及配置。两包仍为 private，尚未公开发布 npm。[快速开始](plugins/notes/QUICKSTART.zh-CN.md)。
+notes and todos can each be packaged with `npm pack` from their own directories, without the legacy `app/`. Recipients install production dependencies and configuration according to the package guides. Both packages remain private and have not been publicly published to npm. See the [quick start](plugins/notes/QUICKSTART.en.md).
 
-完整的发版准备使用 `npm run prepare:release -- notes`、`todos` 或 `learn-anything`：先按所选包的锁文件安装依赖，再运行命令，生成经过构建、测试和内容检查的 tgz、校验和及版本说明。该流程不执行 npm 发布，详见[分发指南](docs/RELEASING.md)。
+For full release preparation, use `npm run prepare:release -- notes`, `todos`, or `learn-anything`. First install dependencies from the selected package's lockfile, then run the command to build, test, and check a tarball, with checksums and release notes. This process does not publish to npm. See the [distribution guide](docs/RELEASING.en.md).
 
-Files.md 固定为源码记录中的版本，Harness 固定 `0.2.2-rc.3`。当前真实 Harness／Chromium 与迁移验收不代表真实 DeepSeek、物理手机、原生输入法／WebKit、麦克风、目标 Linux 常驻部署或 NAS 已验收。提醒由 todos 持久保存，关闭页面不推送；重复、CalDAV／ICS、外部通知和自动记忆未实现。NAS 先做备份，未经验证的 SMB/NFS 不作为工作盘。
+Files.md is pinned to the version recorded in source, and Harness to `0.2.2-rc.3`. Existing Harness/Chromium and migration checks do not establish validation of live DeepSeek calls, physical phones, native input methods/WebKit, microphones, the target Linux deployment, or NAS hardware. todos persists reminders, but closing the page disables browser delivery. Recurrence, CalDAV/ICS, external notifications, and automatic memory are not implemented. Use a NAS as a backup destination first; unverified SMB/NFS mounts are not supported working directories.
 
-目录保持：`plugins/notes` 当前工作区包，`plugins/todos` 当前任务与日程包，`launcher/` 源码入口，`docs/` 当前文档与归档。旧 app/、Android 与用户数据保留，根 `npm start/test` 仍运行旧应用。
+The directory layout remains: `plugins/notes` for the current workspace package, `plugins/todos` for tasks and calendar, `launcher/` for the source launcher, and `docs/` for current documentation and archives. Legacy `app/`, Android code, and user data are preserved; root `npm start/test` still runs the legacy application.
 
-[设计索引](docs/README.md) · [业务规则](docs/PRODUCT-SPEC.md) · [架构](docs/TECHNICAL_DESIGN.md) · [开发指南](docs/DEVELOPMENT.md) · [插件导航](plugins/README.md)
+Further documentation: [Documentation index](docs/README.en.md) · [Product rules](docs/PRODUCT-SPEC.en.md) · [Architecture](docs/TECHNICAL_DESIGN.en.md) · [Development guide](docs/DEVELOPMENT.en.md) · [Plugin index](plugins/README.en.md).

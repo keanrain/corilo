@@ -6,7 +6,7 @@ Corilo-owned UI follows the DSH language setting (Chinese/English) without chang
 
 A personal learning-tutor plugin for DeepSeek Harness (dsh), using the 渐构 (incremental construction) method for route planning, diagnosis, learning materials, verification in new situations, and spaced review.
 
-This project lives at `packages/learn-anything/` in the [Corilo monorepo](../../README.en.md), distributed independently as `@corilo/learn-anything`, with versions maintained separately from notes/todos.
+This project lives at `packages/learn-anything/` in the [Corilo monorepo](../../README.md), distributed independently as `@corilo/learn-anything`, with versions maintained separately from notes/todos.
 
 For source development, run `npm run setup:learn-anything` at the repository root. The package keeps its own dependency lock, separate from notes/todos. Then run `npm test`, `npm run build`, `npm run test:boot`, and evaluation commands from this directory, or root `npm run test:learn-anything`, `npm run build:learn-anything`, and `npm run pack:learn-anything`. The root pack command writes the `.tgz` to the repository root; `npm pack` here writes it to this directory. Release only this subproject, never the monorepo root package.
 

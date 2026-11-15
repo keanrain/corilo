@@ -9,7 +9,7 @@ Current source instances default to **notes 0.7.0 + todos 0.6.1 planner v2**. Fi
 | Document | Purpose |
 |---|---|
 | [Handoff log (Chinese)](HANDOFF.md) | Versions, operation/migration evidence, and outstanding work; not the source of product rules |
-| [Root README](../README.en.md) | Installation, current features, and upgrade boundaries |
+| [Root README](../README.md) | Installation, current features, and upgrade boundaries |
 | [Product](PRODUCT.en.md) | Positioning, scope, and tradeoffs |
 | [Specification](PRODUCT-SPEC.en.md) | Current business scope and key constraints |
 | [Interaction](DESIGN.en.md) | Notes, planner, and tutor interaction boundaries |

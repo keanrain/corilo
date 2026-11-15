@@ -6,7 +6,7 @@ Corilo 自有界面跟随 DSH 语言设置（中文／English），切换不改�
 
 学习导师：DeepSeek Harness (dsh) 的个人学习插件包，按渐构方法规划路线、诊断、出材料、新情况验证、间隔复习。
 
-本项目位于 [Corilo 大仓](../../README.md) 的 `packages/learn-anything/`，独立以 `@corilo/learn-anything` 分发，版本与 notes／todos 分开维护。
+本项目位于 [Corilo 大仓](../../README.zh-CN.md) 的 `packages/learn-anything/`，独立以 `@corilo/learn-anything` 分发，版本与 notes／todos 分开维护。
 
 源码开发时在大仓根目录运行 `npm run setup:learn-anything`，依赖锁保留在子项目内，与 notes／todos 分开维护。随后可在本目录运行原有的 `npm test`、`npm run build`、`npm run test:boot` 和评测命令，也可从根目录运行 `npm run test:learn-anything`、`npm run build:learn-anything`、`npm run pack:learn-anything`。根目录打包命令将 `.tgz` 写到大仓根目录；在本目录执行 `npm pack` 则写到本目录。发布只针对此子项目，不发布大仓根包。
 

@@ -42,7 +42,7 @@ The visual layer uses 62 static tokens from [Astryx Neutral](https://github.com/
 
 ## Installation and startup
 
-To use both plugins from source, prefer the [root quick start](../../README.en.md#start-in-three-steps): setup/init/start with one instance directory. The independent-plugin route remains below.
+To use both plugins from source, prefer the [root quick start](../../README.md#start-in-three-steps): setup/init/start with one instance directory. The independent-plugin route remains below.
 
 From the Corilo repository root:
 
