@@ -1,6 +1,8 @@
 # Corilo 可里
 
-> 运行时更新：notes／todos 和独立学习导师固定使用 DSH **0.2.2-rc.3**。此版本当前在 npm `next` 标签，`latest` 仍为 rc.1；请按锁文件安装。Python 原型及其专用启动、CI 已移除，本地数据保留。
+**简体中文** | [English](README.en.md)
+
+> 运行时：notes／todos 和独立学习导师固定使用 DSH **0.2.2-rc.3**，请按各包锁文件安装，不依赖 npm 标签。Python 原型及其专用启动、CI 已移除，本地数据保留。
 
 ## 大仓中的独立产品
 
@@ -46,6 +48,8 @@ node plugins/notes/import-todos.mjs --source /absolute/old/todos/todos.sqlite --
 ## 分发与边界
 
 notes 和 todos 可分别在各自目录执行 `npm pack`，不需要旧 app/；收到包的人按各包指南安装生产依赖及配置。两包仍为 private，尚未公开发布 npm。[快速开始](plugins/notes/QUICKSTART.zh-CN.md)。
+
+完整的发版准备使用 `npm run prepare:release -- notes`、`todos` 或 `learn-anything`：先按所选包的锁文件安装依赖，再运行命令，生成经过构建、测试和内容检查的 tgz、校验和及版本说明。该流程不执行 npm 发布，详见[分发指南](docs/RELEASING.md)。
 
 Files.md 固定为源码记录中的版本，Harness 固定 `0.2.2-rc.3`。当前真实 Harness／Chromium 与迁移验收不代表真实 DeepSeek、物理手机、原生输入法／WebKit、麦克风、目标 Linux 常驻部署或 NAS 已验收。提醒由 todos 持久保存，关闭页面不推送；重复、CalDAV／ICS、外部通知和自动记忆未实现。NAS 先做备份，未经验证的 SMB/NFS 不作为工作盘。
 
