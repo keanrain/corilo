@@ -52,7 +52,7 @@ test('one-directory setup and read-only preflight preserve data and reject alter
   assert.equal(report.ok, true);
   assert.equal(report.harness, path.join(instance, 'runtime/harness'));
   assert.equal(report.agents, path.join(instance, 'runtime/agents'));
-  assert.equal(report.harnessVersion, '0.2.2-rc.1');
+  assert.equal(report.harnessVersion, '0.2.2-rc.3');
   assert.equal(report.todosValidation, 'on-start');
   if (process.platform !== 'win32') assert.equal((await lstat(combined)).mode & 0o777, 0o600);
   for (const location of ['notes', 'state', 'todos', 'runtime', 'workspace']) await assert.rejects(access(path.join(instance, location)), { code: 'ENOENT' });

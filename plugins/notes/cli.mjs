@@ -12,7 +12,7 @@ import { resolveDshHome, resolveAgentsHome, canonicalizeWatchPath } from '@deeps
 
 const packageRoot = fileURLToPath(new URL('./', import.meta.url));
 const require = createRequire(import.meta.url);
-const pinnedHarness = '0.2.2-rc.1';
+const pinnedHarness = '0.2.2-rc.3';
 const fail = message => { throw new Error(message); };
 const quoteArgument = value => process.platform === 'win32' ? `'${value.replaceAll("'", "''")}'` : `'${value.replaceAll("'", "'\\''")}'`;
 const within = (parent, child) => child === parent || child.startsWith(parent.endsWith(path.sep) ? parent : parent + path.sep);
