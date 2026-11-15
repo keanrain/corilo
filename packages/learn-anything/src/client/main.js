@@ -512,40 +512,7 @@ function ReviewChip({ useProjection, useInput, inputActions }) {
 
 const inject = ['slots', 'uiConversation']
 
-// The launcher's folder, registered as a Workspace by the host half (src/host/ui.js)
-// and handed over as a boot global. It is opened once per launch, so a reload or a
-// second tab keeps whatever the user navigated to since.
-const LAUNCH_GLOBAL = '__LEARN_ANYTHING_LAUNCH__'
-const LAUNCH_SEEN_KEY = 'learn-anything:opened-launch'
-
-function openLaunchWorkspace(ctx) {
-  const launch = globalThis[LAUNCH_GLOBAL]
-  if (!launch?.workspaceId) return () => {}
-  try {
-    if (localStorage.getItem(LAUNCH_SEEN_KEY) === launch.launchId) return () => {}
-  } catch {}
-  let timer
-  const disposers = []
-  const stop = () => disposers.splice(0).forEach((dispose) => dispose())
-  const check = () => {
-    const workspaces = ctx.workspaces.list.getSnapshot()
-    if (workspaces.phase !== 'ready' || ctx.sessions.list.getSnapshot().phase !== 'ready') return
-    if (!workspaces.items.some((item) => item.workspaceId === launch.workspaceId)) return
-    stop()
-    try { localStorage.setItem(LAUNCH_SEEN_KEY, launch.launchId) } catch {}
-    // Run after ui-workspace's startup restoration has begun (it reacts to the same
-    // snapshots), so this later navigation supersedes it instead of being cancelled.
-    timer = setTimeout(() => ctx.uiWorkspace.openWorkspace(launch.workspaceId).catch((error) => {
-      console.warn('learn-anything: 打开启动目录的工作区失败', error)
-    }), 0)
-  }
-  disposers.push(ctx.workspaces.list.subscribe(check), ctx.sessions.list.subscribe(check))
-  check()
-  return () => { stop(); clearTimeout(timer) }
-}
-
 function apply(ctx) {
-  ctx.inject(['uiWorkspace', 'workspaces', 'sessions'], (ctx) => ctx.effect(() => openLaunchWorkspace(ctx), 'learn-anything: launch workspace'))
   ctx.effect(() => ctx.uiConversation.events.register(viewsDefinition), 'learn-anything: view turn data')
   ctx.effect(() => ctx.uiConversation.events.register(cardDefinition), 'learn-anything: ordered cards')
   registerAnswerCards(ctx, (view, props) => h(CARDS[view.view], { ...props, view }))

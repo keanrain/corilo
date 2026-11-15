@@ -55,7 +55,7 @@ import { LEARNING_LOOP_SCENARIO, scoreLearningLoop } from './learning-loop.js'
 import { RECOVERY_SCENARIO, scoreRecovery } from './prerequisite-recovery.js'
 import { TRUST_SCENARIO, scoreTrust } from './trust.js'
 
-// Keep the runtime gate aligned with the launcher.
+// Keep the runtime gate aligned with package.json engines.
 const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number)
 if (nodeMajor < 24 || (nodeMajor === 24 && nodeMinor < 9)) {
   console.error(`eval: dsh needs Node.js >= 24.9, this is ${process.versions.node}`)

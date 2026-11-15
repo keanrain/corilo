@@ -59,7 +59,6 @@
       name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
     - id: la-driver
       name: la-driver
-# The bundle keeps session-log deltas out of LLM requests; the boot check turns them back
-# on to read the logged tool-result meta (the composer chip's stats) from the mock's requests.
+# Enable session-log in this test profile to inspect tool-result meta in mock requests.
 - id: session-log-deepseek
   disabled: false

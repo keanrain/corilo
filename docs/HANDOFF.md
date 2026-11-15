@@ -1,5 +1,14 @@
 # Corilo 可里交接文档
 
+## 学习导师仅供已有 DSH 用户安装（2026-11-15）
+
+按用户要求收敛为普通 DSH 插件：删除独立 CLI、专用 profile 初始化和启动目录自动注册／导航；包不再提供 bin。保留三个教学预设、工具、互动界面与 `.learn/` 数据格式。bundle 不再覆盖宿主默认预设、会话日志或插件清单设置。用户安装到现有 Web profile 后主动选择「学习导师」。已有用户自行保存的 profile 配置不会被自动清理。
+
+构建与安装见 [学习导师 README](../packages/learn-anything/README.md)。本地分发包 `corilo-learn-anything-0.1.0.tgz` 已重新生成，检查无启动器；尚未发布 npm。
+
+本轮验证：172 项 Node 测试通过；真实 DSH rc.3 临时 profile 安装与启动通过，mock LLM 的 7 次请求覆盖导师 34 个工具、考官 16 个工具、写保护和原生提醒；旧 app 的 browser_smoke、browser_review、browser_sync 三套浏览器回归通过。未运行真实模型或学习导师 Web 端到端浏览器验收。测试 profile 与评测脚本仍可设置导师为默认，用途仅为隔离验证。
+
+
 ## DSH rc.3 与独立学习导师（2026-11-15）
 
 本地 `work` 从旧基线快进到远端 main 的 `51f2624` 后，整合学习导师迁移、Python 原型删除及 DSH 升级。以下是本次本地执行结果，不表示已推送、部署或发布。整合前的改动另保存在 Git stash 中。

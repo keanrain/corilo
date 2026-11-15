@@ -2,7 +2,7 @@
 
 学习导师：DeepSeek Harness (dsh) 的个人学习插件包，按渐构方法规划路线、诊断、出材料、新情况验证、间隔复习。
 
-本项目位于 [Corilo 大仓](../../README.md) 的 `packages/learn-anything/`，独立以 `@corilo/learn-anything` 分发，版本与知识助手原型分开维护。
+本项目位于 [Corilo 大仓](../../README.md) 的 `packages/learn-anything/`，独立以 `@corilo/learn-anything` 分发，版本与 notes／todos 分开维护。
 
 源码开发时在大仓根目录运行 `npm run setup:learn-anything`，依赖锁保留在子项目内，与 notes／todos 分开维护。随后可在本目录运行原有的 `npm test`、`npm run build`、`npm run test:boot` 和评测命令，也可从根目录运行 `npm run test:learn-anything`、`npm run build:learn-anything`、`npm run pack:learn-anything`。根目录打包命令将 `.tgz` 写到大仓根目录；在本目录执行 `npm pack` 则写到本目录。发布只针对此子项目，不发布大仓根包。
 
@@ -10,36 +10,27 @@
 
 ## 安装
 
-需要 Node.js ≥ 24.9；本版本适配 DSH `0.2.2-rc.3`，启动器使用同一版本。已有 DSH 的用户应先核对版本，再安装到对应的 Web profile。
+仅支持**已有 DSH 用户**。需要 Node.js ≥ 24.9、DSH `0.2.2-rc.3`，以及 DSH 插件管理所需的 pnpm。
 
-**启动器**（独立 profile，开箱即用）：
-
-```sh
-npx @corilo/learn-anything [--port 8080] [--no-open]
-```
-
-**插件市场**（装进你已有的 dsh Web profile）：
-
-1. 「插件」→「实验性插件」旁的「更多」→ 打开「自定义插件索引」。
-2. 「插件」→「发现」→「添加索引源」，填入 `market/index.json` 的 http(s) URL（例如仓库 raw 地址）。
-3. 在「学习导师」卡片上点「安装」，装完点「立即启用」（或在「已安装」里打开它的开关）。
-
-两种方式效果相同：新会话默认用「学习导师」预设，且不随 LLM 请求上传会话日志和插件清单（都写在包自带的
-`cordis.patch.yml` 里；想改回，在 profile 的 `cordis.patch.yml` 里覆盖，或在「插件」页打开对应开关）。
-市场安装用 dsh 自己的 pnpm；本机没有 pnpm 时请先装好，启动器会自动兜底。
-已安装用户可在新版 DSH 的插件管理页更新插件；更新失败时由 DSH 尝试恢复旧版本。
-
-**本地包**（发布前给别人试用）：`npm pack` 打出 `corilo-learn-anything-<version>.tgz`，对方在放学习材料的目录里运行
+在大仓根目录构建分发包：
 
 ```sh
-npx -y ./corilo-learn-anything-0.1.0.tgz --from ./corilo-learn-anything-0.1.0.tgz
+npm run setup:learn-anything
+npm run build:learn-anything
+npm run pack:learn-anything
 ```
 
-`--from` 让启动器从这个包装插件（否则会去 npm 源找还没发布的版本）；换了同版本号的新包，加 `--reinstall`。
+将生成的 `.tgz` 安装到已有 Web profile（把 `web` 换成你实际使用的 profile 名称）：
 
-`market/index.json` 是 dsh 插件市场索引格式 1（`npm test` 用 `parseMarketIndex` 校验）。它的版本条目
-从 npm 源安装 `@corilo/learn-anything@<version>`；发版时同步改 `version` / `publishTimestamp`，若包发布在私有
-registry，在 `source` 里加 `"registry": "https://…/"`。
+```sh
+dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.0.tgz
+```
+
+重启该 DSH 实例，在已有工作区中新建会话并选择「学习导师」预设。学习记录保存在会话工作区的 `.learn/` 中。
+
+插件只添加教学预设、工具与界面，不创建专用 profile，不自动切换工作区，不改变宿主默认预设、会话日志或插件清单设置。宿主启动、模型配置与插件更新均使用 DSH 原有流程。
+
+`market/index.json` 保留为后续 npm 发布后的市场索引；其安装目标是 npm 包，尚未发布时使用上述本地 `.tgz`。发布时同步索引的 `version` / `publishTimestamp`。`PROMPT.md` 与 `research/` 中的独立启动方案仅为历史设计。
 
 ## 互动题
 
@@ -127,7 +118,7 @@ DSH 的历史、缓存和消息发送集中在 `src/client/quiz.js` 适配层，
 `npm run build` 生成并提交的文件，用户安装时不需要构建，也不会装 OpenUI 的包；改了 `src/client/`、
 `src/quiz/` 后重新构建，`npm test` 会检查生成文件是否最新。
 
-- `npm test`：工具、教材、卡片状态和启动参数回归。
+- `npm test`：工具、教材、卡片状态和插件包回归。
 - `npm run test:boot`：在隔离 profile 中检查真实 DSH 的插件装配，使用模拟模型；另以 1 秒任务验证原生定时投递、暂停不投递及单次回执。
 - `npm run eval:mock -- --only materials --until verified`：用三个教材场景检查引用贯穿出题、作答和判题。场景异常、代写、答案泄漏、无效引用落库或引用链丢失会使评测返回非零退出码。mock 检查链路，真实模型的语义判断仍需单独评测。
 - `npm run eval:mock -- --quality`：离线检查 8 个固定题目质量案例与失败判定；`npm run eval -- --quality` 使用 `DEEPSEEK_API_KEY` 跑真实考官，也可加 `--anthropic` 沿用现有网关配置，或 `--only alternative-solution` 只跑一个案例。覆盖卡片漏条件、产能无法推出限时交付、文字版漏选项、合理替代解、等价措辞、选对但理由错、反馈过度归因和正常正确作答。判定错误、归因缺少原话证据、已知的过度归因、接口错误或截断都使命令退出非零；报告分开统计质量失败和请求错误，并保留实际提示与回复。这组案例检查已知缺陷，不能替代新生成题目的语义复核；mock 通过不代表真实模型通过。

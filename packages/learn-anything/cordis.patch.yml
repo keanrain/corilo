@@ -133,15 +133,3 @@
             config:
               fetch: true
               searchTimeoutMs: 60000
-# Profile defaults, here rather than in the launcher so a Plugins-page / market install
-# behaves like `npx @corilo/learn-anything`: new sessions open with the「学习导师」preset, and the
-# learning record stays local (no session-log deltas or plugin inventory sent with LLM
-# requests). The profile's own cordis.patch.yml applies after this layer, so a user can
-# pick another default or switch the uploads back on there (or from the Plugins page).
-- id: agent-preset-registry
-  config:
-    default: learn-tutor
-- id: session-log-deepseek
-  disabled: true
-- id: plugin-package-inventory-deepseek
-  disabled: true

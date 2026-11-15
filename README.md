@@ -10,7 +10,7 @@
 | `plugins/todos` | 任务与日程 `@corilo/dsh-todos` | `npm run test:todos` |
 | [`packages/learn-anything`](packages/learn-anything/README.md) | 独立学习导师 `@corilo/learn-anything` | `npm run setup:learn-anything`、`npm run test:learn-anything` |
 
-各包独立依赖锁、安装和分发。学习导师通过 `npm run pack:learn-anything` 打包，不随默认 notes＋todos 组合自动启用。`app/`、`android/`、`p0/` 保留旧实现与研究；根 `npm start/test` 仍服务旧应用。
+各包独立依赖锁、安装和分发。学习导师仅供已有 DSH 用户安装，通过 `npm run build:learn-anything` 构建、`npm run pack:learn-anything` 打包，不随默认 notes＋todos 组合自动启用。`app/`、`android/`、`p0/` 保留旧实现与研究；根 `npm start/test` 仍服务旧应用。
 
 > 当前补丁版本：todos 0.6.1。提醒、跨日分类、日历任务分页与代码结构修复见 [交接文档](docs/HANDOFF.md)；旧配置和数据库不自动迁移。
 

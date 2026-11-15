@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// Keep the runtime gate aligned with the launcher.
+// Keep the runtime gate aligned with package.json engines.
 const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number)
 if (nodeMajor < 24 || (nodeMajor === 24 && nodeMinor < 9)) {
   console.error(`boot: dsh needs Node.js >= 24.9, this is ${process.versions.node}`)

@@ -1,6 +1,6 @@
 # Corilo 可里开发约束
 
-2026-11-15 更新：notes／todos 与学习导师固定 DSH 0.2.2-rc.3（npm next 标签，本次验证见 docs/HANDOFF.md 顶部）。学习导师位于 packages/learn-anything，独立依赖锁、构建、测试与分发，不加入默认 notes＋todos 启动组合。根旧应用命令与依赖保留，不引入 npm workspaces。用户已要求删除 Python prototype 及其启动脚本和专用 CI；.local 数据保留，requirements-dev.txt 继续供其他浏览器测试使用。
+2026-11-15 更新：notes／todos 与学习导师固定 DSH 0.2.2-rc.3（npm next 标签，本次验证见 docs/HANDOFF.md 顶部）。学习导师仅供已有 DSH 用户安装，不提供独立启动器、不创建专用 profile、不修改宿主默认预设或日志设置。学习导师位于 packages/learn-anything，独立依赖锁、构建、测试与分发，不加入默认 notes＋todos 启动组合。根旧应用命令与依赖保留，不引入 npm workspaces。用户已要求删除 Python prototype 及其启动脚本和专用 CI；.local 数据保留，requirements-dev.txt 继续供其他浏览器测试使用。
 
 当前执行：按用户清单重建 todos 0.6.0，详见 docs/PRODUCT-SPEC.md 第 0 节。新实例双插件及 planner v2，旧配置／v1 保留；无升级工具、重复、来源关联或外部推送。下文 v0.34 分阶段要求不覆盖本次明确恢复范围。
 
