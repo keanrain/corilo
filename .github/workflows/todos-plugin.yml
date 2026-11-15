@@ -48,3 +48,4 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python -m playwright install --with-deps chromium
       - run: npm --prefix plugins/todos run test:browser
+      - run: npm --prefix plugins/todos run test:planner:browser

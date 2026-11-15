@@ -74,10 +74,11 @@ config. Old `stateRoot` is accepted but not used by the current plugin. Old hist
 IndexedDB, SQLite, credentials and conversations are never automatically migrated
 or deleted. Classic recovery helpers remain for pre-existing data only.
 
-New source-launcher configs load only this workspace package. Old two-plugin
-configs remain supported. The v0.34 design restores the separate tasks/calendar
-plugin; its new features are not implemented yet. Keep the existing todo package
-and database when using that workflow. The following is an optional one-way
+The package CLI above creates a notes-only instance. The repository launcher
+(`npm run init:corilo`) creates notes + todos 0.6.1 with planner v2 enabled.
+Existing notes-only and legacy two-plugin configs remain supported; existing todo
+databases are not automatically migrated. See the [todos guide](../todos/README.md)
+for calendar, reminders and the new-directory requirement. The following is an optional one-way
 export for users who explicitly choose Markdown task management. Stop both source
 and destination services and back up their directories before importing:
 

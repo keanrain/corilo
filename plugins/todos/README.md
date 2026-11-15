@@ -21,15 +21,15 @@
 
 `npm test` 验证旧／新存储和工具；`npm run test:planner:browser` 验证新版真实 Harness 页面；`npm run test:browser` 保护旧版页面。重复、笔记来源关联、CalDAV／ICS、旧库升级及外部通知未实现。
 
-以下为 v1 兼容模式文档。
+## v1 兼容模式
 
-v0.34 恢复独立任务与日程方向，本包是扩展基础。下文描述 0.5.2 已实现能力；日期、日历、重复和提醒仍待实现，见[业务规格](../../docs/PRODUCT-SPEC.md)与[技术方案](../../docs/TECHNICAL_DESIGN.md)。当前新实例仍仅默认加载 notes，已有双插件配置继续使用，不再建议默认迁入 Markdown 并退役本插件。
+以下页面、存储格式及工具说明仅适用于**省略 `planner` 的旧实例**，保留原 0.5.2 模式。新实例默认使用上文 planner v2。安装与分发使用当前 0.6.1 包，不自动升级旧数据库；下方手写 overlay 故意省略 `planner`，仅用于继续运行 v1。
 
-独立个人待办插件，固定支持 Harness **0.2.2-rc.3**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。包版本 0.5.2，目前没有发布到 npm。
+独立个人待办插件，固定支持 Harness **0.2.2-rc.3**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。当前包版本 0.6.1，目前没有发布到 npm。
 
-页面直接创建、查看、编辑、完成或撤销待办，不需要模型密钥；Agent 工具使用同一持久化服务。个人待办与 Harness 的 Agent 执行计划分开。首版不包含日期、日历、提醒调度或通知，创建待办不代表安排通知。
+页面直接创建、查看、编辑、完成或撤销待办，不需要模型密钥；Agent 工具使用同一持久化服务。个人待办与 Harness 的 Agent 执行计划分开。v1 模式不包含日期、日历、提醒调度或通知，创建待办不代表安排通知。
 
-当前主流程是回车连续新增、列表直接完成/撤销、点标题直接编辑。已存详情默认在离开编辑区、切换待办或返回列表时保存，无需重复点保存；首次点击会先保存修改再完成目标操作。新待办主要从清单内单行录入，不再提供重复的详细新建表单。
+v1 主流程是回车连续新增、列表直接完成/撤销、点标题直接编辑。已存详情默认在离开编辑区、切换待办或返回列表时保存，无需重复点保存；首次点击会先保存修改再完成目标操作。新待办主要从清单内单行录入，不再提供重复的详细新建表单。
 
 交互参考 [Vikunja](https://github.com/go-vikunja/vikunja) 与 [Super Productivity](https://github.com/super-productivity/super-productivity) 的清单／详情分工：标题自动换行，说明按内容伸缩，导出使用页头轻量按钮。从完成列表新增后回到未完成；新增成功会清除搜索，让新事项可见。清单聚焦时 N 快速录入、/ 查找、上下键移动任务焦点、Enter 打开，详情 Esc 保存后返回。输入与组字不触发导航，错误与未知结果仍保留原请求。
 
@@ -39,7 +39,7 @@ v0.34 恢复独立任务与日程方向，本包是扩展基础。下文描述 0
 
 ## 安装与启动
 
-两个插件一起从源码使用时，优先按[根目录上手](https://github.com/keanrain/corilo/blob/feat/cloud-notes/README.md#一起使用笔记和待办)的 setup/init/start 三步，一个实例目录即可；下面保留独立插件方式。
+两个插件一起从源码使用时，优先按[根目录上手](../../README.md#三步启动)的 setup/init/start 三步，一个实例目录即可；下面保留独立插件方式。
 
 源码方式，在 Corilo 仓库根目录：
 
@@ -114,7 +114,7 @@ cd plugins/todos
 npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.5.2.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
+收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.6.1.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
 
 源码验证：
 
@@ -125,6 +125,6 @@ npm --prefix plugins/todos run test:browser
 
 样式共存检查还需已安装、构建 `plugins/notes`；浏览器依赖沿用根目录 `requirements-dev.txt` 和 Chromium。测试使用临时资料与合成凭据，不调用模型。真实模型、物理手机、NAS 与目标设备部署证据分别记录在主技术设计中，不能由工具或 Chromium 测试代替。
 
-## 从旧版升级
+## v1 模式更新插件包
 
-升级前先保存当前页面输入，再停止服务并备份整个待办目录。安装 0.5.2 包、沿用现有资料目录并重新启动 Harness；浏览器重新加载客户端。没有数据库迁移或数据清理。旧浏览器草稿只可用旧版本读取，新版不承诺恢复；不要清除站点数据后再寻找旧草稿。取消记录和关联字段仍包含在 JSON 导出中。
+升级前先保存当前页面输入，再停止服务并备份整个待办目录。安装 0.6.1 包、保留省略 `planner` 的 v1 配置并沿用现有资料目录并重新启动 Harness；浏览器重新加载客户端。没有数据库迁移或数据清理。旧浏览器草稿只可用旧版本读取，新版不承诺恢复；不要清除站点数据后再寻找旧草稿。取消记录和关联字段仍包含在 JSON 导出中。

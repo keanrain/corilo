@@ -29,11 +29,23 @@ jobs:
           node-version: '24.19.0'
           cache: npm
           cache-dependency-path: packages/learn-anything/package-lock.json
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10.23.0'
+          run_install: false
       - run: npm run setup:learn-anything
       # Tests check committed bundles against a fresh build before packaging.
       - run: npm run test:learn-anything
       - run: npm run build:learn-anything
       - run: npm run pack:learn-anything
+      - name: Install the compatible DSH runtime outside the checkout
+        run: |
+          tutor_dsh_version="$(node -p "require('./packages/learn-anything/package.json').engines.dsh")"
+          npm install --prefix "$RUNNER_TEMP/learn-anything-dsh" --no-package-lock --ignore-scripts "@deepseek-ai/dsh@$tutor_dsh_version"
+      - name: Check real DSH boot with a mock model
+        run: npm run test:boot:learn-anything
+        env:
+          LEARN_ANYTHING_DSH: ${{ runner.temp }}/learn-anything-dsh/node_modules/@deepseek-ai/dsh/lib/bin.js
       - uses: actions/upload-artifact@v4
         with:
           name: learn-anything-package
