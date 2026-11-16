@@ -59,3 +59,14 @@ export function activeReviews(reviews, course, kps) {
     return kp.kind === 'information' ? !entry.modelId : kp.models.some((model) => model.id === entry.modelId)
   })) }
 }
+
+/** Reuse checked examples as relearning references, never rewrite their historical evidence. */
+export function forgottenExamples(model, records, excludeId, limit = 3) {
+  const verified = new Set(records.filter((record) => record.id !== excludeId && record.verdict === 'correct' && record.evidence && record.modelId === model.id).map((record) => record.id))
+  return (model.targetMap?.examples ?? []).filter((example) => example.tag === 'v' && example.checked && verified.has(example.verificationId))
+    .slice(-limit).map((example) => ({ id: example.id, verificationId: example.verificationId, input: example.input, output: example.output, polarity: example.polarity, sources: example.sources ?? [] }))
+}
+
+export function examplePracticeText(examples) {
+  return '例习循环：以下是以前验证过的旧例子，可用于对比复盘或请考官生成变体；旧例重做仅作理解练习（quiz_show 的 purpose 设为 practice），不得当成新情况提升掌握度。正式验证仍须另出实质新情境。\n' + JSON.stringify({ purpose: 'relearning-reference', examples }, null, 2)
+}

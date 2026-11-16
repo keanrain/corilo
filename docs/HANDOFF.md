@@ -1,5 +1,27 @@
 # Corilo 可里交接文档
 
+## Tutor learning improvements / 学习导师闭环（2026-11-16）
+
+Implementation base: main `76f5c9e`; development branch `feat/tutor-learning-improvements`. This section records execution in the current checkout, separate from historical results below.
+
+- Target maps: direct learner statements, personal examples and annotations; authenticated, tutor-main-session-only UI actions, revision conflicts and draft retention. Verification logs, verified examples and mastery cannot be edited through the UI.
+- Planning outline: direct add/edit/delete, skip, ordering and active lock, with prerequisite/structure validation and version checks. Existing learning records are retained.
+- Materials: Chinese Intl.Segmenter + BM25 retrieval; bounded JS/TS/Python/Rust/Go declaration summaries with file/line provenance; HTTPS default-branch shallow Git ingestion records actual commit and cleans temporary storage. No branch/subdirectory selection; heuristics are not full semantic analysis.
+- Assessment: current-KP/model context, compact examples and replay checks; relevant history overflow cannot earn independent novelty. Global exact replay remains checked; cross-KP semantic similarity is no longer examiner context. Learner wording accepts colons, parentheses and rhetorical summaries while rejecting help/control messages and invented summaries.
+- Methodology: concept-confusion requires a set relation, feature matrix and contrast examples, shown as ConceptCompare; failed scheduled knowledge review exposes evidence-backed old examples for practice/variants, without new mastery credit. TaskDemo supports bounded configurable variables/states/transitions and retains the legacy preset.
+- Storage: JSON/JSONL remains authoritative, queued within one host process. SQLite/FTS5 availability exercised on Node 24.19.0; actual learner-store migration is deferred and must be explicit, backed up and reversible. No automatic migration.
+
+本轮已执行 / Executed here:
+
+- Tutor: 204 Node tests passed; real pinned DSH mock-model startup passed (7 requests, 34 tutor tools, 16 examiner tools, native reminders).
+- Chromium component suites: target-map edit/save/conflict/drafts, outline operations/lock, two generic demo domains, keyboard/narrow-screen and Chinese/English locale regressions passed. These use synthetic transport.
+- Native DSH Web + Chromium API: unauthenticated 401, authenticated actual disk save, stale 409, examiner/subagent 403 and hostile-Origin 403 passed; no model calls. This validates the native API boundary, not a complete tutoring conversation.
+- Legacy app: 59 Node tests and browser_smoke.py / browser_review.py / browser_sync.py passed. Tooling: 16 tests, 4 launcher startup tests and DSH pin consistency passed.
+- Fresh tutor archive built, tested and content-validated (70 files); no npm publication. Public HTTPS repository ingestion smoke passed against octocat/Hello-World at `7fd1a60b01f91b314f59955a4e4d4e80d8edf11d` using a disposable workspace.
+
+Remote Actions lookup returned Forbidden; status remains unchecked. Live models, a full tutor DSH Web teaching flow, physical phones and target deployment remain unverified. Teaching prompts/skills and answer protocols, notes/todos product code, legacy data and existing stashes were preserved. No deployment or user-data migration.
+
+
 ## Bilingual project documentation and UI / 项目中英支持（2026-11-15）
 
 Current product, specification, architecture, interaction, development, release, plugin, and launcher docs now have Chinese/English navigation. AGENTS.md is maintained in English, with AGENTS.zh-CN.md retaining the Chinese counterpart. Package changelogs are bilingual. Launcher and notes CLI help/errors use English. Historical archives, vendor sources, user data, tutor prompts/skills, host teaching tools, and answer protocol modules were not translated or changed.

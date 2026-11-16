@@ -24,6 +24,7 @@ const quizSchema = {
 }
 
 await Promise.all([
+  build({ entryPoints: [new URL('./target-editor.js', import.meta.url).pathname], bundle: true, outfile: join(out, 'target-editor.js'), format: 'esm', platform: 'browser', define: { 'process.env.NODE_ENV': '"production"' } }),
   build({ entryPoints: [new URL('./task-demo.js', import.meta.url).pathname], bundle: true, outfile: join(out, 'task-demo.js'), format: 'esm', platform: 'browser', define: { 'process.env.NODE_ENV': '"production"' } }),
   build({ entryPoints: [new URL('./smoke.js', import.meta.url).pathname], bundle: true, outfile: join(out, 'app.js'), format: 'esm', platform: 'browser', define: { 'process.env.NODE_ENV': '"production"' } }),
   build({
@@ -45,7 +46,9 @@ const playgroundHtml = `<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 
 const server = createServer(async (req, res) => {
   const path = new URL(req.url ?? '/', 'http://127.0.0.1').pathname
-  if (path === '/') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(html) }
+  if (path === '/editor') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end('<!doctype html><html lang=zh-CN><meta charset=utf-8><div id=root></div><script type=module src=/target-editor.js></script></html>') }
+  else if (path === '/target-editor.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(await readFile(join(out, 'target-editor.js'))) }
+  else if (path === '/') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(html) }
   else if (path === '/app.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(await readFile(join(out, 'app.js'))) }
   else if (path === '/playground' || path === '/playground/') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(playgroundHtml) }
   else if (path === '/playground.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(await readFile(join(out, 'playground.js'))) }

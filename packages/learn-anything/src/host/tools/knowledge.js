@@ -4,7 +4,7 @@ import { transitionError, PHASE_GUIDE } from '../phases.js'
 import { factsWithIds, factMasteries, LEVEL_LABEL } from '../mastery.js'
 import { targetMapView } from '../render.js'
 import { validateSources } from '../ingest.js'
-import { isRuleStatement } from '../assessment.js'
+import { assertUserWords } from '../assessment.js'
 import { str, strArray, gateOf, loadVerifications, saveKp, nextExampleId, refreshMastery, describeModel } from './shared.js'
 
 const exampleSpec = {
@@ -20,24 +20,6 @@ const exampleSpec = {
     checked: { type: 'boolean', description: '是否已经过 checker 校验；AI 生成的例子校验通过后才能为 true' },
     source: str('材料块 id 或 URL'),
   },
-}
-
-function normalize(text) {
-  return text.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, '')
-}
-
-/** The 不代写 rule: a statement must be the learner's own words from this session. */
-function assertUserWords(text, env) {
-  const texts = env.userTexts?.()
-  if (texts == null) throw new Error('learner message evidence unavailable; statement rejected')
-  const needle = normalize(text)
-  if (needle.length < 4) throw new Error('statement is too short to be a real statement of the rule')
-  if (texts.filter(isRuleStatement).some((t) => t.split(/[。！!；;\n：:]+/u).some((part) => normalize(part) === needle))) return 'verified'
-  throw new Error(
-    'statement rejected: this text does not appear in anything the learner typed in this session. ' +
-    'Statements on the target map must be the learner\'s own words — copy their wording exactly, ' +
-    'or ask them to write or revise it themselves. Do not summarize the rule for them.',
-  )
 }
 
 export const kpGet = {

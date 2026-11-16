@@ -8,8 +8,11 @@ import { FlashcardCard, FLASHCARD_CSS } from './flashcard.js'
 import { partialJson } from './stream.js'
 import { registerAnswerCards } from './answer.js'
 import { Icon } from './icons.js'
-import { CARD_CSS, PRESENTATION_CSS } from './styles.js'
+import { CARD_CSS, PRESENTATION_CSS, NOTE_EDITOR_CSS } from './styles.js'
 import { Sources } from './sources.js'
+import { TargetEditor } from './target-editor.js'
+import { OutlineEditor } from './outline.js'
+import { ConceptCompareCard } from './concept-compare.js'
 import { quizHistory } from '../quiz/answer.js'
 import { flashcardHistory } from '../quiz/flashcard.js'
 
@@ -34,7 +37,7 @@ const TOOL_LABEL = labels({
   target_map_update: '更新靶图', progress_get: '学习进度', quiz_show: '互动题', verification_record: '判题', flashcard_show: '翻面闪卡',
 })
 
-const css = CARD_CSS + QUIZ_CSS + FLASHCARD_CSS + PRESENTATION_CSS
+const css = NOTE_EDITOR_CSS + CARD_CSS + QUIZ_CSS + FLASHCARD_CSS + PRESENTATION_CSS
 const tagId = 'learn-anything/client.css'
 if (typeof document !== 'undefined' && document.querySelector('style[data-plugin-css=' + JSON.stringify(tagId) + ']') === null) {
   const tag = document.createElement('style')
@@ -82,7 +85,10 @@ function CardHeader({ icon, label, title, subtitle, status, isStreaming }) {
 
 const mastered = (kp) => kp.mastery === 'proficient' || kp.mastery === 'expert'
 
-function OutlineCard({ view, isStreaming = false }) {
+function OutlineCard({ view: initialView, isStreaming = false, useSession }) {
+  const sessionId = useSession?.((s) => s.sessionId)
+  const [edited, setEdited] = react.useState(null)
+  const view = edited ?? initialView
   useUiLocale()
   const points = view.chapters.flatMap((ch) => ch.kps)
   const minutes = points.reduce((n, kp) => n + (kp.estMinutes ?? 0), 0)
@@ -91,6 +97,7 @@ function OutlineCard({ view, isStreaming = false }) {
   const status = isStreaming ? t('正在生成') : view.status === 'planning' ? t('待确认') : view.status === 'done' ? t('已完成') : t('进行中')
   return h('section', { className: 'la-card la-outline', 'aria-busy': isStreaming, 'aria-label': t('学习路线') },
     h(CardHeader, { icon: 'route', label: t('学习路线'), title: view.goal, status, isStreaming }),
+    !isStreaming && view.status === 'planning' ? h(OutlineEditor, { view, sessionId, onSaved: setEdited }) : null,
     h('div', { className: 'la-route-meta' },
       h('span', null, h('strong', null, view.chapters.length), t('章节')),
       h('span', null, h('strong', null, points.length), t('知识点')),
@@ -139,6 +146,7 @@ function ModelSection({ model }) {
       model.type !== 'discriminative' ? h(react.Fragment, null, h(Icon, { name: 'arrow', className: 'la-map-arrow' }), h('div', { className: 'la-map-node' }, h('small', null, '会得到什么结果'), h('strong', null, model.output))) : null),
     h('blockquote', { className: 'la-statement', 'data-empty': !model.statement }, h('small', null, t('你的解释')),
       model.statement ?? `等你用自己的话补上${model.type === 'discriminative' ? '这个概念的内涵' : '这条规律'}。`),
+    model.annotation ? h('p', { className: 'la-annotation' }, model.annotation) : null,
     examples.length ? h(react.Fragment, null,
       h('div', { className: 'la-example-head' }, h('strong', null, '用例子检验规律'),
         h('div', { className: 'la-filters', role: 'group', 'aria-label': t('筛选例子') }, [['all', t('全部')], ['pos', t('正例')], ['neg', t('反例')]].map(([key, label]) => h('button', {
@@ -156,12 +164,16 @@ function ModelSection({ model }) {
         h(Sources, { sources: v.sources, label: t('判题依据') }))))) : null)
 }
 
-function TargetMapCard({ view }) {
+function TargetMapCard({ view: initialView, useSession }) {
   useUiLocale()
+  const sessionId = useSession?.((s) => s.sessionId)
+  const [saved, setSaved] = react.useState(null)
+  const view = saved ?? initialView
   const kp = view.kp
   return h('section', { className: 'la-card la-target', 'aria-label': t('知识靶图') },
     h(CardHeader, { icon: 'target', label: t('知识靶图'), title: kp.title, subtitle: '把你理解的规律，连接到具体的例子。', status: PHASE_LABEL[kp.phase] ?? kp.phase }),
     h(Sources, { sources: view.sources, label: t('参考资料') }),
+    kp.kind !== 'information' && view.models.length ? h(TargetEditor, { view, sessionId, onSaved: setSaved }) : null,
     kp.kind === 'information'
       ? h('p', { className: 'la-empty' }, '信息类知识点：用记忆卡和间隔复习来记住。')
       : view.models.length
@@ -313,7 +325,7 @@ function FeedbackCard({ view }) {
     h(Sources, { sources: view.sources, label: t('判题依据') }))
 }
 
-const CARDS = { outline: OutlineCard, 'target-map': TargetMapCard, progress: ProgressCard, quiz: QuizCard, flashcard: FlashcardCard, feedback: FeedbackCard }
+const CARDS = { 'concept-compare': ConceptCompareCard, outline: OutlineCard, 'target-map': TargetMapCard, progress: ProgressCard, quiz: QuizCard, flashcard: FlashcardCard, feedback: FeedbackCard }
 
 function makeRow(toolName) {
   return function LearnRow({ block }) {
@@ -327,6 +339,7 @@ function makeRow(toolName) {
 }
 
 function viewTitle(view) {
+  if (view.view === 'concept-compare') return view.title
   if (view.view === 'outline') return view.goal
   if (view.view === 'target-map') return view.kp.title
   if (view.view === 'quiz') return t('在学习侧栏作答')

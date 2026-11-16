@@ -1,7 +1,7 @@
 // Due reviews, progress cards, and the Web composer's learning statistics.
 import * as store from '../store.js'
 import { meetsGate } from '../mastery.js'
-import { due, emptyReviews, activeReviews } from '../review.js'
+import { due, emptyReviews, activeReviews, forgottenExamples, examplePracticeText } from '../review.js'
 import { progressView } from '../render.js'
 import { listMistakes } from '../retry.js'
 import { str, ATTRIBUTION_LABEL, loadVerifications, learningKps, describeModel } from './shared.js'
@@ -61,6 +61,7 @@ export const reviewDue = {
     // The tutor has no clock of its own: give it the time of each item's last answer so it
     // does not guess (「昨天那道」 for a question asked minutes ago).
     const lines = [`现在 ${localMinute(now)}。到期复习 ${items.length} 项：`]
+    const records = await loadVerifications(env.cwd)
     for (const item of items) {
       const kp = await store.readJson(store.paths(env.cwd).kp(item.kpId), null)
       if (!kp) continue
@@ -70,6 +71,14 @@ export const reviewDue = {
       lines.push(model
         ? `- ${kp.title} / ${model.id} ${describeModel(model)}${when}：请 examiner 出一道新情况题`
         : `- ${kp.title}（信息）${when}：用记忆卡提问`)
+      if (model) {
+        const history = records.filter((record) => record.kpId === kp.id && record.modelId === model.id)
+        const latest = history.at(-1)
+        if (latest?.verdict === 'wrong') {
+          const examples = forgottenExamples(model, history, latest.id)
+          if (examples.length) lines.push(examplePracticeText(examples))
+        }
+      }
     }
     return lines.join('\n')
   },

@@ -6,6 +6,7 @@
  * follows the same examine flow as a typed answer. Clients without the card see the
  * plain question that rides along as the fallback.
  */
+import { validateDemo } from '../quiz/demo.js'
 import { randomBytes } from 'node:crypto'
 import { quizLibrary } from '../quiz/library.js'
 import { checkQuiz } from '../quiz/program.js'
@@ -67,7 +68,7 @@ export const quizShowTool = {
     ui: { type: 'string', required: true, description: '以 root = Quiz(...) 开头；正式验证原样传考官【互动】，理解练习可编排已核对案例。题干按背景、已知条件分短段，条件用换行 - 列表；支持少量 **重点** 和 `术语`，所有候选格式一致，不暗示答案' },
     question: { type: 'string', required: true, description: '完整文字题面：正式验证沿用考官【题目】，理解练习写全案例、条件和问题' },
     purpose: { type: 'string', enum: ['practice', 'verify'], description: 'practice：讲解、诊断或归纳阶段的案例理解练习，提交后反馈和追问，不记掌握度；verify：正式验证（默认），按 examine 判题记录' },
-    helpDemo: { type: 'string', enum: ['execution-waiting'], description: '仅当本题需要分清执行和等待时选 execution-waiting，在“没看懂”里挂载可操作补给。演示预设等待区有空位，不模拟扩容、拒绝或直接交接。其他题省略' },
+    helpDemo: { type: 'json', description: '可选的独立理解补给，不含原题答案。配置 {kind:"state-machine", title, scope, initial:状态id, inputs:[{id,label,type:"number",min,max,step,initial}或{id,label,type:"toggle",initial:布尔}], states:[{id,label,output}], transitions:[{from,to,label,when:[{input:输入id,op:"eq|ne|lt|lte|gt|gte",value:数字或布尔}]}]}。每步仅执行唯一满足全部条件的转移；多个匹配不推进。不支持脚本。兼容旧 execution-waiting 字符串。' },
     retryOf: { type: 'string', description: '错题重赛时传原 verification_record 的 id；只可重赛当前课程的 wrong/partial 记录' },
     sources: { type: 'array', items: { type: 'string' }, description: '只传实际来源字段中的教材块 id（materialId#n）或已核对的 URL；无来源时省略，例子 id 不能当教材块 id，不含标准答案或原文' },
   },
@@ -84,13 +85,13 @@ export const quizShowTool = {
     if (retry && sameQuestion(question, retry.question)) throw new Error('A retry must use a new situation or question, rather than repeat the original question')
     const sources = await validateSources(cwd, args.sources)
     const id = `q-${Date.now().toString(36)}${randomBytes(3).toString('hex')}`
-    if (args.helpDemo !== undefined && args.helpDemo !== 'execution-waiting') throw new Error('Unknown helpDemo')
+    const helpDemo = validateDemo(args.helpDemo)
     const followup = purpose === 'practice'
       ? '本题是理解练习：收到作答后围绕观察依据反馈或追问，继续原来的讲解或归纳；不调用 verification_record，不自动转入正式验证。'
       : '收到作答后按 examine 直接调用 verification_record，由宿主核验并独立判题记录，无需另调 examiner 判题。'
     return `已向学习者展示互动题 ${id}。学习者在卡片里作答后，会发来以「${ANSWER_PREFIX}」开头的消息；现在结束本轮，不要再重复题目。${followup}
 卡片上还有控制按钮：「${HINT_PREFIX}」要一级提示（题还开着），「${HELP_PREFIX}」请求补必要概念或起步例子（按 diagnose 的“先补地基”，保留原题，不判题、不重出题），「${PACE_PREFIX}」嫌太简单或太难、要换一道，「${BREAK_PREFIX}」想停下来。
 
-${marker({ view: 'quiz', id, ui, question, sources, ...(purpose === 'practice' ? { purpose } : {}), ...(args.helpDemo ? { helpDemo: args.helpDemo } : {}), ...(retry ? { retry: { id: retry.id, question: retry.question, answer: retry.answer, kpId: retry.kpId, modelId: retry.modelId, factId: retry.factId } } : {}) })}`
+${marker({ view: 'quiz', id, ui, question, sources, ...(purpose === 'practice' ? { purpose } : {}), ...(helpDemo ? { helpDemo } : {}), ...(retry ? { retry: { id: retry.id, question: retry.question, answer: retry.answer, kpId: retry.kpId, modelId: retry.modelId, factId: retry.factId } } : {}) })}`
   },
 }

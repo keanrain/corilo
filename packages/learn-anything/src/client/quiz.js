@@ -5,6 +5,7 @@ import { t, useUiLocale } from './locale.js'
 // messages live here; rendering, completeness and read-only state live in Exercise.
 import * as react from 'react'
 import { Exercise, QUIZ_CSS } from './exercise.js'
+import { validateDemo } from '../quiz/demo.js'
 import { TASK_DEMO_SCENE } from './task-demo.js'
 import { formatQuizAnswer, parseQuizAction, quizAnswerDisplay, quizHistory, HELP_PREFIX, PRACTICE_MARKER } from '../quiz/answer.js'
 
@@ -45,6 +46,8 @@ function loadSubmitted(id) {
  */
 export function QuizCard({ view, useInput, useConversation, inputActions, isStreaming = false }) {
   useUiLocale()
+  let helpDemo = null
+  try { helpDemo = view.helpDemo === 'execution-waiting' ? TASK_DEMO_SCENE : validateDemo(view.helpDemo) ?? null } catch {}
   const submitted = react.useMemo(() => loadSubmitted(view.id), [view.id])
   const saved = react.useMemo(() => loadMeta(view.id), [view.id])
   const [answers, setAnswers] = react.useState(() => submitted ?? saved.answers ?? {})
@@ -103,9 +106,9 @@ export function QuizCard({ view, useInput, useConversation, inputActions, isStre
     }
     if (event.type === 'help') {
       const reason = { term: '这个词不懂', approach: '不知道从哪开始', demo: '动手演示' }[event.kind]
-      if (event.kind === 'demo' && view.helpDemo !== 'execution-waiting') return
+      if (event.kind === 'demo' && !helpDemo) return
       const request = event.kind === 'demo'
-        ? '我先在卡片里操作“执行与等待”的小例子，请等我回到原题继续，保留已有作答。'
+        ? '我先在卡片里操作这个小例子，请等我回到原题继续，保留已有作答。'
         : '请先补一小块必要概念或一个更简单的例子，保留原题和作答，补完我再继续。'
       if (reason) send(`${HELP_PREFIX}${reason}：${event.title}。${request}（互动题 ${view.id}）`, 'help')
       return
@@ -148,6 +151,6 @@ export function QuizCard({ view, useInput, useConversation, inputActions, isStre
     },
     onAction,
     isStreaming,
-    helpDemo: view.helpDemo === 'execution-waiting' ? TASK_DEMO_SCENE : null,
+    helpDemo,
   })
 }

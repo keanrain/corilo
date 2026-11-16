@@ -72,3 +72,56 @@ test('a repeated practice question cannot become independent mastery even if the
   assert.equal(result.novel, false)
   assert.equal(modelMastery({ targetMap: { examples: [] } }, [result]), 'none')
 })
+
+test('examiner context excludes other knowledge points while global exact-repeat detection remains', async () => {
+  const call = (kpId) => ({ type: 'tool/call', data: { name: 'kp_get', arguments: JSON.stringify({ kpId }) } })
+  const assistant = (text) => ({ type: 'assistant/message', data: { content: [{ type: 'text', text }] } })
+  const events = [call('other'), assistant('UNRELATED-TEACHING'), shown('practice'), call('cause'), assistant('CURRENT-TEACHING'), shown(), user(answer)]
+  const result = await assessAnswer(session(events), { question }, {
+    target: { kpId: 'cause' }, reference: '规律', examples: [], records: [
+      { kpId: 'other', question: 'UNRELATED-RECORD' }, { kpId: 'cause', question: 'CURRENT-RECORD' },
+    ],
+  }, async ({ prompt }) => {
+    const data = JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n') + 2))
+    assert.deepEqual(data.priorTeaching, ['CURRENT-TEACHING'])
+    assert.deepEqual(data.priorQuestions, ['CURRENT-RECORD'])
+    assert.deepEqual(data.sessionQuestions, [])
+    assert.ok(!prompt.includes('UNRELATED-TEACHING'))
+    assert.ok(!prompt.includes('UNRELATED-RECORD'))
+    return JSON.stringify({ ...grade, novel: true })
+  })
+  assert.equal(result.novel, false)
+})
+
+test('oversized relevant teaching is bounded and cannot establish independent novelty', async () => {
+  const text = 'a'.repeat(100000)
+  const events = [{ type: 'assistant/message', data: { content: [{ type: 'text', text }] } }, shown(), user(answer)]
+  const result = await assessAnswer(session(events), { question }, { target: {}, records: [], examples: [] }, async ({ prompt }) => {
+    assert.ok(prompt.length < 30000)
+    assert.equal(JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n') + 2)).historyComplete, false)
+    return JSON.stringify({ ...grade, novel: true })
+  })
+  assert.equal(result.novel, false)
+})
+
+test('an exact question from another knowledge point or session still blocks novelty', async () => {
+  const result = await assessAnswer(session([shown(), user(answer)]), { question }, {
+    target: { kpId: 'cause' }, records: [{ kpId: 'other', question, evidence: { sessionId: 'old', messageSeq: 1 } }], examples: [],
+  }, async () => JSON.stringify({ ...grade, novel: true }))
+  assert.equal(result.novel, false)
+})
+
+test('long unrelated knowledge-point histories do not exhaust the current-point budget', async () => {
+  const events = [{ type: 'tool/call', data: { name: 'kp_get', arguments: JSON.stringify({ kpId: 'other' }) } }]
+  for (let i = 0; i < 100; i++) {
+    events.push({ type: 'assistant/message', data: { content: [{ type: 'text', text: '无关内容'.repeat(500) }] } })
+    events.push({ type: 'tool/result', data: { message: { content: [{ type: 'text', text: marker({ view: 'quiz', question: `其他知识点的第${i}题`, ui: '无关题卡'.repeat(500) }) }] } } })
+  }
+  events.push({ type: 'tool/call', data: { name: 'kp_get', arguments: JSON.stringify({ kpId: 'cause' }) } }, shown(), user(answer))
+  const result = await assessAnswer(session(events), { question }, { target: { kpId: 'cause' }, records: [], examples: [] }, async ({ prompt }) => {
+    assert.ok(prompt.length < 5000)
+    assert.equal(JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n') + 2)).historyComplete, true)
+    return JSON.stringify({ ...grade, novel: true })
+  })
+  assert.equal(result.novel, true)
+})

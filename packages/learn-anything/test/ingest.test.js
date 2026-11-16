@@ -70,7 +70,7 @@ test('ingest txt/markdown by headings, read and search blocks', async () => {
   } finally { await cleanup() }
 })
 
-test('search admits partial and title-only matches, ranking coverage before title and frequency', async () => {
+test('BM25 search admits partial/title matches and normalizes document length', async () => {
   const { env, cleanup } = await workspace()
   try {
     await writeFile(join(env.cwd, 'search.md'), [
@@ -86,7 +86,9 @@ test('search admits partial and title-only matches, ranking coverage before titl
     const search = (query, limit) => materialSearch.execute({ query, materialId: id, limit }, env)
     const out = await search('ALPHA beta alpha')
     const refs = [...out.matchAll(/#(\d+) /g)].map((match) => Number(match[1]))
-    assert.deepEqual(refs, [2, 1, 4, 3, 5, 6])
+    assert.equal(refs[0], 2, 'short block matching both terms leads')
+    assert.deepEqual([...refs].sort((a, b) => a - b), [1, 2, 3, 4, 5, 6])
+    assert.ok(refs.indexOf(5) < refs.indexOf(6), 'repeated occurrences improve otherwise comparable blocks')
     assert.equal(out, await search('alpha beta'), 'repeated query words do not increase coverage')
     assert.equal((await search('alpha beta', 2)).split('\n').length, 2)
     const partial = await search('missing beta')

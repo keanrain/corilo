@@ -45,7 +45,7 @@ export const Config = z.object({
 const USER_TEXTS = 'learn-anything/user-texts'
 /** Client-visible: the latest learnStats() carried in a learn-anything tool result's meta (the composer chip). */
 const STATS = 'learn-anything/stats'
-const CARD_TOOLS = new Set(['course_get', 'course_save', 'kp_get', 'target_map_update', 'progress_get', 'verification_record'])
+const CARD_TOOLS = new Set(['course_get', 'course_save', 'kp_get', 'target_map_update', 'progress_get', 'verification_record', 'diagnosis_record'])
 const MAX_TEXTS = 400
 const SECTION_ORDER = 9500
 

@@ -7,19 +7,21 @@ import * as React from 'react'
 
 const result = buildSync({ entryPoints: ['src/client/task-demo.js'], bundle: true, write: false, metafile: true, platform: 'node', format: 'cjs', external: ['react'] })
 const require = createRequire(import.meta.url)
-function demo() {
+function demo(config, generic = false) {
   let cursor = 0, disabled = false
   const states = [], events = []
   const runtime = { ...React, useState(initial) {
     const index = cursor++
-    if (!(index in states)) states[index] = initial
+    if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial
     return [states[index], (next) => { states[index] = typeof next === 'function' ? next(states[index]) : next }]
   } }
   const module = { exports: {} }
   runInNewContext(result.outputFiles[0].text, { module, exports: module.exports, require: (name) => name === 'react' ? runtime : require(name) })
   return { events, set disabled(value) { disabled = value }, render() {
     cursor = 0
-    return module.exports.TaskDemo({ config: { title: '只看任务的位置' }, disabled, onAction: (event) => events.push(JSON.parse(JSON.stringify(event))) })
+    let tree = module.exports[generic ? 'StateMachineDemo' : 'TaskDemo']({ config: config ?? { title: '只看任务的位置' }, disabled, onAction: (event) => events.push(JSON.parse(JSON.stringify(event))) })
+    while (typeof tree?.type === 'function') tree = tree.type(tree.props)
+    return tree
   } }
 }
 function elements(tree) {
@@ -30,7 +32,7 @@ const button = (tree, name) => elements(tree).find((node) => node.type === 'butt
 const received = (tree, name) => button(tree, name).props['data-received']
 
 test('the demo stays independent and contrasts executing with waiting without duplicate tasks', () => {
-  assert.deepEqual(Object.keys(result.metafile.inputs), ['src/client/task-demo.js'])
+  assert.deepEqual(Object.keys(result.metafile.inputs).sort(), ['src/client/task-demo.js', 'src/quiz/demo.js', 'src/client/locale.js', 'src/client/ui-en.json'].sort())
   const app = demo()
   button(app.render(), '放入一个任务').props.onClick()
   assert.equal(received(app.render(), '执行区'), true)
@@ -65,4 +67,30 @@ test('disabled demos prevent actual edits, while return remains available', () =
   assert.equal(received(app.render(), '执行区'), false)
   button(app.render(), '回到题目').props.onClick()
   assert.deepEqual(app.events, [{ type: 'return' }])
+})
+
+const machine = {
+  kind: 'state-machine', title: '温控观察', scope: '只观察阈值', initial: 'off',
+  inputs: [{ id: 'temperature', label: '温度', type: 'number', min: 0, max: 40, initial: 22 }],
+  states: [{ id: 'off', label: '关闭', output: '不加热' }, { id: 'on', label: '开启', output: '加热中' }],
+  transitions: [{ from: 'off', to: 'on', label: '低于20度', when: [{ input: 'temperature', op: 'lt', value: 20 }] }],
+}
+test('generic controls drive the graph and output, reset, and respect disabled state', () => {
+  const app = demo(machine, true)
+  const slider = () => elements(app.render()).find((node) => node.type === 'input')
+  slider().props.onChange({ target: { value: '19' } })
+  button(app.render(), '推进一步').props.onClick()
+  assert.equal(elements(app.render()).find((node) => node.props.role === 'status').props.children[0], '开启：加热中')
+  assert.equal(elements(app.render()).find((node) => node.props['aria-current'] === 'step').props.children[0].props.children, '开启')
+  button(app.render(), '重新试一次').props.onClick()
+  assert.equal(slider().props.value, 22)
+  const count = app.events.length
+  app.disabled = true
+  slider().props.onChange({ target: { value: '19' } })
+  button(app.render(), '推进一步').props.onClick()
+  button(app.render(), '重新试一次').props.onClick()
+  assert.equal(app.events.length, count)
+  assert.equal(slider().props.disabled, true)
+  button(app.render(), '回到题目').props.onClick()
+  assert.deepEqual(app.events.at(-1), { type: 'return' })
 })

@@ -1,5 +1,9 @@
 // Course planning, session orientation, and explicit route skipping.
 import * as store from '../store.js'
+import { createHash } from 'node:crypto'
+import { lstat, readdir } from 'node:fs/promises'
+import { join } from 'node:path'
+import { parseView } from '../render.js'
 import { PHASE_GUIDE } from '../phases.js'
 import { verified, LEVEL_LABEL } from '../mastery.js'
 import { flowState, DIFFICULTY } from '../flow.js'
@@ -199,4 +203,81 @@ export const kpSkip = {
     await saveKp(env, kp)
     return `${kp.title}：${args.skipped ? '已跳过（不代表掌握）' : '已恢复学习'}。`
   },
+}
+
+// Authenticated UI routes call these inside the same workspace write queue as tools.
+// The revision covers knowledge records too: a stale card must not overwrite progress.
+const outlineError = (message, status = 400) => Object.assign(new Error(message), { status })
+async function checkOutlinePaths(cwd, ids = []) {
+  const p = store.paths(cwd)
+  for (const path of [p.root, p.kpDir]) {
+    const stat = await lstat(path)
+    if (!stat.isDirectory() || stat.isSymbolicLink()) throw outlineError('Linked learning data cannot be edited')
+  }
+  const files = [p.course, ...(await readdir(p.kpDir)).filter((name) => name.endsWith('.json')).map((name) => join(p.kpDir, name))]
+  for (const id of ids) files.push(p.kp(id))
+  for (const path of new Set(files)) {
+    try {
+      const stat = await lstat(path)
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) throw outlineError('Linked learning data cannot be edited')
+    } catch (e) { if (e.code !== 'ENOENT' || path === p.course) throw e }
+  }
+}
+export async function readOutline(cwd) {
+  await checkOutlinePaths(cwd)
+  const course = await store.requireCourse(cwd)
+  const kps = (await store.listKps(cwd)).sort((a, b) => a.id.localeCompare(b.id))
+  const revision = createHash('sha256').update(JSON.stringify({ course, kps })).digest('hex')
+  const view = parseView(outlineView(course, kps))
+  const byId = new Map(kps.map((kp) => [kp.id, kp]))
+  for (const ch of view.chapters) for (const kp of ch.kps) {
+    const source = byId.get(kp.id)
+    kp.sources = source.sources ?? []
+    kp.skipped = Boolean(source.skipped)
+  }
+  return { view, revision }
+}
+
+export async function saveOutline(cwd, args, now = () => new Date()) {
+  const current = await readOutline(cwd)
+  if (current.view.status !== 'planning') throw outlineError('Only a planning outline can be edited; this route is already locked.')
+  if (typeof args.expected !== 'string' || args.expected !== current.revision) throw outlineError('Outline changed. Reload the route before saving; your draft is preserved.', 409)
+  if (!['planning', 'active'].includes(args.status)) throw outlineError('Invalid outline status')
+  if (!Array.isArray(args.chapters) || !args.chapters.length || args.chapters.length > 100) throw outlineError('Provide 1–100 chapters')
+  const text = (value, label, max = 300) => {
+    if (typeof value !== 'string' || !value.trim() || value.length > max) throw outlineError(`Invalid ${label}`)
+    return value.trim()
+  }
+  const list = (value, label) => {
+    if (!Array.isArray(value) || value.length > 100 || value.some((s) => typeof s !== 'string' || s.length > 2000)) throw outlineError(`Invalid ${label}`)
+    return value
+  }
+  let count = 0
+  const chapters = args.chapters.map((ch) => {
+    if (!Array.isArray(ch.kps) || !ch.kps.length) throw outlineError('Each chapter needs at least one knowledge point')
+    return { title: text(ch.title, 'chapter title'), kps: ch.kps.map((kp) => {
+      if (++count > 500) throw outlineError('Too many knowledge points')
+      try { store.safeId(kp.id) } catch (error) { error.status = 400; throw error }
+      if (!['knowledge', 'information'].includes(kp.kind)) throw outlineError('Invalid knowledge point kind')
+      if (kp.skipped !== undefined && typeof kp.skipped !== 'boolean') throw outlineError('Invalid skipped flag')
+      if (kp.estMinutes !== undefined && (!Number.isInteger(kp.estMinutes) || kp.estMinutes < 1 || kp.estMinutes > 10000)) throw outlineError('Invalid estimated minutes')
+      return { id: kp.id, title: text(kp.title, 'knowledge point title'), kind: kp.kind,
+        prerequisites: list(kp.prerequisites ?? [], 'prerequisites'), sources: list(kp.sources ?? [], 'sources'),
+        ...(kp.estMinutes === undefined ? {} : { estMinutes: kp.estMinutes }) }
+    }) }
+  })
+  await checkOutlinePaths(cwd, chapters.flatMap((ch) => ch.kps).map((kp) => kp.id))
+  const skipped = new Map(args.chapters.flatMap((ch) => ch.kps).map((kp) => [kp.id, Boolean(kp.skipped)]))
+  if (args.status === 'active' && [...skipped.values()].every(Boolean)) throw outlineError('Keep at least one knowledge point in the route')
+  const course = await store.requireCourse(cwd)
+  try { await courseSave.execute({ goal: course.goal, status: args.status, chapters, learner: course.learner, resources: course.resources }, { cwd, now }) } catch (error) {
+    if (/duplicate knowledge|unknown prerequisites|cyclic prerequisites|already has learning content|invalid id|source/i.test(error.message)) error.status = 400
+    throw error
+  }
+  for (const [id, skip] of skipped) {
+    const kp = await store.requireKp(cwd, id)
+    kp.skipped = skip
+    await store.writeJson(store.paths(cwd).kp(id), kp)
+  }
+  return readOutline(cwd)
 }
