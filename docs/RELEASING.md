@@ -42,3 +42,11 @@ npm run prepare:release -- learn-anything --output /absolute/new-release-directo
 导师发版还需同步 `market/index.json` 的版本、兼容信息与发布时间；索引指向 npm 时必须先有相应已发布包。当前本地 tgz 可直接安装到已有 DSH，不能将索引存在描述为市场可安装。若以后决定公开 npm 发布，再单独确定发布权限和渠道；本流程不执行该操作。
 
 具体安装和数据边界见 [notes](../plugins/notes/README.md)、[todos](../plugins/todos/README.md)与[导师](../packages/learn-anything/README.md)。当前 CI 检查及运行限制见 [开发指南](DEVELOPMENT.md)。
+
+## GitHub Releases
+
+在获得发布授权后，将 `packages-YYYYMMDD`（同日另一次发布可加 `.1` 等后缀）标签指向已经合入 main 的提交并推送，可触发 `Publish package prerelease`。普通分支推送和 PR 不发布。
+
+流程按三个独立锁安装依赖，重新构建、测试和验证所有包；notes 必须通过真实 restic 恢复测试。所有产品成功后才汇总附件，创建草稿 Release，上传三个 `.tgz`、各包变更记录、安装说明、SHA256 校验和与源码提交清单。下载回读并核对全部附件后才公开为预发布，不设为 latest，不执行 npm 发布或用户实例迁移。
+
+发布作业单独持有 `contents: write`，构建作业只读。已存在的同名 Release 不覆盖；失败留下草稿时先检查原因，不自动删除或替换旧附件。准备元数据中的 `published: false` 表示准备步骤未执行发布；公开附件清单另记渠道为 `github-prerelease`、`npmPublished: false`。
