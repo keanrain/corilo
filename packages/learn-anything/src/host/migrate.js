@@ -218,6 +218,10 @@ export async function exportStore(cwd, output) {
   if (snapshotDigest(verify.snapshot) !== snapshotDigest(snapshot)) fail('Export roundtrip verification failed; partial output retained for inspection')
   const result = { format: FORMAT, action: 'export', revision, digest: snapshotDigest(snapshot), counts: counts(snapshot), materialsIncluded: false }
   await writeExclusive(join(destination, 'learner-export.json'), JSON.stringify(result, null, 2) + '\n')
+  // File fsync does not persist newly created directory entries. Sync children
+  // before their parents, including the export directory's own parent, before
+  // acknowledging success. Failures leave the output intact for inspection.
+  for (const path of [join(destination, '.learn', 'kp'), join(destination, '.learn'), destination, resolve(destination, '..')]) await syncDirectory(path)
   return { ...result, output: destination }
 }
 

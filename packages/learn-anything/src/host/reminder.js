@@ -19,22 +19,27 @@ export function dailyAt(time, timeZone) {
   return { time: time.length === 5 ? `${time}:00` : time, time_zone: timeZone }
 }
 
+// Agent presets construct their own reminder helpers, so the native-service
+// queue must be shared by every helper in this host. Workspace identity, rather
+// than a scoped schedule wrapper's object identity, owns the persisted binding.
+// This serializes one process only; it is not a distributed service transaction.
+const pending = new Map()
+function queue(cwd, operation) {
+  const key = resolve(cwd)
+  const result = (pending.get(key) ?? Promise.resolve()).then(operation)
+  const tail = result.then(() => {}, () => {})
+  pending.set(key, tail)
+  void tail.then(() => { if (pending.get(key) === tail) pending.delete(key) })
+  return result
+}
+
 /**
  * @param schedule - the dsh-schedule service (`create`, `catalog`, `edit`)
  * @param defaults - `{ time, timeZone }` for a reminder created implicitly
  */
 export function createReminders(schedule, defaults) {
-  // This queue guards native service side effects, outside learner transaction
-  // contexts. Timers created by the host must not inherit a completed snapshot.
-  const pending = new Map()
-  const queue = (cwd, operation) => {
-    const key = resolve(cwd)
-    const result = (pending.get(key) ?? Promise.resolve()).then(operation)
-    const tail = result.then(() => {}, () => {})
-    pending.set(key, tail)
-    void tail.then(() => { if (pending.get(key) === tail) pending.delete(key) })
-    return result
-  }
+  // Keep native service calls outside learner transactions: host timers must
+  // not inherit a completed learner snapshot's async context.
   return {
     /**
      * Create the workspace's first reminder automatically. An explicit time sets or
