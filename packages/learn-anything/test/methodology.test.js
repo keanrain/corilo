@@ -61,12 +61,14 @@ test('forgotten examples retain evidence and expose only checked previously-corr
     { id: 'unchecked', tag: 'v', verificationId: 'good' },
     { id: 'current', tag: 'v', checked: true, verificationId: 'current' },
     { id: 'other', tag: 'v', checked: true, verificationId: 'other' },
+    { id: 'untrusted', tag: 'v', checked: true, verificationId: 'untrusted' },
   ] } }
   const before = JSON.stringify(model)
   const examples = forgottenExamples(model, [
     { id: 'good', modelId: 'a', verdict: 'correct', evidence: evidence() },
     { id: 'wrong', modelId: 'a', verdict: 'wrong', evidence: evidence() },
     { id: 'current', modelId: 'a', verdict: 'correct', evidence: evidence() },
+    { id: 'untrusted', modelId: 'a', verdict: 'correct', evidence: {} },
     { id: 'other', modelId: 'b', verdict: 'correct', evidence: evidence() },
   ], 'current')
   assert.deepEqual(examples.map((e) => e.id), ['ok'])

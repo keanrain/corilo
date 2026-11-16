@@ -27,15 +27,19 @@ const models = {
 }
 const model = models[new URLSearchParams(location.search).get('model')] ?? TASK_DEMO_SCENE
 function App() {
+  const [activeModel, setActiveModel] = React.useState(model)
   const [disabled, setDisabled] = React.useState(false)
   const [events, setEvents] = React.useState([])
   return h('main', null,
     h('h1', null, '先把执行和等待分清'),
     h('p', { className: 'demo-lead' }, '切换状态，放入任务，再点区域看看。这里是操作练习，不判分。'),
     h('div', { className: 'demo-toolbar' },
+      h('button', { type: 'button', onClick: () => setActiveModel(models.gate) }, '换为逻辑演示'),
+      h('button', { type: 'button', onClick: () => setActiveModel({ kind: 'state-machine' }) }, '无效配置'),
+      h('button', { type: 'button', onClick: () => setActiveModel(models.thermostat) }, '换为温控演示'),
       h('button', { type: 'button', 'aria-pressed': disabled, onClick: () => setDisabled((value) => !value) }, disabled ? '只读：开' : '只读：关'),
       h('a', { className: 'demo-back', href: '/playground' }, '回到题卡演示')),
-    h('div', { className: 'demo-card' }, h(TaskDemo, { config: model, disabled, onAction: (event) => setEvents((previous) => [event, ...previous].slice(0, 8)) })),
+    h('div', { className: 'demo-card' }, h(TaskDemo, { config: activeModel, disabled, onAction: (event) => setEvents((previous) => [event, ...previous].slice(0, 8)) })),
     h('p', { role: 'status' }, events[0]?.type === 'return' ? '已记录返回操作。独立页没有原题，可用上方链接回到题卡演示。' : ''),
     h('details', null, h('summary', null, '查看操作事件'), h('pre', { className: 'demo-log', 'aria-label': '操作事件' }, JSON.stringify(events, null, 2))))
 }

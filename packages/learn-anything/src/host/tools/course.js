@@ -214,7 +214,7 @@ async function checkOutlinePaths(cwd, ids = []) {
     const stat = await lstat(path)
     if (!stat.isDirectory() || stat.isSymbolicLink()) throw outlineError('Linked learning data cannot be edited')
   }
-  const files = [p.course, ...(await readdir(p.kpDir)).filter((name) => name.endsWith('.json')).map((name) => join(p.kpDir, name))]
+  const files = [p.course, p.verifications, ...(await readdir(p.kpDir)).filter((name) => name.endsWith('.json')).map((name) => join(p.kpDir, name))]
   for (const id of ids) files.push(p.kp(id))
   for (const path of new Set(files)) {
     try {
@@ -270,6 +270,9 @@ export async function saveOutline(cwd, args, now = () => new Date()) {
   const skipped = new Map(args.chapters.flatMap((ch) => ch.kps).map((kp) => [kp.id, Boolean(kp.skipped)]))
   if (args.status === 'active' && [...skipped.values()].every(Boolean)) throw outlineError('Keep at least one knowledge point in the route')
   const course = await store.requireCourse(cwd)
+  // courseSave renders progress from this log after writing. Validate it first
+  // so malformed evidence cannot turn an accepted edit into a failed receipt.
+  await store.readJsonl(store.paths(cwd).verifications)
   try { await courseSave.execute({ goal: course.goal, status: args.status, chapters, learner: course.learner, resources: course.resources }, { cwd, now }) } catch (error) {
     if (/duplicate knowledge|unknown prerequisites|cyclic prerequisites|already has learning content|invalid id|source/i.test(error.message)) error.status = 400
     throw error

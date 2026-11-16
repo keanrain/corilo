@@ -45,9 +45,27 @@ with tempfile.TemporaryFile(mode='w+') as log:
             page.get_by_role('button',name='Confirm and lock',exact=True).click()
             expect(page.get_by_role('button',name='Edit route',exact=True)).to_have_count(0)
             assert page.evaluate('calls.at(-1).data.status')=='active'
+            page.evaluate('window.replanOutline()')
+            expect(page.get_by_role('button', name='Edit route', exact=True)).to_be_visible()
+            page.get_by_role('button', name='Edit route', exact=True).click()
+            page.get_by_label('Chapter', exact=True).fill('Draft only for prior session')
+            page.evaluate("window.renderOutline('another-session')")
+            expect(page.get_by_role('button', name='Edit route', exact=True)).to_be_visible()
+            expect(page.get_by_label('Chapter', exact=True)).to_have_count(0)
+            page.get_by_role('button', name='Edit route', exact=True).click()
+            expect(page.get_by_label('Chapter', exact=True)).not_to_have_value('Draft only for prior session')
+            before = page.evaluate('window.outlineReceipts.length')
+            page.evaluate('window.holdSave=true')
+            page.get_by_role('button', name='Save draft', exact=True).click()
+            page.wait_for_function('typeof window.releaseSave === "function"')
+            page.evaluate("window.renderOutline('third-session')")
+            expect(page.get_by_role('button', name='Edit route', exact=True)).to_be_visible()
+            page.evaluate('window.releaseSave()')
+            page.wait_for_timeout(50)
+            assert page.evaluate('window.outlineReceipts.length') == before
             assert not errors,errors
             browser.close()
-        print('Outline browser regression passed (simulated host transport).')
+        print('Outline browser regression with replan and cross-session isolation passed (simulated host transport).')
     finally:
         process.terminate()
         process.wait(timeout=5)

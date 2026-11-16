@@ -165,3 +165,5 @@ DSH 的历史、缓存和消息发送集中在 `src/client/quiz.js` 适配层，
 同一 Host 进程中，同一工作区的学习数据写入按队列执行。修改已经作答的模型定义时需要新 ID；信息类知识点按每张记忆卡分别检查掌握度，所有卡片达标后才算掌握整个知识点。
 
 新增浏览器回归可分别运行 `python3 test/browser/target_editor_browser.py`、`outline_browser.py`、`demo_browser.py` 和 `locale_browser.py`（后面三项同属 `test/browser/`）。原生接口验证使用 `python3 test/browser/target_api_browser.py`，需安装固定版本 DSH；可用 `LEARN_ANYTHING_DSH` 指定其 `lib/bin.js`。原生接口测试使用合成会话，不调用模型。
+
+完整流程回归：`python3 test/browser/tutor_flow_browser.py`，运行条件与原生接口测试相同。使用本地确定性模拟模型，验证真实界面、出题／判题工具、证据、默认熟练门槛和到期复习；只在临时工作区模拟复习时间流逝，不代表真实模型教学质量。

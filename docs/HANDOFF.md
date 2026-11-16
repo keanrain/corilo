@@ -1,5 +1,20 @@
 # Corilo 可里交接文档
 
+## Pre-merge review / 合并前审查（2026-11-16）
+
+Independent review repaired evidence and editing boundaries on `feat/tutor-learning-improvements`:
+
+- Examiner context keeps earlier visits to the same knowledge point. Only matched successful knowledge-tool calls establish scope; material content cannot spoof it. Formal quiz/flashcard evidence requires the matching successful producer call, not merely a marker in a material or subagent response.
+- Learner-word normalization preserves negation, conditions, variable-name case and mathematical/logical operators. Full original summaries and explicit introductory labels remain supported; arbitrary meaning-changing excerpts are rejected.
+- Personal-example edits preserve stable IDs and unchanged provenance; changed text drops stale reasoning/citations. Forged IDs cannot replace protected examples. Target/outline saves validate evidence logs before writing.
+- Editor drafts and asynchronous save results are scoped to their session and knowledge point. New tool results/replanning replace stale saved-card overlays. Concurrent same-revision writes yield one success and one conflict.
+- Configurable demonstrations reset safely when the model changes and recover from invalid configurations without hook-order errors.
+
+Executed validation: 215 tutor Node tests passed; a fresh 70-file archive passed build/test/content validation. Chromium target/outline tests cover session switching, in-flight responses and replanning; generic demo tests cover configuration replacement; locale tests passed. Native DSH Web API authentication/persistence and full tutoring-flow browser tests passed. The latter uses the shipped client, native composer/sidebar, real tutor tools and three independent mock-examiner calls: route lock → model/diagnosis → direct target-map save → three formal answers → default proficient gate → FSRS scheduling → due-review display. Only disposable fixture review timestamps were changed to simulate time passing. All tool results were checked for errors. This is real host/browser integration with a deterministic local model, not live-model teaching-quality acceptance.
+
+Real headless DSH boot/mock-provider checks, three legacy browser suites, 16 tooling tests and DSH pin checks also passed. New component/native/full-flow browser regressions are wired into tutor CI. Teaching prompts/skills and answer protocols remain unchanged; no publication, deployment, data migration or stash manipulation. Live-model quality, physical phones and target deployment remain separate verification tasks. Remote CI and PR status are reported separately from local results.
+
+
 ## Tutor learning improvements / 学习导师闭环（2026-11-16）
 
 Implementation base: main `76f5c9e`; development branch `feat/tutor-learning-improvements`. This section records execution in the current checkout, separate from historical results below.

@@ -63,6 +63,16 @@ test('authenticated route resolves only known host sessions and rejects conflict
   args.models[0].statement = 'directly typed'
   assert.equal((await send('save', args)).status, 200)
   assert.equal((await send('save', args)).status, 409)
+  const latest = (await (await send('read', { sessionId: 'known', kpId: 'kp' })).json()).value
+  const competing = ['writer one', 'writer two'].map((statement) => {
+    const models = editModels(latest.view)
+    models[0].statement = statement
+    return { sessionId: 'known', kpId: 'kp', expected: latest.revision, models }
+  })
+  const replies = await Promise.all(competing.map((payload) => send('save', payload)))
+  assert.deepEqual(replies.map((response) => response.status).sort(), [200, 409])
+  const winner = replies.findIndex((response) => response.status === 200)
+  assert.equal((await store.requireKp(cwd, 'kp')).models[0].targetMap.statement.text, competing[winner].models[0].statement)
 })
 
 test('linked evidence is rejected before exposing its contents', async (t) => {
@@ -70,4 +80,54 @@ test('linked evidence is rejected before exposing its contents', async (t) => {
   await rm(store.paths(cwd).verifications)
   await symlink(store.paths(cwd).kp('kp'), store.paths(cwd).verifications)
   await assert.rejects(readTargetMap(cwd, 'kp'), /Linked learning data/)
+})
+
+test('annotation-only saves preserve personal example IDs and provenance; changed examples lose stale support', async (t) => {
+  const cwd = await fixture(t)
+  const kp = await store.requireKp(cwd, 'kp')
+  const example = { ...kp.models[0].targetMap.examples[1], tag: 't', reasoning: 'My earlier explanation', sources: ['https://example.invalid/original'], at: 'earlier' }
+  kp.models[0].targetMap.examples[1] = example
+  await store.writeJson(store.paths(cwd).kp('kp'), kp)
+  const current = await readTargetMap(cwd, 'kp')
+  const models = editModels(current.view)
+  models[0].annotation = 'Only changing an annotation'
+  const saved = await saveTargetMap(cwd, { kpId: 'kp', expected: current.revision, models })
+  assert.deepEqual((await store.requireKp(cwd, 'kp')).models[0].targetMap.examples[1], example)
+  models[0].examples[0].input = 'a revised example'
+  const next = await saveTargetMap(cwd, { kpId: 'kp', expected: saved.revision, models })
+  const changed = (await store.requireKp(cwd, 'kp')).models[0].targetMap.examples[1]
+  assert.equal(changed.id, example.id)
+  assert.equal(changed.input, 'a revised example')
+  assert.equal(changed.checked, false)
+  assert.equal(changed.reasoning, undefined)
+  assert.equal(changed.sources, undefined)
+  assert.ok(next.revision)
+})
+
+test('personal IDs cannot target verified examples or repeat an existing example', async (t) => {
+  const cwd = await fixture(t)
+  const current = await readTargetMap(cwd, 'kp')
+  const models = editModels(current.view)
+  models[0].examples[0].id = 'v1'
+  await assert.rejects(saveTargetMap(cwd, { kpId: 'kp', expected: current.revision, models }), /Invalid personal example id/)
+  models[0].examples = [{ id: 'u1', input: 'a', output: 'b' }, { id: 'u1', input: 'c', output: 'd' }]
+  await assert.rejects(saveTargetMap(cwd, { kpId: 'kp', expected: current.revision, models }), /Invalid personal example id/)
+  assert.equal((await readTargetMap(cwd, 'kp')).revision, current.revision)
+})
+
+test('unsafe or corrupt evidence rejects saves before any note changes', async (t) => {
+  const { writeFile } = await import('node:fs/promises')
+  const cwd = await fixture(t)
+  const current = await readTargetMap(cwd, 'kp')
+  const before = await store.requireKp(cwd, 'kp')
+  const models = editModels(current.view)
+  models[0].annotation = 'must not be committed'
+  await rm(store.paths(cwd).verifications)
+  await symlink(store.paths(cwd).kp('kp'), store.paths(cwd).verifications)
+  await assert.rejects(saveTargetMap(cwd, { kpId: 'kp', expected: current.revision, models }), /Linked learning data/)
+  assert.deepEqual(await store.requireKp(cwd, 'kp'), before)
+  await rm(store.paths(cwd).verifications)
+  await writeFile(store.paths(cwd).verifications, 'invalid JSON\n')
+  await assert.rejects(saveTargetMap(cwd, { kpId: 'kp', expected: current.revision, models }))
+  assert.deepEqual(await store.requireKp(cwd, 'kp'), before)
 })

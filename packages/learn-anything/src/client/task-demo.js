@@ -83,7 +83,13 @@ function LegacyTaskDemo({ config, disabled = false, onAction }) {
 /** All controls are local observations; only the parent help request affects evidence. */
 export function StateMachineDemo({ config, disabled = false, onAction }) {
   let model
-  try { model = validateDemo(config) } catch { return h('p', { role: 'alert' }, t('演示配置无效')) }
+  try { model = validateDemo(config); if (model?.kind !== 'state-machine') throw new Error('Invalid state machine') } catch { return h('p', { role: 'alert' }, t('演示配置无效')) }
+  // A different model owns different state/input IDs. Remount only when the
+  // validated configuration changes; locale/disabled updates retain progress.
+  return h(StateMachineBody, { key: JSON.stringify(model), model, disabled, onAction })
+}
+
+function StateMachineBody({ model, disabled, onAction }) {
   const [values, setValues] = React.useState(() => demoDefaults(model))
   const [position, setPosition] = React.useState({ state: model.initial, status: 'initial' })
   const emit = (event) => onAction?.(event)

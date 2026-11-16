@@ -9,6 +9,7 @@ let revision = 'one'
 window.fetch = async (_url, options) => {
   const args = JSON.parse(options.body)
   if (_url.endsWith('/save')) {
+    if (window.holdSave) await new Promise((resolve) => { window.releaseSave = resolve })
     if (window.failSave) return { ok: false, json: async () => ({ ok: false, error: { message: 'Version conflict; draft retained' } }) }
     saved = { ...view, models: args.models.map((m) => ({ ...view.models.find((v) => v.id === m.id), ...m, examples: m.examples.map((e) => ({ ...e, origin: 'user', tag: 'e', checked: false })) })) }; revision = 'two'
   }
@@ -19,3 +20,12 @@ function Demo() {
   return h('main', null, h(TargetEditor, { view, sessionId: 'test', onSaved: setView }), h('pre', { id: 'saved' }, JSON.stringify(view)))
 }
 createRoot(document.getElementById('root')).render(h(Demo))
+
+// Exercise session changes without remounting the exported component itself.
+const sessionElement = document.body.appendChild(document.createElement('div'))
+sessionElement.id = 'session-editor'
+const sessionRoot = createRoot(sessionElement)
+window.editorSessions = []
+window.showEditorSession = (sessionId) => {
+  sessionRoot.render(h(TargetEditor, { view, sessionId, onSaved: (next) => window.editorSessions.push({ sessionId, next }) }))
+}

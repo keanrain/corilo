@@ -31,13 +31,18 @@ export async function outlineRequest(sessionId, operation, data = {}) {
   return result.value ?? result
 }
 
-export function OutlineEditor({ sessionId, view, request = outlineRequest, onSaved }) {
+export function OutlineEditor(props) {
+  return h(OutlineEditorState, { ...props, key: props.sessionId ?? '' })
+}
+function OutlineEditorState({ sessionId, view, request = outlineRequest, onSaved }) {
   const language = useUiLocale()
+  const live = react.useRef(false)
+  react.useEffect(() => { live.current = true; return () => { live.current = false } }, [])
   const label = (key) => copy[key][language === 'zh' ? 0 : 1]
   const [draft, setDraft] = react.useState(null)
   const [busy, setBusy] = react.useState(false)
   const [message, setMessage] = react.useState('')
-  const [locked, setLocked] = react.useState(false)
+  const [lockedView, setLockedView] = react.useState(null)
   const drag = react.useRef(null)
   const update = (fn) => setDraft((prev) => ({ ...prev, view: { ...prev.view, chapters: fn(prev.view.chapters) } }))
   const chapter = (ci, fn) => update((chapters) => chapters.map((ch, i) => i === ci ? fn(ch) : ch))
@@ -51,8 +56,9 @@ export function OutlineEditor({ sessionId, view, request = outlineRequest, onSav
     setBusy(true); setMessage('')
     try {
       const next = await request(sessionId, 'save', { expected: draft.revision, chapters: draft.view.chapters, status })
+      if (!live.current) return
       onSaved?.(next.view)
-      setDraft(status === 'active' ? null : next); setLocked(status === 'active'); setMessage(label('saved'))
+      setDraft(status === 'active' ? null : next); setLockedView(status === 'active' ? view : null); setMessage(label('saved'))
     } catch (e) { setMessage(`${label('failed')}: ${e.message}`) }
     finally { setBusy(false) }
   }
@@ -60,7 +66,7 @@ export function OutlineEditor({ sessionId, view, request = outlineRequest, onSav
   const reorder = (items, index, replace) => h('span', null,
     button('up', () => replace(moveOutlineItem(items, index, index - 1)), index === 0),
     button('down', () => replace(moveOutlineItem(items, index, index + 1)), index === items.length - 1))
-  if (view.status !== 'planning' || locked || !sessionId) return message ? h('p', { role: 'status' }, message) : null
+  if (view.status !== 'planning' || lockedView === view || !sessionId) return message ? h('p', { role: 'status' }, message) : null
   return h('div', { className: 'la-outline-editor' },
     !draft ? button('edit', open) : h('fieldset', { disabled: busy },
       draft.view.chapters.map((ch, ci) => h('section', { key: ci, 'aria-label': `${label('chapter')} ${ci + 1}` },

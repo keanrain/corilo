@@ -100,3 +100,17 @@ test('outline routes reject linked course, linked knowledge records, and forged 
   await symlink(join(cwd, 'outside.json'), p.kp('new'))
   await assert.rejects(saveOutline(cwd, { expected: before.revision, chapters: [{ title: 'x', kps: [{ id: 'new', title: 'x', kind: 'knowledge' }] }], status: 'planning' }), /Linked learning data/)
 })
+
+test('unsafe or malformed evidence cannot cause an outline save to fail after changing records', async (t) => {
+  const cwd = await setup(t)
+  const before = await readOutline(cwd)
+  const chapters = structuredClone(before.view.chapters)
+  chapters[0].title = 'should not be saved'
+  const log = store.paths(cwd).verifications
+  await symlink(store.paths(cwd).course, log)
+  await assert.rejects(saveOutline(cwd, { expected: before.revision, chapters, status: 'planning' }), /Linked learning data/)
+  await rm(log)
+  await writeFile(log, 'malformed evidence\n')
+  await assert.rejects(saveOutline(cwd, { expected: before.revision, chapters, status: 'planning' }))
+  assert.equal((await readOutline(cwd)).revision, before.revision)
+})

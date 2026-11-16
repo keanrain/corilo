@@ -4,6 +4,7 @@
  * @module learn-anything/review
  */
 import { fsrs, createEmptyCard, Rating } from 'ts-fsrs'
+import { verified as trustedVerification } from './mastery.js'
 
 // No minute-scale learning steps: relearning within a session is the tutor's diagnose→verify loop,
 // so every interval is at least a day.
@@ -62,7 +63,7 @@ export function activeReviews(reviews, course, kps) {
 
 /** Reuse checked examples as relearning references, never rewrite their historical evidence. */
 export function forgottenExamples(model, records, excludeId, limit = 3) {
-  const verified = new Set(records.filter((record) => record.id !== excludeId && record.verdict === 'correct' && record.evidence && record.modelId === model.id).map((record) => record.id))
+  const verified = new Set(records.filter((record) => record.id !== excludeId && record.verdict === 'correct' && trustedVerification(record) && record.modelId === model.id).map((record) => record.id))
   return (model.targetMap?.examples ?? []).filter((example) => example.tag === 'v' && example.checked && verified.has(example.verificationId))
     .slice(-limit).map((example) => ({ id: example.id, verificationId: example.verificationId, input: example.input, output: example.output, polarity: example.polarity, sources: example.sources ?? [] }))
 }

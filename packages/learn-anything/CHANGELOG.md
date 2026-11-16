@@ -6,6 +6,9 @@ This records currently distributable code, not an npm publication. Maintain chan
 
 ## Unreleased / 未发布
 
+- 合并前审查补强出题来源、跨轮教学证据和原话语义保护，修复例子元数据丢失、跨会话编辑与演示切换崩溃；新增真实 DSH Web 模拟模型完整流程回归。
+  Pre-merge review strengthens card provenance, earlier teaching evidence and learner-word semantics, fixes example metadata loss, cross-session editing and demo replacement crashes, and adds a native DSH Web full-flow regression with a mock model.
+
 - 靶图和规划路线可直接编辑，保存使用宿主鉴权、版本检查和草稿保护；编辑不授予正式成绩。
   Target maps and planning outlines support direct editing with host authentication, revision checks and draft retention; edits do not grant grades.
 - 中文分词及 BM25 检索，带行号的仓库声明索引，无凭据 HTTPS Git 浅克隆与 commit 来源。

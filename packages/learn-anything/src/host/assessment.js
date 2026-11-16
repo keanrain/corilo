@@ -5,14 +5,28 @@ import { parseQuizAction, PRACTICE_MARKER } from '../quiz/answer.js'
 
 export const textOf = (content) => typeof content === 'string' ? content : (content ?? []).filter((b) => b?.type === 'text').map((b) => b.text).join('\n')
 const CONTROL_TEXT = /^\s*(?:【(?:作答|学习补给|求提示|换题|歇一会儿|闪卡自评)】|\[SCHEDULE REMINDER BATCH\]|<system-reminder>|Current runtime context\.)/u
-const normalizeWords = (text) => text.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, '')
+// Punctuation may vary, but operators are part of the learner's rule.
+const normalizeWords = (text) => text.replace(/[\s\p{P}\p{S}]/gu, (char) => /[\p{Sm}*/!&|^%~-]/u.test(char) ? char : '')
+const statementParts = (text) => text.split(/[。！；;\n]+|!(?!=|[A-Za-z_(])/u)
+function includesLearnerWords(source, needle) {
+  if (normalizeWords(source) === needle) return true
+  // A safe substring is a full statement following an explicit discourse label.
+  // Arbitrary excerpts can drop "只有", negation or conditions and reverse a rule.
+  const introduction = /^\s*(?:(?:我的?|个人)?(?:理解|总结|判别标准|规律|结论|归纳)(?:是)?\s*[：:]\s*|我(?:认为|觉得|总结为|理解为)\s*[：:]?\s*)/u.exec(source)
+  if (introduction && normalizeWords(source.slice(introduction[0].length)) === needle) return true
+  // Definitions can name a concept before the colon: "我觉得闭包就是：…".
+  // Do not drop a condition/negation disguised as a concept label.
+  const definition = /^\s*(?:我(?:认为|觉得)\s*)?([^：:\n]{1,60}?)(?:就是|是)\s*[：:]\s*/u.exec(source)
+  return Boolean(definition && !/不|非|没|未|无|只有|仅|除非|必须|才|如果|当|只要/u.test(definition[1]) &&
+    normalizeWords(source.slice(definition[0].length)) === needle)
+}
 
 // Questions embedded in a real explanation and rhetorical rules are legitimate notes.
 // Help/control messages remain ineligible, even if they quote a valid rule.
 export function isRuleStatement(text) {
   if (typeof text !== 'string' || !text.trim() || CONTROL_TEXT.test(text) ||
     /^\s*(?:我(?:还|也)?(?:不懂|不知道|没看懂)|不懂|不知道|没看懂)/u.test(text)) return false
-  return text.split(/[。！!；;\n]+/u).some((part) => {
+  return statementParts(text).some((part) => {
     const clause = part.trim()
     if (!clause || /^(?:我(?:还|也)?(?:不懂|不知道|没看懂)|不懂|不知道|没看懂)/u.test(clause)) return false
     if (/^(?:难道|岂不是|岂能|怎么会)|(?:难道|不就是|不正是).*(?:吗|么)[?？]?$/u.test(clause)) return true
@@ -27,7 +41,7 @@ export function assertUserWords(text, env) {
   const needle = typeof text === 'string' ? normalizeWords(text) : ''
   if (needle.length < 4) throw new Error('statement is too short to be a real statement of the rule')
   if (isRuleStatement(text) && texts.filter(isRuleStatement).some((t) =>
-    t.split(/[。！!；;\n]+/u).filter(isRuleStatement).some((part) => normalizeWords(part).includes(needle)) ||
+    statementParts(t).filter(isRuleStatement).some((part) => includesLearnerWords(part, needle)) ||
     (isRuleStatement(t) && normalizeWords(t) === needle))) return 'verified'
   throw new Error('statement rejected: this text does not appear in anything the learner typed in this session. Statements on the target map must be the learner\'s own words — copy their wording exactly, or ask them to write or revise it themselves. Do not summarize the rule for them.')
 }
@@ -39,19 +53,24 @@ const HISTORY_BUDGET = 24000
  * exceeds the budget, grading may continue but independent novelty cannot be established.
  */
 export function examinerHistory(session, questionSeq, target = {}) {
-  let activeKp, start = 0
-  const teaching = [], questions = []
+  let activeKp
+  const teaching = [], questions = [], calls = new Map()
+  const scopedTools = new Set(['kp_get', 'kp_define_models', 'kp_set_phase', 'target_map_update', 'verification_record', 'diagnosis_record'])
   for (let seq = 0; seq < questionSeq; seq++) {
     const e = session.eventAt(seq), d = e?.data ?? {}
-    let kpId
-    if (e?.type === 'tool/call') {
-      try { kpId = (typeof d.arguments === 'string' ? JSON.parse(d.arguments) : d.arguments)?.kpId } catch { /* no trusted scope available */ }
+    if (e?.type === 'tool/call' && scopedTools.has(d.name) && d.callId) {
+      try {
+        const kpId = (typeof d.arguments === 'string' ? JSON.parse(d.arguments) : d.arguments)?.kpId
+        if (typeof kpId === 'string') calls.set(d.callId, kpId)
+      } catch { /* failed or incomplete tool calls cannot establish teaching scope */ }
     }
-    const view = e?.type === 'tool/result' && !d.message?.isError ? parseView(textOf(d.message?.content)) : null
-    kpId ??= view?.kp?.id
-    if (kpId && kpId !== activeKp) {
-      activeKp = kpId
-      if (kpId === target.kpId) start = seq
+    const succeeded = e?.type === 'tool/result' && !d.message?.isError
+    const view = succeeded ? parseView(textOf(d.message?.content)) : null
+    if (e?.type === 'tool/result') {
+      const callId = d.message?.source?.callId ?? d.message?.toolCallId
+      const kpId = succeeded ? calls.get(callId) : undefined
+      if (typeof kpId === 'string') activeKp = kpId
+      calls.delete(callId)
     }
     if (e?.type === 'assistant/message') teaching.push({ seq, kpId: activeKp, text: textOf(d.message?.content ?? d.content) })
     if (view?.view === 'quiz' && (!target.kpId || !activeKp || activeKp === target.kpId)) {
@@ -69,7 +88,7 @@ export function examinerHistory(session, questionSeq, target = {}) {
     }
     return kept
   }
-  const priorTeaching = bounded(teaching.filter((item) => !target.kpId || (item.seq >= start && (!item.kpId || item.kpId === target.kpId))).map((item) => item.text))
+  const priorTeaching = bounded(teaching.filter((item) => !target.kpId || (!item.kpId || item.kpId === target.kpId)).map((item) => item.text))
   const priorQuestions = bounded([...new Map(questions.map((item) => [JSON.stringify(item), item])).values()])
   return { priorTeaching, priorQuestions, historyComplete: complete }
 }
@@ -78,11 +97,20 @@ export function answerEvidence(session, question, target) {
   if (!session?.id || typeof session.eventAt !== 'function') throw new Error('真实会话作答证据不可用')
   if (typeof question !== 'string' || !question.trim()) throw new Error('缺少完整题面证据')
   let answer, shown
+  const cardCalls = new Map()
   for (let seq = 0; seq < session.seq; seq++) {
     const e = session.eventAt(seq), d = e?.data ?? {}
-    if (e?.type === 'tool/result' && !d.message?.isError) {
-      const view = parseView(textOf(d.message?.content))
-      if (['quiz', 'flashcard'].includes(view?.view)) shown = { seq, view }
+    if (e?.type === 'tool/call' && ['quiz_show', 'flashcard_show'].includes(d.name) && d.callId) {
+      cardCalls.set(d.callId, d.name === 'quiz_show' ? 'quiz' : 'flashcard')
+    }
+    if (e?.type === 'tool/result') {
+      const callId = d.message?.source?.callId ?? d.message?.toolCallId
+      const expectedView = cardCalls.get(callId)
+      // Material and delegate output may quote a marker. Only the registered
+      // card producer's successful call proves a displayed interactive card.
+      const view = expectedView && !d.message?.isError ? parseView(textOf(d.message?.content)) : null
+      if (expectedView && view?.view === expectedView) shown = { seq, view }
+      cardCalls.delete(callId)
     }
     if (e?.type === 'assistant/message') {
       const text = textOf(d.message?.content ?? d.content)

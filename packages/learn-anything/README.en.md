@@ -146,3 +146,5 @@ To measure examiner question latency independently, set `DEEPSEEK_API_KEY` and r
 Within one host process, learning-data writes for the same workspace are queued. Changing an already-answered model definition requires a new ID. Information knowledge points track mastery per memory card; every card must meet the threshold before the entire knowledge point is mastered.
 
 Run focused browser regressions with `python3 test/browser/target_editor_browser.py`, `outline_browser.py`, `demo_browser.py` and `locale_browser.py` (all under `test/browser/`). Native API coverage uses `python3 test/browser/target_api_browser.py` with the pinned DSH installed; `LEARN_ANYTHING_DSH` can specify its `lib/bin.js`. The native API test creates synthetic sessions without model calls.
+
+Full-flow regression: `python3 test/browser/tutor_flow_browser.py`, with the same runtime requirements as the native API test. A local deterministic mock model exercises the real UI, question/grading tools, evidence, default proficiency gate and due review. Review time advances only in a disposable fixture; this does not establish live-model teaching quality.

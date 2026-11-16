@@ -88,7 +88,8 @@ const mastered = (kp) => kp.mastery === 'proficient' || kp.mastery === 'expert'
 function OutlineCard({ view: initialView, isStreaming = false, useSession }) {
   const sessionId = useSession?.((s) => s.sessionId)
   const [edited, setEdited] = react.useState(null)
-  const view = edited ?? initialView
+  const view = edited?.sessionId === sessionId && edited?.source === initialView ? edited.view : initialView
+  const saveEdited = (view) => setEdited({ sessionId, source: initialView, view })
   useUiLocale()
   const points = view.chapters.flatMap((ch) => ch.kps)
   const minutes = points.reduce((n, kp) => n + (kp.estMinutes ?? 0), 0)
@@ -97,7 +98,7 @@ function OutlineCard({ view: initialView, isStreaming = false, useSession }) {
   const status = isStreaming ? t('正在生成') : view.status === 'planning' ? t('待确认') : view.status === 'done' ? t('已完成') : t('进行中')
   return h('section', { className: 'la-card la-outline', 'aria-busy': isStreaming, 'aria-label': t('学习路线') },
     h(CardHeader, { icon: 'route', label: t('学习路线'), title: view.goal, status, isStreaming }),
-    !isStreaming && view.status === 'planning' ? h(OutlineEditor, { view, sessionId, onSaved: setEdited }) : null,
+    !isStreaming && view.status === 'planning' ? h(OutlineEditor, { view, sessionId, onSaved: saveEdited }) : null,
     h('div', { className: 'la-route-meta' },
       h('span', null, h('strong', null, view.chapters.length), t('章节')),
       h('span', null, h('strong', null, points.length), t('知识点')),
@@ -168,12 +169,13 @@ function TargetMapCard({ view: initialView, useSession }) {
   useUiLocale()
   const sessionId = useSession?.((s) => s.sessionId)
   const [saved, setSaved] = react.useState(null)
-  const view = saved ?? initialView
+  const view = saved?.sessionId === sessionId && saved?.source === initialView ? saved.view : initialView
+  const saveEdited = (view) => setSaved({ sessionId, source: initialView, view })
   const kp = view.kp
   return h('section', { className: 'la-card la-target', 'aria-label': t('知识靶图') },
     h(CardHeader, { icon: 'target', label: t('知识靶图'), title: kp.title, subtitle: '把你理解的规律，连接到具体的例子。', status: PHASE_LABEL[kp.phase] ?? kp.phase }),
     h(Sources, { sources: view.sources, label: t('参考资料') }),
-    kp.kind !== 'information' && view.models.length ? h(TargetEditor, { view, sessionId, onSaved: setSaved }) : null,
+    kp.kind !== 'information' && view.models.length ? h(TargetEditor, { view, sessionId, onSaved: saveEdited }) : null,
     kp.kind === 'information'
       ? h('p', { className: 'la-empty' }, '信息类知识点：用记忆卡和间隔复习来记住。')
       : view.models.length
