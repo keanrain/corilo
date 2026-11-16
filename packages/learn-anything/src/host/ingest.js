@@ -4,11 +4,14 @@
  * reads only the blocks it needs and cites them by id (e.g. `m-ab12#7`).
  * @module learn-anything/ingest
  */
-import { readFile, stat, readdir } from 'node:fs/promises'
+import { readFile, stat, readdir, lstat } from 'node:fs/promises'
 import { join, resolve, relative, extname, basename, isAbsolute, posix } from 'node:path'
 import { unzipSync, strFromU8 } from 'fflate'
 import { createHash } from 'node:crypto'
 import * as store from './store.js'
+import { rankBlocks, searchTerms } from './material-search.js'
+import { extractSymbols } from './repo-symbols.js'
+import { withGitRepository } from './repo-git.js'
 
 export const BLOCK_CHARS = 4000
 const MAX_FILE_BYTES = 200 * 1024 * 1024
@@ -265,13 +268,14 @@ const SKIP_DIRS = new Set(['.git', 'node_modules', '.learn', 'dist', 'build', 'o
 const MANIFESTS = ['package.json', 'pyproject.toml', 'Cargo.toml', 'go.mod', 'pom.xml', 'build.gradle', 'Gemfile', 'composer.json', 'requirements.txt', 'setup.py', 'CMakeLists.txt', 'Makefile']
 const DOCS = /^(readme|architecture|contributing|design|overview)(\.[a-z]+)?$/i
 
-/** Code repository → a file tree, its README-like docs, and build manifests. Source files are read with the fs tools. */
+/** Bounded file tree, docs and heuristic source-signature index; never executes source. */
 export async function parseRepo(dir, { maxFiles = 1500 } = {}) {
   const tree = []
   const docs = []
   const counts = new Map()
+  const sources = []
   async function walk(rel, depth) {
-    if (tree.length >= maxFiles) return
+    if (tree.length >= maxFiles || depth > 20) return
     const entries = (await readdir(join(dir, rel), { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))
     for (const entry of entries) {
       if (tree.length >= maxFiles) return
@@ -284,6 +288,7 @@ export async function parseRepo(dir, { maxFiles = 1500 } = {}) {
         tree.push(`${'  '.repeat(depth)}${entry.name}`)
         const ext = extname(entry.name).toLowerCase() || entry.name
         counts.set(ext, (counts.get(ext) ?? 0) + 1)
+        if (/\.(?:[cm]?jsx?|tsx?|py|rs|go)$/i.test(path) && sources.length < 300) sources.push(path)
         if ((depth === 0 && (MANIFESTS.includes(entry.name) || DOCS.test(entry.name))) || (depth <= 1 && /^docs?$/.test(rel) && /\.(md|txt|rst)$/i.test(entry.name))) {
           docs.push(path)
         }
@@ -293,10 +298,22 @@ export async function parseRepo(dir, { maxFiles = 1500 } = {}) {
   await walk('', 0)
   const langs = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([ext, n]) => `${ext} ×${n}`).join('，')
   const sections = [{ title: '目录结构', loc: '.', text: `文件类型：${langs}\n\n${tree.join('\n')}${tree.length >= maxFiles ? '\n…（已截断）' : ''}` }]
+  let bytesRead = 0
+  async function boundedRead(path) {
+    const info = await lstat(join(dir, path))
+    if (!info.isFile() || info.nlink > 1 || info.size > 512 * 1024 || bytesRead + info.size > 8 * 1024 * 1024) return ''
+    bytesRead += info.size
+    return decodeText(await readFile(join(dir, path)))
+  }
   for (const path of docs.slice(0, 20)) {
-    const text = await readFile(join(dir, path)).then(decodeText, () => '')
+    const text = await boundedRead(path)
     if (text.trim()) sections.push(...parseText(text, path).map((s) => ({ ...s, title: s.title === path ? path : `${path} · ${s.title}`, loc: path })))
   }
+  for (const path of sources) {
+    const symbols = extractSymbols(await boundedRead(path), path)
+    if (symbols.length) sections.push({ title: `接口索引 · ${path}`, loc: path, text: `启发式声明摘要（非完整语法解析；行号对应导入快照）：\n${symbols.join('\n')}` })
+  }
+  if (sources.length >= 300 || bytesRead >= 8 * 1024 * 1024) sections[0].text += '\n接口扫描受限：最多 300 个源码文件、单文件 512 KiB、总读取 8 MiB。'
   return { title: basename(dir), sections }
 }
 
@@ -330,14 +347,32 @@ function parseBlockRef(ref, fallbackId) {
 export const ingestMaterial = {
   name: 'ingest_material',
   description:
-    'Import a learning material from the workspace — a PDF, EPUB, TXT/Markdown file, or a code repository directory — into numbered blocks. ' +
+    'Import a workspace PDF, EPUB, TXT/Markdown file, code repository directory, or HTTPS Git repository URL into numbered blocks. ' +
     'Returns its table of contents with block ids; read blocks with material_read and cite them as sources. Unchanged content reuses its id; changed content gets a new id so existing citations stay valid.',
   parameters: {
-    path: { type: 'string', required: true, description: '工作区内的文件或目录路径' },
+    path: { type: 'string', required: true, description: '工作区内的文件或目录路径，或无凭据的 HTTPS Git 仓库 URL' },
     title: { type: 'string', description: '材料标题；省略则从文件中读取' },
   },
   async execute(args, env) {
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(args.path) || /^[^/]+@[^:]+:/.test(args.path)) {
+      return withGitRepository(args.path, async (directory, repository) => {
+        const parsed = await parseRepo(directory)
+        parsed.title = new URL(repository.url).pathname.split('/').filter(Boolean).pop()?.replace(/\.git$/, '') || 'Repository'
+        parsed.sections.unshift({ title: '仓库来源', loc: repository.url, text: `URL: ${repository.url}\nCommit: ${repository.commit}\n浅克隆快照；未执行源码或递归获取子模块。` })
+        return persistMaterial(args, env, parsed, 'repo', repository.url, repository)
+      })
+    }
     const abs = inWorkspace(env.cwd, args.path)
+    // Reject links in every path component, including an ancestor of the material.
+    for (let path = resolve(env.cwd);;) {
+      const rel = relative(path, abs)
+      const next = rel.split(/[\\/]/)[0]
+      if (!next) break
+      path = join(path, next)
+      const entry = await lstat(path).catch(() => null)
+      if (entry?.isSymbolicLink() || (entry?.isFile() && entry.nlink > 1)) throw new Error('material paths must not contain symbolic or hard links')
+      if (!entry || path === abs) break
+    }
     const info = await stat(abs).catch(() => null)
     if (!info) throw new Error(`no such file or directory: ${args.path}`)
     let kind
@@ -354,10 +389,14 @@ export const ingestMaterial = {
       else if (kind === 'epub') parsed = parseEpub(new Uint8Array(bytes))
       else parsed = { title: '', sections: parseText(decodeText(bytes), basename(abs)) }
     }
+    return persistMaterial(args, env, parsed, kind, relative(env.cwd, abs) || '.')
+  },
+}
+
+async function persistMaterial(args, env, parsed, kind, relPath, repository) {
     const blocks = toBlocks(parsed.sections)
     if (!blocks.length) throw new Error('no readable text found in this material')
 
-    const relPath = relative(env.cwd, abs) || '.'
     const history = (await listMaterials(env.cwd, { includeHistory: true })).filter((m) => m.path === relPath)
     const hash = blockHash(blocks)
     let existing
@@ -369,7 +408,8 @@ export const ingestMaterial = {
     const id = existing?.id ?? store.newId('m')
     const dir = store.paths(env.cwd).material(id)
     const meta = {
-      id, kind, path: relPath, title: args.title || parsed.title || basename(abs),
+      id, kind, path: relPath, title: args.title || parsed.title || basename(relPath),
+      ...(repository ? { repository } : {}),
       chars: blocks.reduce((n, b) => n + b.text.length, 0),
       blocks: blocks.map(({ n, title, loc, text }) => ({ n, title, loc, chars: text.length })),
       hash,
@@ -379,7 +419,6 @@ export const ingestMaterial = {
     if (!existing) await store.writeJson(join(dir, 'blocks.json'), blocks)
     await store.writeJson(join(dir, 'meta.json'), meta)
     return `${existing ? '已重新导入' : '已导入'}「${meta.title}」（${kind}，${blocks.length} 块，约 ${meta.chars} 字），id=${id}。\n\n${tocText(meta)}`
-  },
 }
 
 function tocText(meta, limit = 200) {
@@ -462,36 +501,26 @@ export const materialRead = {
 
 export const materialSearch = {
   name: 'material_search',
-  description: 'Find blocks matching any keyword in their title or text, ranked by keyword coverage, title matches, then frequency. Returns block ids and snippets; read the blocks before citing them.',
+  description: 'Find material blocks using Chinese/English word segmentation and BM25 length-normalized ranking. Returns block ids and snippets; read the blocks before citing them.',
   parameters: {
-    query: { type: 'string', required: true, description: '关键词，空格分隔；部分命中也返回，覆盖更多关键词的块优先' },
+    query: { type: 'string', required: true, description: '自然语言或关键词；支持连续中文与中英混合，按 BM25 相关度排序' },
     materialId: { type: 'string', description: '只搜某个材料' },
     limit: { type: 'integer', description: '最多返回几块，默认 10' },
   },
   readOnly: true,
   async execute(args, env) {
-    const terms = [...new Set(args.query.toLowerCase().split(/\s+/).filter(Boolean))]
-    if (!terms.length) throw new Error('query is empty')
+    const terms = searchTerms(args.query)
+    if (!terms.length) throw new Error('query is empty or contains only stop words')
     const metas = args.materialId ? [await loadMaterial(env.cwd, args.materialId)] : await listMaterials(env.cwd)
-    const hits = []
+    const documents = []
     for (const meta of metas) {
       const blocks = await store.readJson(join(store.paths(env.cwd).material(meta.id), 'blocks.json'), [])
-      for (const block of blocks) {
-        const lower = block.text.toLowerCase()
-        const title = block.title.toLowerCase()
-        const matched = terms.filter((t) => lower.includes(t) || title.includes(t))
-        if (!matched.length) continue
-        const titleMatches = matched.filter((t) => title.includes(t)).length
-        const frequency = matched.reduce((n, t) => n + lower.split(t).length - 1, 0)
-        const positions = matched.map((t) => lower.indexOf(t)).filter((at) => at >= 0)
-        const at = positions.length ? Math.min(...positions) : 0
-        const snippet = block.text.slice(Math.max(0, at - 60), at + 120).replace(/\s+/g, ' ')
-        hits.push({ ref: `${meta.id}#${block.n}`, title: block.title, coverage: matched.length, titleMatches, frequency, snippet })
-      }
+      for (const block of blocks) documents.push({ ref: `${meta.id}#${block.n}`, block })
     }
+    const hits = rankBlocks(documents, args.query)
     if (!hits.length) return `没有匹配「${terms.join(' ')}」的块。`
-    hits.sort((a, b) => b.coverage - a.coverage || b.titleMatches - a.titleMatches || b.frequency - a.frequency || a.ref.localeCompare(b.ref))
-    return hits.slice(0, args.limit ?? 10).map((h) => `- ${h.ref} ${h.title}：…${h.snippet}…`).join('\n')
+    const limit = Number.isInteger(args.limit) ? Math.max(1, Math.min(100, args.limit)) : 10
+    return hits.slice(0, limit).map((h) => `- ${h.ref} ${h.block.title}：…${h.snippet}…`).join('\n')
   },
 }
 

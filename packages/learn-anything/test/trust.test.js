@@ -65,3 +65,14 @@ test('cyclic prerequisites are rejected before saving any course change', async 
   ] }] }, env), /cyclic/)
   assert.equal(await readFile(join(env.cwd, '.learn/course.json'), 'utf8'), before)
 })
+
+test('target_map_update uses learner-word validation for full colon and rhetorical summaries', async (t) => {
+  const env = await workspace(t)
+  const statements = ['判别标准：只要满足 X 就是 Y', '只要满足共有属性，不就是这个概念吗？']
+  for (const statement of statements) {
+    env.userTexts = () => [statement]
+    await tools.targetMapUpdate.execute({ kpId: 'basic', modelId: 'm', statement }, env)
+    const saved = JSON.parse(await readFile(join(env.cwd, '.learn/kp/basic.json'), 'utf8'))
+    assert.equal(saved.models[0].targetMap.statement.text, statement)
+  }
+})

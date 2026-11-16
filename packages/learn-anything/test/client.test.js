@@ -482,6 +482,31 @@ test('demo access is explicit, delivery-confirmed and assisted; local operations
   assert.match(sent.at(-1), /提示：1 次/)
 })
 
+test('configurable demo access uses confirmed assistance without changing drafts or sending observations', () => {
+  const app = client(quizHooks)
+  const config = { kind: 'state-machine', title: '阈值观察', scope: '仅观察输入阈值', initial: 'idle',
+    inputs: [{ id: 'x', label: '输入', type: 'number', min: 0, max: 10, initial: 0 }],
+    states: [{ id: 'idle', label: '等待', output: '尚未触发' }, { id: 'done', label: '完成', output: '已触发' }],
+    transitions: [{ from: 'idle', to: 'done', label: '超过阈值', when: [{ input: 'x', op: 'gt', value: 5 }] }] }
+  const row = app.result('quiz_show', { ...quizFixture, id: 'generic-demo', helpDemo: config })
+  const mount = () => quizControls(cards(row())[0])
+  assert.equal(mount().helpDemo.kind, 'state-machine')
+  mount().set('理由', '保留原题思路')
+  const sent = []
+  app.inputActions.setDraft = (text) => { sent.push(text); app.setInput({ draft: text }) }
+  app.inputActions.submit = () => {}
+  mount().help('demo', '阈值观察')
+  assert.equal(mount().demoReady, false)
+  app.emit('user/message', { content: [{ type: 'text', text: sent.at(-1) }] })
+  app.setInput({ draft: '' })
+  assert.equal(mount().demoReady, true)
+  assert.equal(mount().answers['理由'], '保留原题思路')
+  mount().demoAction('阈值观察', { type: 'step', state: 'done' })
+  assert.equal(sent.length, 1)
+  mount().submit('原题')
+  assert.match(sent.at(-1), /提示：1 次/)
+})
+
 test('failed or cancelled quiz sends preserve drafts and remain retryable until a real user message arrives', () => {
   const app = client(quizHooks)
   const row = app.result('quiz_show', quizFixture)

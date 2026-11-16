@@ -53,8 +53,18 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements-dev.txt
       - run: python -m playwright install --with-deps chromium
-      - name: Check bilingual cards and unchanged answer protocols
-        run: python3 packages/learn-anything/test/browser/locale_browser.py
+      - name: Check bilingual cards and editable learning components
+        run: |
+          python3 packages/learn-anything/test/browser/locale_browser.py
+          python3 packages/learn-anything/test/browser/target_editor_browser.py
+          python3 packages/learn-anything/test/browser/outline_browser.py
+          python3 packages/learn-anything/test/browser/demo_browser.py
+      - name: Check native Web authentication and learning flow with a mock model
+        run: |
+          python3 packages/learn-anything/test/browser/target_api_browser.py
+          python3 packages/learn-anything/test/browser/tutor_flow_browser.py
+        env:
+          LEARN_ANYTHING_DSH: ${{ runner.temp }}/learn-anything-dsh/node_modules/@deepseek-ai/dsh/lib/bin.js
       - uses: actions/upload-artifact@v4
         with:
           name: learn-anything-package

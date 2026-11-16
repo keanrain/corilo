@@ -38,3 +38,5 @@ export const PRESENTATION_CSS = `
 .la-learning .la-quiz,.la-learning .la-flash{width:100%;box-sizing:border-box}.la-return-task{margin-bottom:14px}.la-learning-empty{padding:40px 24px;color:var(--la-muted);text-align:center}
 @media(hover:hover) and (pointer:fine){.la-task-entry:hover{border-color:var(--la-accent)}}
 `
+
+export const NOTE_EDITOR_CSS = `.la-note-editor{margin:16px 0}.la-note-editor fieldset{border:1px solid var(--la-line);border-radius:8px;margin:12px 0;padding:12px;min-width:0}.la-note-editor label{display:block;margin:8px 0}.la-note-editor textarea{display:block;width:100%;box-sizing:border-box;min-height:72px;padding:8px;font:inherit;color:inherit;background:transparent;border:1px solid var(--la-line);border-radius:6px}.la-note-editor button{margin:6px 8px 6px 0}.la-note-editor [role=alert]{color:#b54b30;white-space:pre-wrap}.la-annotation{white-space:pre-wrap}`

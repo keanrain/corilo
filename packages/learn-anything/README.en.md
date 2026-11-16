@@ -42,7 +42,7 @@ The host verifies formal results: `verification_record` obtains the displayed qu
 
 Route selection prioritizes `prerequisites` and rejects dependency cycles. Explicit skip/restore requests use `kp_skip`; skipping does not imply mastery. Difficulty 1 still requires a substantively new situation. Questions without examiner-confirmed novelty do not count as independent mastery.
 
-Read-only cards (route, target map, progress, and grading feedback) appear in reading order alongside text in the **final response**, not during tool execution. The tutor places the display tool's `[title](learn-card:...)` reference unchanged on its own paragraph, with blank lines around it. References correspond to actual tool results from that turn, not copied card JSON or private tutor references. Questions and flip cards remain in the native right-hand Learning workspace, with an opening link in the response. Drafts survive collapsing or asking for help; old exercises can be revisited. Narrow layouts use the native fullscreen presentation.
+Cards (route, target map, progress, and grading feedback) appear in reading order alongside text in the **final response**, not during tool execution. The tutor places the display tool's `[title](learn-card:...)` reference unchanged on its own paragraph, with blank lines around it. References correspond to actual tool results from that turn, not copied card JSON or private tutor references. Questions and flip cards remain in the native right-hand Learning workspace, with an opening link in the response. Drafts survive collapsing or asking for help; old exercises can be revisited. Narrow layouts use the native fullscreen presentation.
 
 Diagnosis, explanation, and induction also favor cards for case judgments, comparisons, predictions, and ordering. `quiz_show(purpose="practice")` is a comprehension exercise; submission continues feedback and follow-up without writing verification records or raising mastery. Formal verification uses the default flow. Short checks and complete learner-written generalizations still happen in prose.
 
@@ -92,13 +92,33 @@ Spot/repair and ordering reuse submission, retry, history restoration, and sourc
 
 The composer status chip shows the learning streak 🔥. Evaluations report rendering success, answer leakage, the fraction of verifications with recorded difficulty, and the fraction of responses in the flow zone (`quizParseRate`, `quizLeaks`, `difficultyRecordedRate`, `flowZoneShare`). Disable interactive cards by setting `interactiveQuiz: false` for `@corilo/learn-anything/tools` in the tutor preset.
 
+## Editable notes and route
+
+Target-map cards support direct editing of learner statements, personal examples and annotations through DSH's authenticated connection. Chat duplication is unnecessary. Failed saves and version conflicts retain drafts. Personal edits cannot assign verified-example tags or change grades/mastery; formal verification records remain historical evidence.
+
+Planning outlines support direct add/edit/delete, skipping, drag ordering and confirmation to active. The host checks revisions, structure and prerequisites; skipping does not grant mastery.
+
+Concept-confusion diagnoses require extension relations, a feature matrix and contrast examples, displayed as a comparison card. Failed knowledge reviews can return previously correct, evidence-backed examples as practice/variant references; old examples do not establish novel generalization.
+
+Examiner context focuses on the current knowledge point/model while global exact replay checks remain. Relevant history exceeding the budget prevents independent novelty credit. History explicitly scoped to other knowledge points is excluded from examiner semantic-similarity assessment. This reduces payload size but still scans session evidence.
+
+`quiz_show.helpDemo` accepts validated variable/state/transition configurations alongside the compatible `execution-waiting` preset. It executes no arbitrary scripts. Demos count as assistance, preserve the original answer draft and never grant mastery.
+
 ## Material retrieval and citations
 
-`material_search` splits keywords on spaces and returns partial title/body matches. Ranking prioritizes distinct keyword hits, title hits, then body frequency. The tutor reads real chunks before citing their IDs; `checker` verifies key claims against the source, and question generation/grading retain those sources.
+Local repository ingestion extracts directories, documentation and line-linked JS/TS, Python, Rust and Go declaration summaries. This bounded heuristic is not full semantic analysis. Credential-free HTTPS Git URLs support default-branch shallow snapshots with actual commit provenance; no recursive submodules or repository-code execution. Downloads have a 60-second timeout and a monitored 64 MiB limit (polling can briefly overshoot). Branch/subdirectory selection is not implemented.
+
+`material_search` segments Chinese and mixed-language queries with `Intl.Segmenter`, filters stop words, and ranks titles and body text with BM25. The tutor reads real chunks before citing their IDs; `checker` verifies key claims against the source, and question generation/grading retain those sources.
 
 Target maps show references and example sources, and grading cards show evidence. Card submissions carry material citations; evidence links are not exposed before answering. Saving citations verifies chunk existence, while `checker` / `examiner` decide whether the content supports a claim. Teaching also works without imported materials.
 
 Reimporting the same path reuses material IDs for identical content. Changed content receives a new ID while old chunks remain, preserving existing citations. Material lists and default searches show only the latest imported content for that path.
+
+## Storage decision
+
+Learning records remain JSON/JSONL under `.learn/`, with writes queued per workspace in one host process. This is neither a cross-process lock nor a multi-file transaction. The SQLite + files target in `PROMPT.md` is not fully implemented; this change does not automatically migrate existing records. Built-in `node:sqlite` and FTS5 were exercised on Node 24.19.0, which establishes availability rather than an implemented learner database.
+
+A future migration needs explicit requirements for cross-course statistics, indexed retrieval or multi-process writes, followed by offline import, backup/rollback and record/evidence consistency checks. Startup must not replace existing data automatically. Chinese BM25 currently runs in memory; persistent large-material indexing needs separate evaluation.
 
 ## Development
 
@@ -124,3 +144,7 @@ The examiner keeps reasoning enabled, using `low` effort for ordinary generation
 To measure examiner question latency independently, set `DEEPSEEK_API_KEY` and run `node eval/question-latency.mjs --case order --runs 3` (or `--case spot`). Default effort matches the examiner; compare with `--reasoning high`. It uses current examiner prompts/components without reading or writing learning records; reports go to `eval/results/`. For comparison with an old version, use `--system-file` pointing to a saved complete system prompt. Automated checks cover output completeness and card syntax only; humans must verify conditions, reference answers, and unique order. Timing excludes tutor preparation/card display. `--self-check` validates the evaluation script offline.
 
 Within one host process, learning-data writes for the same workspace are queued. Changing an already-answered model definition requires a new ID. Information knowledge points track mastery per memory card; every card must meet the threshold before the entire knowledge point is mastered.
+
+Run focused browser regressions with `python3 test/browser/target_editor_browser.py`, `outline_browser.py`, `demo_browser.py` and `locale_browser.py` (all under `test/browser/`). Native API coverage uses `python3 test/browser/target_api_browser.py` with the pinned DSH installed; `LEARN_ANYTHING_DSH` can specify its `lib/bin.js`. The native API test creates synthetic sessions without model calls.
+
+Full-flow regression: `python3 test/browser/tutor_flow_browser.py`, with the same runtime requirements as the native API test. A local deterministic mock model exercises the real UI, question/grading tools, evidence, default proficiency gate and due review. Review time advances only in a disposable fixture; this does not establish live-model teaching quality.

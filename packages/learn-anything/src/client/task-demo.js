@@ -1,4 +1,6 @@
 import * as React from 'react'
+import { t } from './locale.js'
+import { validateDemo, demoDefaults, demoStep } from '../quiz/demo.js'
 
 const h = React.createElement
 
@@ -14,7 +16,11 @@ export const TASK_DEMO_SCENE = {
 }
 
 /** A local observation exercise. No messages, persistence, quiz answers or grading. */
-export function TaskDemo({ config, disabled = false, onAction }) {
+export function TaskDemo(props) {
+  return h(props.config?.kind === 'state-machine' ? StateMachineDemo : LegacyTaskDemo, props)
+}
+
+function LegacyTaskDemo({ config, disabled = false, onAction }) {
   const scene = { ...TASK_DEMO_SCENE, ...config }
   const [mode, setMode] = React.useState('available')
   const [placed, setPlaced] = React.useState(false)
@@ -42,7 +48,7 @@ export function TaskDemo({ config, disabled = false, onAction }) {
   const token = (text, fresh = false) => h('span', { className: 'la-demo-token', 'data-new': fresh }, text)
   return h('section', { className: 'la-task-demo', 'aria-label': scene.title, 'data-demo': scene.id },
     h('div', { className: 'la-demo-head' },
-      h('span', { className: 'la-demo-tag' }, '动手补给'),
+      h('span', { className: 'la-demo-tag' }, t('动手补给')),
       h('h4', null, scene.title)),
     h('p', { className: 'la-demo-scope' }, scene.scope),
     h('div', { className: 'la-demo-modes', role: 'group', 'aria-label': '执行位状态' },
@@ -70,13 +76,63 @@ export function TaskDemo({ config, disabled = false, onAction }) {
         if (disabled || !placed) return
         setPlaced(false)
         emit({ type: 'reset', mode })
-      } }, '重新试一次'),
-      h('button', { type: 'button', onClick: () => emit({ type: 'return' }) }, '回到题目')))
+      } }, t('重新试一次')),
+      h('button', { type: 'button', onClick: () => emit({ type: 'return' }) }, t('回到题目'))))
+}
+
+/** All controls are local observations; only the parent help request affects evidence. */
+export function StateMachineDemo({ config, disabled = false, onAction }) {
+  let model
+  try { model = validateDemo(config); if (model?.kind !== 'state-machine') throw new Error('Invalid state machine') } catch { return h('p', { role: 'alert' }, t('演示配置无效')) }
+  // A different model owns different state/input IDs. Remount only when the
+  // validated configuration changes; locale/disabled updates retain progress.
+  return h(StateMachineBody, { key: JSON.stringify(model), model, disabled, onAction })
+}
+
+function StateMachineBody({ model, disabled, onAction }) {
+  const [values, setValues] = React.useState(() => demoDefaults(model))
+  const [position, setPosition] = React.useState({ state: model.initial, status: 'initial' })
+  const emit = (event) => onAction?.(event)
+  const update = (input, value) => {
+    if (disabled) return
+    setValues((previous) => ({ ...previous, [input.id]: value }))
+    emit({ type: 'input', input: input.id, value })
+  }
+  const state = model.states.find((item) => item.id === position.state)
+  return h('section', { className: 'la-task-demo', 'aria-label': model.title, 'data-demo': 'state-machine' },
+    h('div', { className: 'la-demo-head' }, h('span', { className: 'la-demo-tag' }, t('动手补给')), h('h4', null, model.title)),
+    h('p', { className: 'la-demo-scope' }, model.scope),
+    h('div', { className: 'la-demo-inputs' }, model.inputs.map((input) => h('label', { key: input.id },
+      h('span', null, input.label),
+      h('input', input.type === 'toggle'
+        ? { type: 'checkbox', checked: values[input.id], disabled, 'aria-label': input.label, onChange: (event) => update(input, event.target.checked) }
+        : { type: 'range', min: input.min, max: input.max, step: input.step, value: values[input.id], disabled, 'aria-label': input.label, onChange: (event) => update(input, Number(event.target.value)) }),
+      h('output', null, String(values[input.id]))))),
+    h('ol', { className: 'la-demo-graph', 'aria-label': t('状态流转图') }, model.states.map((item) => h('li', { key: item.id, 'aria-current': position.state === item.id ? 'step' : undefined },
+      h('strong', null, item.label),
+      h('ul', null, model.transitions.filter((transition) => transition.from === item.id).map((transition, index) => h('li', { key: index },
+        `${transition.label} → ${model.states.find((target) => target.id === transition.to).label}`)))))),
+    h('p', { className: 'la-demo-result', role: 'status', 'aria-live': 'polite' },
+      `${state.label}：${state.output}`,
+      position.status === 'ambiguous' ? t('（多个条件同时成立，请调整输入；状态未改变）') : position.status === 'unchanged' ? t('（没有满足的流转条件）') : ''),
+    h('div', { className: 'la-demo-actions' },
+      h('button', { type: 'button', disabled, onClick: () => {
+        if (disabled) return
+        const next = demoStep(model, position.state, values)
+        setPosition(next)
+        emit({ type: 'step', from: position.state, ...next })
+      } }, t('推进一步')),
+      h('button', { type: 'button', disabled, onClick: () => {
+        if (disabled) return
+        setValues(demoDefaults(model)); setPosition({ state: model.initial, status: 'initial' })
+        emit({ type: 'reset' })
+      } }, t('重新试一次')),
+      h('button', { type: 'button', onClick: () => emit({ type: 'return' }) }, t('回到题目'))))
 }
 
 export const TASK_DEMO_CSS = `
 .la-task-demo{font:13px/1.65 system-ui,sans-serif;color:var(--la-ink,#24382d);text-align:left}
-.la-task-demo *{box-sizing:border-box}.la-demo-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.la-demo-head h4{margin:0;font-size:16px;letter-spacing:-.02em}.la-demo-tag{font-size:10px;color:var(--la-accent,#34674e);background:var(--la-paper,#fff);border:1px solid var(--la-line,#d4dfd6);border-radius:20px;padding:3px 9px}
+.la-task-demo *{box-sizing:border-box}.la-demo-inputs{display:grid;gap:12px}.la-demo-inputs label{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.la-demo-graph{display:flex;gap:14px;flex-wrap:wrap;padding:12px 20px}.la-demo-graph>li{border:1px solid var(--la-line,#d4dfd6);border-radius:8px;padding:10px;max-width:100%}.la-demo-graph>li[aria-current=step]{background:var(--la-soft,#eff5ef);border-color:var(--la-accent,#34674e)}.la-demo-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.la-demo-head h4{margin:0;font-size:16px;letter-spacing:-.02em}.la-demo-tag{font-size:10px;color:var(--la-accent,#34674e);background:var(--la-paper,#fff);border:1px solid var(--la-line,#d4dfd6);border-radius:20px;padding:3px 9px}
 .la-demo-scope{font-size:11px;color:var(--la-muted,#63786b);margin:9px 0 15px}.la-demo-modes,.la-demo-actions{display:flex;gap:8px;flex-wrap:wrap}.la-task-demo button{font:inherit;color:inherit;cursor:pointer;border:1px solid var(--la-line,#d4dfd6);background:var(--la-paper,#fff);border-radius:9px;padding:8px 12px;min-height:38px;touch-action:manipulation}.la-task-demo button:focus-visible{outline:2px solid var(--la-accent,#34674e);outline-offset:3px}.la-task-demo button:disabled{cursor:default;opacity:.55}.la-demo-modes button{font-size:11px}.la-demo-modes button[aria-pressed=true]{border-color:var(--la-accent,#34674e);background:var(--la-soft,#eff5ef);color:var(--la-accent,#34674e)}
 .la-demo-board{display:grid;grid-template-columns:minmax(75px,.7fr) minmax(0,3fr);gap:16px;align-items:center;margin:16px 0}.la-demo-entry{text-align:center;color:var(--la-muted,#63786b);font-size:10px}.la-demo-incoming{display:grid;place-items:center;min-height:76px}.la-demo-zones{display:grid;gap:10px}.la-task-demo .la-demo-zone{text-align:left;padding:12px 14px;min-width:0;border-style:dashed}.la-task-demo .la-demo-zone[data-received=true]{border-style:solid;border-color:var(--la-accent,#34674e);background:var(--la-soft,#eff5ef)}.la-demo-zone-title{display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;font-size:12px;font-weight:600}.la-demo-zone-title small{font-size:10px;font-weight:400;color:var(--la-muted,#63786b)}.la-demo-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.la-demo-token,.la-demo-slot{display:grid;place-items:center;min-height:40px;padding:6px 9px;border-radius:8px;font-size:11px;overflow-wrap:anywhere}.la-demo-token{background:var(--la-line,#e1e8e2);border:1px solid transparent}.la-demo-token[data-new=true]{background:var(--la-accent,#34674e);color:var(--la-paper,#fff);box-shadow:0 3px 7px #162f1d12}.la-demo-slot{border:1px dashed var(--la-line,#cfdad1);color:var(--la-muted,#63786b)}.la-demo-empty{color:var(--la-muted,#63786b)}.la-demo-explain{margin:0;font-size:12px;line-height:1.8;min-height:44px}.la-demo-result{margin:12px 0 16px;padding:11px 13px;border-radius:9px;background:var(--la-paper,#fff);font-size:12px;color:var(--la-accent,#34674e)}.la-demo-actions{align-items:center}.la-demo-actions button{font-size:11px}.la-demo-actions .la-demo-primary{background:var(--la-accent,#34674e);color:var(--la-paper,#fff);border-color:transparent}
 @media(hover:hover) and (pointer:fine){.la-task-demo button:hover:not(:disabled){border-color:var(--la-accent,#34674e)}}

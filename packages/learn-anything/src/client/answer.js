@@ -1,11 +1,11 @@
 import * as react from 'react'
 
 const h = react.createElement
-const READ_ONLY = new Set(['outline', 'target-map', 'progress', 'feedback'])
+const ANSWER_CARDS = new Set(['outline', 'target-map', 'progress', 'feedback', 'concept-compare'])
 
 // References are standalone Markdown paragraphs, never code, quotes or list items.
 export function answerParts(text, entries) {
-  const views = new Map(entries.filter(({ view }) => READ_ONLY.has(view.view)).map((entry) => [encodeURIComponent(entry.callId), entry.view]))
+  const views = new Map(entries.filter(({ view }) => ANSWER_CARDS.has(view.view)).map((entry) => [encodeURIComponent(entry.callId), entry.view]))
   const parts = []
   let buffer = '', fence = null
   const lines = text.split(/(?<=\n)/)

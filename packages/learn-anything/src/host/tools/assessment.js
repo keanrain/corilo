@@ -11,6 +11,8 @@ import { FLASHCARD_PREFIX } from '../../quiz/flashcard.js'
 import { HELP_PREFIX, PRACTICE_MARKER } from '../../quiz/answer.js'
 import { str, strArray, ATTRIBUTIONS, gateOf, loadVerifications, saveKp, nextExampleId, refreshMastery, progressText } from './shared.js'
 import { localMinute } from './review.js'
+import { validateComparison, conceptCompareView, CONCEPT_RELATIONS } from '../concept-compare.js'
+import { forgottenExamples, examplePracticeText } from '../review.js'
 
 export const FINDING_TYPES = [
   'memorized-wording', // 记言代学
@@ -124,6 +126,10 @@ export const verificationRecord = {
       card ? `复习评分 ${RATING_LABEL[rating]}，下次复习 ${localMinute(new Date(card.due))}。` : '还在学习中，暂不排复习，达标后开始间隔复习。',
     ]
     if (sources.length) lines.push(`判题依据：${sources.join('、')}`)
+    if (model && scheduled && record.verdict === 'wrong') {
+      const examples = forgottenExamples(model, verifications.filter((v) => v.kpId === kp.id), record.id)
+      if (examples.length) lines.push(examplePracticeText(examples))
+    }
     if (isInfo && !passed) {
       const levels = factMasteries(verifications.filter((v) => v.kpId === kp.id), gateOf(env), facts)
       lines.push(`未达标记忆卡：${facts.filter((_, i) => !meetsGate(levels[i])).map((fact) => fact.id).join('、')}；按 kp_get 的卡片继续记忆。`)
@@ -168,16 +174,28 @@ export const diagnosisRecord = {
       },
     },
     prescription: strArray('处方：接下来准备什么材料、怎么教'),
+    comparison: { type: 'object', additionalProperties: false, description: 'concept-confusion 必填：外延关系、特征矩阵和对比例组；会直接显示概念对比卡片', properties: {
+      left: str('概念 A', { required: true }), right: str('概念 B', { required: true }),
+      relation: str('A 与 B 的外延关系', { enum: CONCEPT_RELATIONS, required: true }),
+      features: { type: 'array', required: true, items: { type: 'object', additionalProperties: false, properties: {
+        feature: str('比较特征', { required: true }), left: str('A 的特征', { required: true }), right: str('B 的特征', { required: true }),
+      } } },
+      examples: { type: 'array', required: true, items: { type: 'object', additionalProperties: false, properties: {
+        input: str('具体情况', { required: true }), left: { type: 'boolean', required: true, description: '属于 A' },
+        right: { type: 'boolean', required: true, description: '属于 B' }, reason: str('判别依据', { required: true }),
+      } } },
+    } },
   },
   async execute(args, env) {
     const kp = await store.requireKp(env.cwd, args.kpId)
     const model = args.modelId ? store.findModel(kp, args.modelId) : null
     if (!args.findings.length) throw new Error('give at least one finding (use on-track when nothing is wrong)')
     for (const f of args.findings) if (!f.evidence.trim()) throw new Error(`finding ${f.type} needs evidence`)
+    const comparison = args.comparison || args.findings.some((f) => f.type === 'concept-confusion') ? validateComparison(args.comparison) : null
     const p = store.paths(env.cwd)
     await store.appendJsonl(p.diagnoses, {
       id: store.newId('d'), kpId: kp.id, modelId: model?.id, findings: args.findings,
-      prescription: args.prescription ?? [], at: env.now().toISOString(),
+      prescription: args.prescription ?? [], ...(comparison ? { comparison } : {}), at: env.now().toISOString(),
     })
     const types = args.findings.map((f) => f.type)
     const prefer = types.includes('prefers-examples') ? 'example-first' : types.includes('prefers-rules') ? 'rule-first' : null
@@ -193,6 +211,6 @@ export const diagnosisRecord = {
       model.phase = next
       await saveKp(env, kp)
     }
-    return `已记录诊断：${types.join('、')}。${next ? `${kp.id}/${model.id} → ${next}。${PHASE_GUIDE[next]}` : ''}`
+    return `已记录诊断：${types.join('、')}。${next ? `${kp.id}/${model.id} → ${next}。${PHASE_GUIDE[next]}` : ''}` + (comparison ? '\n' + conceptCompareView(kp, model, comparison) : '')
   },
 }

@@ -20,7 +20,7 @@ Reminders retain an in-app history. Browser notifications require explicit autho
 
 ## Learning tutor
 
-After installation, users select the learning tutor preset in an existing DSH workspace. The plugin does not force directory navigation or change default presets. Read-only route, progress, and feedback cards appear with responses; interactive exercises and flashcards use the native right learning pane. See the [tutor guide](../packages/learn-anything/README.en.md).
+After installation, users select the learning tutor preset in an existing DSH workspace. The plugin does not force directory navigation or change default presets. Route, target-map, progress, and feedback cards appear with responses. Planning routes and target maps support direct editing through host authentication and revision checks; personal notes do not grant verification credit. Interactive exercises and flashcards use the native right learning pane. See the [tutor guide](../packages/learn-anything/README.en.md).
 
 ## Compatibility and acceptance
 

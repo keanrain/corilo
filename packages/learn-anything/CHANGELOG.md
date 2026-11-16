@@ -6,6 +6,18 @@ This records currently distributable code, not an npm publication. Maintain chan
 
 ## Unreleased / 未发布
 
+- 合并前审查补强出题来源、跨轮教学证据和原话语义保护，修复例子元数据丢失、跨会话编辑与演示切换崩溃；新增真实 DSH Web 模拟模型完整流程回归。
+  Pre-merge review strengthens card provenance, earlier teaching evidence and learner-word semantics, fixes example metadata loss, cross-session editing and demo replacement crashes, and adds a native DSH Web full-flow regression with a mock model.
+
+- 靶图和规划路线可直接编辑，保存使用宿主鉴权、版本检查和草稿保护；编辑不授予正式成绩。
+  Target maps and planning outlines support direct editing with host authentication, revision checks and draft retention; edits do not grant grades.
+- 中文分词及 BM25 检索，带行号的仓库声明索引，无凭据 HTTPS Git 浅克隆与 commit 来源。
+  Chinese segmentation/BM25 retrieval, line-linked repository declarations, and credential-free HTTPS Git snapshots with commit provenance.
+- 判题上下文按知识点收敛，保留精确重复检查；改善原话校验，新增概念对比卡、旧例复盘和参数化演示。
+  Knowledge-point-scoped examiner context retains exact replay checks; improved learner-word validation, concept comparison cards, old-example practice and configurable demos.
+- 学习数据仍为 JSON／JSONL；记录 SQLite 目标与显式迁移边界，不自动迁移已有数据。
+  Learner data remains JSON/JSONL; SQLite goals and explicit migration boundaries are documented without automatic migration.
+
 - 界面控件支持 DSH 中英文热切换，补齐英文安装文档；题目、教学材料、提示词与作答协议不变。
   UI controls follow live DSH Chinese/English switching and installation docs gain English coverage; questions, teaching materials, prompts, and answer protocols remain unchanged.
 
