@@ -1,5 +1,16 @@
 # Corilo 可里交接文档
 
+## Recovery exclusion and canonical workspaces / 恢复互斥与路径别名（2026-11-16）
+
+Base: main `1e73ca8`; branch `fix/tutor-recovery-race`. Fixes the two follow-up review findings:
+
+- Initialization and migration recovery apply acquire the same native SQLite OS lease, then repeat validation before identity repair, alias cleanup or marker removal. Stale preflight results cannot execute after another recovery completes. Direct identity repair requires an active lease. Concurrent apply returns 409; process termination releases the lease so a later explicit retry can finish safely.
+- `.learn/.recovery-lock.sqlite` is a persistent zero-byte coordinator, not learner data. Its connection uses an in-memory journal and never commits schema/data; it leaves no disk journal on SIGKILL. Do not delete/replace it while recovery runs. Read-only preview does not create it. Nonempty, linked or unexpected-sidecar coordinators fail closed.
+- Reminder helpers canonicalize the physical workspace once and use it for both queue identity and binding reads/writes. Real paths and symlink aliases share one host queue; retargeting the caller's alias cannot move an in-flight binding to a different workspace. Missing/non-directory workspaces fail before native task creation. Reminder deduplication remains host-process scoped.
+
+Executed: 312 tutor tests passed. Independent recovery review reran 76 focused tests and separate OS-process/alias/SIGKILL/unsafe-file probes without new blockers. Real pinned DSH mock boot verified physical-path plus symlink-alias native reminder deduplication, pause/delete and timer behavior. Dual-backend Chromium API, shipped Web tutoring flow, and three legacy browser suites passed. Tooling16/DSH pins passed. Fresh 74-file package passed build/test/content checks; its extracted executable recovery CLI completed read-only preview and locked apply with valid identity and zero-byte coordinator. No live-model acceptance, real-data migration/recovery, publication or deployment. Remote PR/CI results are reported separately.
+
+
 ## Storage review fixes / 存储审查修复（2026-11-16）
 
 Base: main `997edba`; branch `fix/tutor-storage-review`. Fixes the three independently reproduced review findings:

@@ -10,6 +10,8 @@ const HELP = `Usage: corilo-learn-store <migrate|export|recover> --workspace <di
     --apply            Explicitly recover verified publication / abort pending import
 
 Stop all services using this workspace before migrate --apply or recover --apply.
+Concurrent recovery applies are rejected; process exit releases the recovery lock.
+Never delete or replace .learn/.recovery-lock.sqlite while a recovery is running.
 Original JSON/JSONL remains unchanged. Materials are not included in this learner-only backup/export.
 To roll back after new learning, export current SQLite state to a separate workspace;
 do not delete the live database and fall back to stale retained JSON files.

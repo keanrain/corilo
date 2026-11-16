@@ -155,6 +155,8 @@ npm run store -- migrate --workspace /absolute/learning-workspace --apply
 
 ### 导出、首次建库与迁移恢复
 
+`recover --apply` 使用跨进程互斥，在取得锁后重新校验状态；另一个恢复进程运行时会拒绝本次应用。进程退出或被终止后锁由系统释放，可再次执行恢复。`.learn/.recovery-lock.sqlite` 是持久保留的空协调文件，不含学习记录；恢复运行期间不要删除或替换它。预览不会创建该文件。
+
 ```sh
 # 导出当前 SQLite 学习记录到一个新的独立目录；不修改活动工作区。
 npm run store -- export --workspace /absolute/learning-workspace --output /absolute/new-export

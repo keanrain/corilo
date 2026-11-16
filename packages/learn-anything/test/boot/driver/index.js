@@ -3,6 +3,9 @@
 import { randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
+import { mkdtemp, symlink, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createReminders } from '../../../src/host/reminder.js';
 export const name = 'la-driver';
 export const inject = ['agentDefaultModel', 'agents', 'sessions', 'agentPresets', 'schedule'];
@@ -27,13 +30,21 @@ export function apply(ctx) {
     const reminderDefaults = { time: '23:59', timeZone: 'Asia/Taipei' };
     const reminders = createReminders(schedule, reminderDefaults);
     const anotherAgentReminders = createReminders(schedule, reminderDefaults);
-    const [reminder, concurrentReminder] = await Promise.all([
-      reminders.ensure(process.cwd(), agent.session.id),
-      anotherAgentReminders.ensure(process.cwd(), agent.session.id),
-    ]);
-    assert.equal(concurrentReminder.id, reminder.id, 'separate helpers share one native reminder');
-    assert.equal((await schedule.catalog()).length, 1, 'concurrent helpers cannot create duplicate native tasks');
+    const aliasRoot = await mkdtemp(join(tmpdir(), 'learn-native-reminder-alias-'));
+    const alias = join(aliasRoot, 'workspace');
+    let reminder;
+    try {
+      await symlink(process.cwd(), alias, 'dir');
+      const results = await Promise.all([
+        reminders.ensure(process.cwd(), agent.session.id),
+        anotherAgentReminders.ensure(alias, agent.session.id),
+      ]);
+      reminder = results[0];
+      assert.equal(results[1].id, reminder.id, 'physical and alias paths share one native reminder');
+      assert.equal((await schedule.catalog()).length, 1, 'alias helpers cannot create duplicate native tasks');
+    } finally { await rm(aliasRoot, { recursive: true, force: true }); }
     console.error('[driver] native multi-helper reminder deduplication passed');
+    console.error('[driver] native symlink-alias reminder deduplication passed');
     const paused = await schedule.edit({ id: reminder.id, action: 'update', patch: { active: false } }, agent.session.id);
     assert.equal(paused.status, 'paused');
     assert.equal((await reminders.ensure(process.cwd(), agent.session.id)).status, 'paused');

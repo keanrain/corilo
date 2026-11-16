@@ -7,6 +7,7 @@ import { lstatSync, readdirSync, readFileSync } from 'node:fs'
 import { join, dirname, resolve, basename } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { AsyncLocalStorage } from 'node:async_hooks'
+import { assertRecoveryLease, withRecoveryLease, canonicalRecoveryWorkspace } from './recovery-lock.js'
 import { emptySnapshot, createSqliteSnapshot, readSqliteSnapshot, commitSqliteSnapshot, validateSqliteFiles, snapshotDigest, inspectSqlite, sqliteIdentity, conflict } from './sqlite-store.js'
 
 export const DIR = '.learn'
@@ -78,6 +79,7 @@ export async function checkSqliteIdentity(cwd, instanceId, { allowIncomplete = f
  */
 export async function ensureSqliteIdentity(cwd, instanceId, { recoverIncomplete = false } = {}) {
   const p = paths(cwd)
+  if (recoverIncomplete) assertRecoveryLease(cwd)
   directory(p.root, false)
   if (sqliteIdentity(p.database).instanceId !== instanceId) throw new Error('Cannot select a learner database with a different instance identity')
   let state = await checkSqliteIdentity(cwd, instanceId, { allowIncomplete: recoverIncomplete })
@@ -300,6 +302,14 @@ async function publishFirstDatabase(cwd, snapshot) {
  * candidate/database alias pair must match the durable manifest exactly.
  */
 export async function recoverInitialization(cwd, { apply = false } = {}) {
+  cwd = canonicalRecoveryWorkspace(cwd)
+  if (!apply) return recoverInitializationState(cwd)
+  // Preflight is read-only. Revalidate every proof after taking the OS lease;
+  // no cached manifest or identity state may outlive another recovery.
+  await recoverInitializationState(cwd, true, true)
+  return withRecoveryLease(cwd, () => recoverInitializationState(cwd, true))
+}
+async function recoverInitializationState(cwd, apply = false, preflight = false) {
   const p = paths(cwd), marker = join(p.root, '.initialization.json')
   directory(p.root, false); regular(marker, false)
   if (missing(join(p.root, '.migration.lock'))) throw new Error('Migration and initialization markers coexist; inspect both manually')
@@ -332,6 +342,7 @@ export async function recoverInitialization(cwd, { apply = false } = {}) {
   // Recheck the manifest and path identity after preview validation.
   if (JSON.stringify(JSON.parse(await readFile(marker, 'utf8'))) !== JSON.stringify(manifest)) throw conflict('Initialization manifest changed during recovery')
   assertNoLegacyInitializationData(p)
+  if (preflight) return report
   if (!databaseInfo && candidateInfo) {
     try { await link(candidate, p.database) } catch (error) { if (error.code === 'EEXIST') throw conflict(); throw error }
     await syncDirectory(p.root)

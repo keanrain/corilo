@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, mkdir, symlink, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReminders, dailyAt, REMINDER_TITLE } from '../src/host/reminder.js'
@@ -173,4 +173,66 @@ test('a blocked workspace does not block reminder creation for another workspace
     assert.equal(record.target.sessionId, 'session-b')
     assert.equal(firstSchedule.rows.length, 0, 'first workspace remains held while the second completes')
   } finally { clearTimeout(timeout); release.resolve(); await Promise.allSettled([first, second]) }
+})
+
+
+test('physical workspace and symlink alias share the queue and one persisted binding', async (t) => {
+  const cwd = await sqlWorkspace(t)
+  const parent = await mkdtemp(join(tmpdir(), 'learn-reminder-alias-'))
+  t.after(() => rm(parent, { recursive: true, force: true }))
+  const alias = join(parent, 'linked-workspace')
+  await symlink(cwd, alias, 'dir')
+  const schedule = fakeSchedule(), entered = deferred(), release = deferred()
+  const create = schedule.create.bind(schedule)
+  let creates = 0
+  schedule.create = async (...args) => { creates++; entered.resolve(); await release.promise; return create(...args) }
+  const first = createReminders(schedule, defaults).ensure(cwd, 'session-a')
+  await entered.promise
+  const second = createReminders({ ...schedule }, defaults).ensure(alias, 'session-b')
+  await nextTurn()
+  release.resolve()
+  const [a, b] = await Promise.all([first, second])
+  assert.equal(creates, 1)
+  assert.equal(schedule.rows.length, 1)
+  assert.equal(a.id, b.id)
+  assert.deepEqual(await store.readJson(store.paths(cwd).reminder, null), { sessionId: 'session-a', id: a.id })
+  assert.deepEqual(await store.readJson(store.paths(alias).reminder, null), { sessionId: 'session-a', id: a.id })
+})
+
+test('retargeting a workspace alias during creation does not move its saved binding', async (t) => {
+  const firstWorkspace = await sqlWorkspace(t), secondWorkspace = await sqlWorkspace(t)
+  const parent = await mkdtemp(join(tmpdir(), 'learn-reminder-retarget-'))
+  t.after(() => rm(parent, { recursive: true, force: true }))
+  const alias = join(parent, 'linked-workspace')
+  await symlink(firstWorkspace, alias, 'dir')
+  const schedule = fakeSchedule(), entered = deferred(), release = deferred()
+  const create = schedule.create.bind(schedule)
+  schedule.create = async (...args) => { entered.resolve(); await release.promise; return create(...args) }
+  const pending = createReminders(schedule, defaults).ensure(alias, 'session-a')
+  await entered.promise
+  await unlink(alias)
+  await symlink(secondWorkspace, alias, 'dir')
+  release.resolve()
+  const record = await pending
+  assert.deepEqual(await store.readJson(store.paths(firstWorkspace).reminder, null), { sessionId: 'session-a', id: record.id })
+  assert.equal(await store.readJson(store.paths(secondWorkspace).reminder, null), null)
+})
+
+test('unavailable or non-directory workspace fails before native reminder creation', async (t) => {
+  const parent = await mkdtemp(join(tmpdir(), 'learn-reminder-unavailable-'))
+  t.after(() => rm(parent, { recursive: true, force: true }))
+  const schedule = fakeSchedule(), reminders = createReminders(schedule, defaults)
+  const missing = join(parent, 'not-created')
+  await assert.rejects(reminders.ensure(missing, 'session-a'), { code: 'ENOENT' })
+  const file = join(parent, 'file')
+  await writeFile(file, 'not a workspace')
+  await assert.rejects(reminders.ensure(file, 'session-a'), /must be a directory/)
+  const broken = join(parent, 'broken')
+  await symlink(missing, broken, 'dir')
+  await assert.rejects(reminders.ensure(broken, 'session-a'), { code: 'ENOENT' })
+  assert.equal(schedule.rows.length, 0)
+  await mkdir(missing)
+  const record = await reminders.ensure(missing, 'session-a')
+  assert.equal(schedule.rows.length, 1, 'a later valid directory is not blocked by the failed lookup')
+  assert.deepEqual(await store.readJson(store.paths(missing).reminder, null), { sessionId: 'session-a', id: record.id })
 })
