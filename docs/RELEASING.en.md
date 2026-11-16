@@ -42,3 +42,11 @@ Output contains the `.tgz`, `SHA256SUMS`, `release.json`, and the version's `REL
 Tutor releases also require corresponding version, compatibility, and publication-time updates in `market/index.json`. If the index points to npm, the matching package must actually be published first. The current local tgz installs into existing DSH; the presence of a market index does not establish market installability. Any future public npm release requires a separate decision about permissions and channels; this workflow does not perform it.
 
 For installation and data boundaries, see [notes](../plugins/notes/README.md), [todos](../plugins/todos/README.en.md), and [the tutor](../packages/learn-anything/README.en.md). For current CI and runtime limits, see the [development guide](DEVELOPMENT.en.md).
+
+## GitHub Releases
+
+After publication is authorized, push a `packages-YYYYMMDD` tag pointing to a commit already merged into main. A numeric suffix such as `.1` supports another release on the same day. This triggers `Publish package prerelease`; ordinary branch pushes and PRs do not publish.
+
+The workflow installs each independent lockfile, rebuilds, tests, and validates all three packages. Notes must pass a real restic recovery drill. Only after all products succeed does it assemble assets, create a draft Release, and upload three `.tgz` files, per-product change logs, installation instructions, SHA256 checksums, and a source/package manifest. It downloads and verifies every asset before publishing as a prerelease, without setting latest, publishing to npm, or migrating user instances.
+
+Only the publishing job has `contents: write`; builds are read-only. An existing release is never overwritten. If failure leaves a draft, inspect the cause rather than automatically deleting or replacing assets. Preparation metadata's `published: false` describes the preparation step; the public manifest separately records `github-prerelease` and `npmPublished: false`.
