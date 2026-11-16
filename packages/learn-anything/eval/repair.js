@@ -1,6 +1,5 @@
 // One controlled bad question; everything after its generation uses the real tutor/examiner.
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { learnerDocument, learnerEvents } from './learner-store.js'
 import { verified } from '../src/host/mastery.js'
 import { QUALITY_CASES } from './quality-cases.js'
 import { textOf } from './metrics.js'
@@ -30,12 +29,11 @@ export const REPAIR_FIXTURE = [
 export const REPAIR_CHALLENGE = `我初步想把第4条改成「备用洗衣机0台，最多同时3台在转」。但${question.answer} 请让考官先核对这些条件是否足够，再判我的这个改法。`
 
 export function repairState(cwd) {
-  const read = (path, fallback) => existsSync(path) ? readFileSync(path, 'utf8') : fallback
-  const kp = JSON.parse(read(join(cwd, '.learn/kp/task-routing.json'), '{}'))
+  const kp = learnerDocument(cwd, 'kp/task-routing', {})
   return {
-    records: read(join(cwd, '.learn/verifications.jsonl'), '').trim().split('\n').filter(Boolean).map(JSON.parse),
+    records: learnerEvents(cwd, 'verifications'),
     mastery: { kp: kp.mastery, models: kp.models?.map((m) => [m.id, m.mastery]) },
-    reviews: JSON.parse(read(join(cwd, '.learn/reviews.json'), 'null')),
+    reviews: learnerDocument(cwd, 'reviews'),
   }
 }
 

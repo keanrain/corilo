@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { createHash } from 'node:crypto'
 import assert from 'node:assert/strict'
 import { mkdtemp, rm, readdir, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -9,13 +10,19 @@ import { buildSync } from 'esbuild'
 import * as react from 'react'
 import { flashcardShowTool } from '../src/host/flashcard.js'
 import { verificationRecord } from '../src/host/tools.js'
-import { paths, writeJson } from '../src/host/store.js'
+import { paths, writeJson, readJson, backend } from '../src/host/store.js'
 import { parseView } from '../src/host/render.js'
+import { readSqliteSnapshot, snapshotDigest } from '../src/host/sqlite-store.js'
 import { flashcardHistory, formatFlashcardReview } from '../src/quiz/flashcard.js'
 
 async function snapshot(dir) {
+  const kind = await backend(dir)
+  const database = kind === 'sqlite' ? readSqliteSnapshot(paths(dir).database) : null
   const files = await readdir(dir, { recursive: true, withFileTypes: true })
-  return Promise.all(files.filter((f) => f.isFile()).map(async (f) => [join(f.parentPath, f.name), await readFile(join(f.parentPath, f.name), 'utf8')]))
+  // SQLite may create empty WAL/SHM coordination files on a read. Compare the
+  // committed learner snapshot and revision, not those ephemeral file bytes.
+  const contents = await Promise.all(files.filter((f) => f.isFile() && !(kind === 'sqlite' && join(f.parentPath, f.name).startsWith(paths(dir).database))).map(async (f) => [join(f.parentPath, f.name), createHash('sha256').update(await readFile(join(f.parentPath, f.name))).digest('hex')]))
+  return { files: contents, learner: database && { revision: database.revision, instanceId: database.instanceId, digest: snapshotDigest(database.snapshot) } }
 }
 async function workspace(fn) {
   const cwd = await mkdtemp(join(tmpdir(), 'la-flashcard-'))
@@ -43,7 +50,7 @@ test('flashcard rejects unavailable facts, inactive points and invalid material 
   await assert.rejects(flashcardShowTool.execute({ kpId: 'gone' }, exec), /不在当前课程/)
   await assert.rejects(flashcardShowTool.execute({ kpId: 'knowledge' }, exec), /information/)
   await assert.rejects(flashcardShowTool.execute({ kpId: 'info', factId: 'nope' }, exec), /factId 不存在/)
-  const kp = JSON.parse(await readFile(p.kp('info'), 'utf8'))
+  const kp = await readJson(p.kp('info'))
   kp.facts.push({ id: 'second', prompt: 'HTTPS?', answer: '443' })
   await writeJson(p.kp('info'), kp)
   await assert.rejects(flashcardShowTool.execute({ kpId: 'info' }, exec), /指定 factId/)

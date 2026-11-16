@@ -1,6 +1,5 @@
 // Controlled help request; all question generation, answers and grading use real agents.
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { learnerDocument, learnerEvents } from './learner-store.js'
 import { parseView } from '../src/host/render.js'
 import { HELP_PREFIX, parseQuizAction, quizAnswerDisplay } from '../src/quiz/answer.js'
 import { clean, verified } from '../src/host/mastery.js'
@@ -22,12 +21,11 @@ export const LEARNING_LOOP_SCENARIO = {
 }
 
 export function learningState(cwd) {
-  const read = (file, fallback) => existsSync(file) ? readFileSync(file, 'utf8') : fallback
-  const kp = JSON.parse(read(join(cwd, '.learn/kp/task-routing.json'), '{}'))
-  const records = read(join(cwd, '.learn/verifications.jsonl'), '').split('\n').filter(Boolean).map(JSON.parse)
+  const kp = learnerDocument(cwd, 'kp/task-routing', {})
+  const records = learnerEvents(cwd, 'verifications')
   const model = kp.models?.find((m) => m.id === 'route')
   return { records, mastery: model?.mastery, progress: model ? gateProgress(model, records, model.mastery) : null,
-    reviews: JSON.parse(read(join(cwd, '.learn/reviews.json'), 'null')) }
+    reviews: learnerDocument(cwd, 'reviews') }
 }
 
 export function scoreLearningLoop(events, checkpoints) {

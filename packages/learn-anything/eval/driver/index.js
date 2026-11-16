@@ -14,6 +14,7 @@
 //   LA_EVAL_PROMPT_CACHE=1  with LA_EVAL_ANTHROPIC: ask the gateway for prompt caching (off by default:
 //                           the internal gateway's cache hits are random and cost more than they save)
 import { randomUUID } from 'node:crypto'
+import { learnerEvents } from '../learner-store.js'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { catalogModelInfo, registerDeepSeekProvider, resolveAdapterOptions } from '@deepseek-ai/dsh-llm-deepseek'
@@ -210,7 +211,7 @@ export function apply(ctx) {
     tutor = agent
     await agent.whenIdle()
     const until = s.until ?? 'diagnosed'
-    const marker = join(process.cwd(), '.learn', until === 'verified' ? 'verifications.jsonl' : 'diagnoses.jsonl')
+    const eventKind = until === 'verified' ? 'verifications' : 'diagnoses'
     const need = until === 'verified' ? (s.verifications ?? 1) : 1
     cursor = agent.session.seq
     const checkpoint = () => { if (s.repair || s.learningLoop) checkpoints.push({ eventSeq: agent.session.seq, state: s.learningLoop ? learningState(process.cwd()) : repairState(process.cwd()) }) }
@@ -227,7 +228,7 @@ export function apply(ctx) {
         if (error) { stop = 'tutor-error'; break }
         // The learner replies to the tutor's last words; a turn that ends without any is marked.
         if (history.at(-1)?.who !== 'tutor') history.push({ who: 'tutor', text: '（导师这一轮没有说话。）', silent: true })
-        if (!s.recovery && existsSync(marker) && readFileSync(marker, 'utf8').trim().split('\n').length >= need) { stop = until; break }
+        if (!s.recovery && learnerEvents(process.cwd(), eventKind).length >= need) { stop = until; break }
         if (s.recovery) { message = s.followup; continue }
         if (s.learningLoop && pendingQuiz && !helped) {
           message = `${HELP_PREFIX}「等待区」和「正在执行的位置」我有点分不清，先补讲这个区别，我会回原题继续答。\n（互动题 ${pendingQuiz.id}）`

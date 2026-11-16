@@ -1,8 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import * as store from '../src/host/store.js'
 import { ingestMaterial, validateSources } from '../src/host/ingest.js'
 import { courseSave, kpDefineModels, kpGet, targetMapUpdate, verificationRecord } from '../src/host/tools.js'
 import { quizShowTool } from '../src/host/quiz.js'
@@ -34,7 +35,7 @@ test('references survive examples, quizzes, grading records and both card views'
   const { env, exec, sources, id } = await workspace(t)
   const course = { goal: '理解线程池', status: 'active', chapters: [{ title: '并发', kps: [{ id: 'pool', title: '线程池', kind: 'knowledge', sources }] }] }
   await assert.rejects(courseSave.execute({ ...course, chapters: [{ title: '并发', kps: [{ ...course.chapters[0].kps[0], sources: [`${id}#99`] }] }] }, env), /no block/)
-  await assert.rejects(readFile(join(env.cwd, '.learn/kp/pool.json')), { code: 'ENOENT' })
+  assert.equal(await store.readJson(store.paths(env.cwd).kp('pool'), null), null)
   await courseSave.execute(course, env)
   await kpDefineModels.execute({ kpId: 'pool', models: [{ id: 'map', type: 'associative', input: '新任务', output: '任务去向', reference: '核心线程忙且队列未满时排队' }] }, env)
   const example = { tag: 'e', input: '核心线程忙，队列未满', output: '排队', origin: 'material', source: sources[0] }
@@ -54,10 +55,10 @@ test('references survive examples, quizzes, grading records and both card views'
 
   const answer = { kpId: 'pool', modelId: 'map', question: quiz.question, questionType: 'predict', answer: '排队', verdict: 'correct', sources, expected: { output: '排队' } }
   await assert.rejects(verificationRecord.execute({ ...answer, sources: [`${id}#99`] }, env), /no block/)
-  await assert.rejects(readFile(join(env.cwd, '.learn/verifications.jsonl')), { code: 'ENOENT' })
+  assert.deepEqual(await store.readJsonl(store.paths(env.cwd).verifications), [])
   const feedback = parseView(await verificationRecord.execute(answer, env))
   assert.deepEqual(feedback.sources, sources)
-  const record = JSON.parse((await readFile(join(env.cwd, '.learn/verifications.jsonl'), 'utf8')).trim())
+  const record = (await store.readJsonl(store.paths(env.cwd).verifications))[0]
   assert.deepEqual(record.sources, sources)
   const text = await kpGet.execute({ kpId: 'pool' }, env)
   const updated = parseView(text)

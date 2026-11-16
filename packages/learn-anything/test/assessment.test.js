@@ -1,12 +1,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { answerEvidence, assessAnswer } from '../src/host/assessment.js'
 import { marker } from '../src/host/render.js'
 import { formatQuizAnswer } from '../src/quiz/answer.js'
 import * as tools from '../src/host/tools.js'
+import * as store from '../src/host/store.js'
 import { modelMastery } from '../src/host/mastery.js'
 
 const question = '换一个领域判断条件是否充分，并说明理由。'
@@ -47,7 +48,7 @@ test('grading uses the actual shown card and learner event, not the tutor suppli
   await tools.kpDefineModels.execute({ kpId: 'cause', models: [{ id: 'm', type: 'discriminative', concept: '充分证据', reference: '一个结果可能有多个原因' }] }, env)
   const args = { kpId: 'cause', modelId: 'm', question, questionType: 'transfer', answer: '导师虚构的正确回答', verdict: 'correct', hintsUsed: 0, confidence: 'sure' }
   await tools.verificationRecord.execute(args, env)
-  const records = (await readFile(join(cwd, '.learn/verifications.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse)
+  const records = await store.readJsonl(store.paths(cwd).verifications)
   assert.equal(records[0].answer, answer)
   assert.equal(records[0].verdict, 'wrong')
   assert.equal(records[0].questionType, 'scenario')
@@ -55,7 +56,7 @@ test('grading uses the actual shown card and learner event, not the tutor suppli
   assert.equal(records[0].hintsUsed, 1)
   assert.match(records[0].evidence.examinerDigest, /^[a-f0-9]{64}$/)
   await assert.rejects(tools.verificationRecord.execute(args, env), /已记录/)
-  assert.equal((await readFile(join(cwd, '.learn/verifications.jsonl'), 'utf8')).trim().split('\n').length, 1)
+  assert.equal((await store.readJsonl(store.paths(cwd).verifications)).length, 1)
 })
 
 test('practice, missing messages, controls, different cards and invented questions fail closed', () => {

@@ -15,8 +15,8 @@ This records currently distributable code, not an npm publication. Maintain chan
   Chinese segmentation/BM25 retrieval, line-linked repository declarations, and credential-free HTTPS Git snapshots with commit provenance.
 - 判题上下文按知识点收敛，保留精确重复检查；改善原话校验，新增概念对比卡、旧例复盘和参数化演示。
   Knowledge-point-scoped examiner context retains exact replay checks; improved learner-word validation, concept comparison cards, old-example practice and configurable demos.
-- 学习数据仍为 JSON／JSONL；记录 SQLite 目标与显式迁移边界，不自动迁移已有数据。
-  Learner data remains JSON/JSONL; SQLite goals and explicit migration boundaries are documented without automatic migration.
+- 新空学习工作区使用 Node 内置 SQLite，学习记录、掌握度与复习排期共享事务；教材仍为文件。旧 JSON／JSONL 保持兼容，仅通过显式迁移转换，保留备份和原记录；首次建库与迁移中断均需显式恢复，不自动升级。
+  New empty learner workspaces use built-in Node SQLite, with transactions covering learner records, mastery and review scheduling; materials remain files. Legacy JSON/JSONL remains compatible and converts only through explicit migration, preserving backups and original records. Interrupted initialization/migration requires explicit recovery, without automatic schema upgrades.
 
 - 界面控件支持 DSH 中英文热切换，补齐英文安装文档；题目、教学材料、提示词与作答协议不变。
   UI controls follow live DSH Chinese/English switching and installation docs gain English coverage; questions, teaching materials, prompts, and answer protocols remain unchanged.

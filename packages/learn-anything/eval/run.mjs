@@ -46,6 +46,7 @@ import { dirname, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import * as tools from '../src/host/tools.js'
+import { learnerDocument, learnerEvents } from './learner-store.js'
 import { parseView } from '../src/host/render.js'
 import { staircase } from '../src/host/flow.js'
 import { ingestMaterial } from '../src/host/ingest.js'
@@ -324,7 +325,7 @@ async function score(s, ws, out, material) {
   if (!transcript.history.some((m) => m.who === 'tutor' && !m.silent)) throw new Error('the tutor never spoke')
   const events = readJsonl(join(out, 'events.jsonl'))
   const subEvents = readJsonl(join(out, 'subagent-events.jsonl'))
-  const diagnoses = readJsonl(join(ws, '.learn', 'diagnoses.jsonl')).filter((d) => d.kpId === s.course.kp.id)
+  const diagnoses = learnerEvents(ws, 'diagnoses').filter((d) => d.kpId === s.course.kp.id)
   const findings = diagnoses.flatMap((d) => d.findings)
   const found = [...new Set(findings.map((f) => f.type))]
   const prescription = diagnoses.flatMap((d) => d.prescription).join('；')
@@ -334,15 +335,15 @@ async function score(s, ws, out, material) {
   const judge = diagnoses.length && !opt['no-judge']
     ? await judgePrescription(s, findings, prescription).catch((error) => { judgeError = error.message.slice(0, 500); return null })
     : null
-  const kp = JSON.parse(readFileSync(join(ws, '.learn', 'kp', `${s.course.kp.id}.json`), 'utf8'))
+  const kp = learnerDocument(ws, `kp/${s.course.kp.id}`)
   const learnerSaid = transcript.history.filter((m) => m.who === 'learner' && m.via !== 'ask_user_question').map((m) => normalize(m.text))
   const statements = kp.models.map((m) => m.targetMap.statement?.text).filter(Boolean)
   const ghostwritten = statements.filter((t) => !learnerSaid.some((said) => said.includes(normalize(t))))
   const learnerTurns = transcript.history.filter((m) => m.who === 'learner').length
   // The tutor may insert a prerequisite point and verify that instead, so count every point of the course.
-  const course = JSON.parse(readFileSync(join(ws, '.learn', 'course.json'), 'utf8'))
+  const course = learnerDocument(ws, 'course')
   const courseKps = new Set(course.chapters.flatMap((c) => c.kpIds))
-  const verified = readJsonl(join(ws, '.learn', 'verifications.jsonl')).filter((v) => courseKps.has(v.kpId))
+  const verified = learnerEvents(ws, 'verifications').filter((v) => courseKps.has(v.kpId))
   return {
     id: s.id,
     defect: s.defect,

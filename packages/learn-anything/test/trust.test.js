@@ -1,9 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, readFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as tools from '../src/host/tools.js'
+import * as store from '../src/host/store.js'
 import { modelMastery, informationMastery } from '../src/host/mastery.js'
 
 async function workspace(t) {
@@ -23,7 +24,7 @@ test('invented correct answers without session/examiner evidence cannot be recor
   for (const questionType of ['scenario', 'discriminate-neg', 'rephrase']) await assert.rejects(tools.verificationRecord.execute({
     kpId: 'basic', modelId: 'm', question: `虚构的${questionType}题`, questionType, answer: '虚构的答案', verdict: 'correct',
   }, env), /evidence|会话|证据/)
-  await assert.rejects(readFile(join(env.cwd, '.learn/verifications.jsonl')), { code: 'ENOENT' })
+  assert.deepEqual(await store.readJsonl(store.paths(env.cwd).verifications), [])
 })
 
 test('missing learner history and fragments of help requests cannot establish a rule', async (t) => {
@@ -58,12 +59,12 @@ test('skip requires learner intent, does not claim mastery, and can be restored'
 
 test('cyclic prerequisites are rejected before saving any course change', async (t) => {
   const env = await workspace(t)
-  const before = await readFile(join(env.cwd, '.learn/course.json'), 'utf8')
+  const before = JSON.stringify(await store.readJson(join(env.cwd, '.learn/course.json')))
   await assert.rejects(tools.courseSave.execute({ goal: '循环', status: 'active', chapters: [{ title: 'ch', kps: [
     { id: 'a', title: 'a', kind: 'knowledge', prerequisites: ['b'] },
     { id: 'b', title: 'b', kind: 'knowledge', prerequisites: ['a'] },
   ] }] }, env), /cyclic/)
-  assert.equal(await readFile(join(env.cwd, '.learn/course.json'), 'utf8'), before)
+  assert.equal(JSON.stringify(await store.readJson(join(env.cwd, '.learn/course.json'))), before)
 })
 
 test('target_map_update uses learner-word validation for full colon and rhetorical summaries', async (t) => {
@@ -72,7 +73,7 @@ test('target_map_update uses learner-word validation for full colon and rhetoric
   for (const statement of statements) {
     env.userTexts = () => [statement]
     await tools.targetMapUpdate.execute({ kpId: 'basic', modelId: 'm', statement }, env)
-    const saved = JSON.parse(await readFile(join(env.cwd, '.learn/kp/basic.json'), 'utf8'))
+    const saved = await store.readJson(join(env.cwd, '.learn/kp/basic.json'))
     assert.equal(saved.models[0].targetMap.statement.text, statement)
   }
 })

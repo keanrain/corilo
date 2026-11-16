@@ -209,6 +209,9 @@ export const kpSkip = {
 // The revision covers knowledge records too: a stale card must not overwrite progress.
 const outlineError = (message, status = 400) => Object.assign(new Error(message), { status })
 async function checkOutlinePaths(cwd, ids = []) {
+  await store.validateStorePaths(cwd)
+  for (const id of ids) store.safeId(id)
+  if (await store.backend(cwd) !== 'legacy') return
   const p = store.paths(cwd)
   for (const path of [p.root, p.kpDir]) {
     const stat = await lstat(path)
@@ -223,7 +226,10 @@ async function checkOutlinePaths(cwd, ids = []) {
     } catch (e) { if (e.code !== 'ENOENT' || path === p.course) throw e }
   }
 }
-export async function readOutline(cwd) {
+export function readOutline(cwd) {
+  return store.withWorkspaceRead(cwd, () => readOutlineSnapshot(cwd))
+}
+async function readOutlineSnapshot(cwd) {
   await checkOutlinePaths(cwd)
   const course = await store.requireCourse(cwd)
   const kps = (await store.listKps(cwd)).sort((a, b) => a.id.localeCompare(b.id))
@@ -238,7 +244,10 @@ export async function readOutline(cwd) {
   return { view, revision }
 }
 
-export async function saveOutline(cwd, args, now = () => new Date()) {
+export function saveOutline(cwd, args, now = () => new Date()) {
+  return store.withWorkspaceWrite(cwd, () => saveOutlineSnapshot(cwd, args, now))
+}
+async function saveOutlineSnapshot(cwd, args, now) {
   const current = await readOutline(cwd)
   if (current.view.status !== 'planning') throw outlineError('Only a planning outline can be edited; this route is already locked.')
   if (typeof args.expected !== 'string' || args.expected !== current.revision) throw outlineError('Outline changed. Reload the route before saving; your draft is preserved.', 409)
