@@ -1,5 +1,26 @@
 # Corilo 可里交接文档
 
+## 当前交接状态（2026-11-16）
+
+本节优先于下方历史记录中的「尚未合入 main」。本次交接前工作区干净，当前产品基线为 main 的 `76f5c9e`；上一轮已推送并核对本地与 origin/main 一致。本次只更新交接文档，在 `docs/handoff-20261116` 分支提交；没有待完成的功能任务，下一步等待用户新指令。
+
+已完成并合入 main：
+
+- `1eb1f79`：根 README 中英双语。
+- `6a3935b`：当前项目文档双语、CLI 英文、notes／todos／学习导师自有 UI 跟随 DSH 语言设置。导师 prompts、skills、教学工具和作答协议保持原样。
+- `76f5c9e`：根 `README.md` 默认英文，中文版为 `README.zh-CN.md`，移除根 `README.en.md` 并更新引用。子项目文档仍保留各自现有命名。
+- 更早的文档／CI 对齐、DSH 版本检查、独立发版准备、导师工具拆分及通配符 exports 检查也已合入；不需要重复合并旧分支。
+
+最近审查未发现新的明确缺陷；三包语言单元测试和 diff 检查通过。默认 README 调整检查了 85 个本地链接；纯文档改动未重复运行业务测试。完整双语改动的测试证据与限制见下一节，不能将这些历史通过记录表述为本次交接重新执行。远端 GitHub Actions 结果尚未核对；导师卡片语言测试使用模拟宿主，完整 DSH Web 端到端仍未验证。没有发布 npm、部署或迁移用户实例。
+
+接手约束与入口：
+
+- 先读 [AGENTS.md](../AGENTS.md)、[根 README](../README.md) 与 [文档索引](README.md)。使用 `/workspace/corilo` 现有 checkout，不擅自创建 worktree。
+- notes `0.7.0`、todos `0.6.1`、导师 `0.1.0` 独立锁文件与分发；DSH 固定 `0.2.2-rc.3`，未引入 npm workspaces。导师仅支持已有 DSH 用户，默认 notes＋todos 组合不加载导师。
+- 保留旧 app／Android／P0、本地用户数据及 `stash@{0}`（迁移前保存）；不要自动 pop、删除或重放旧 stash。旧分支保留，不代表有未合入的新任务。
+- remote 为 `https://github.com/keanrain/corilo.git`。当前 fetch 配置可能仍只跟踪旧分支；更新 main 使用 `git fetch origin refs/heads/main:refs/remotes/origin/main`，避免误读旧 tracking ref。
+- 验证归档 `/tmp/corilo-bilingual-packs/` 是临时产物，可能消失；需要发布时按 [分发指南](RELEASING.md) 重新准备，不能视为已发布版本。
+
 ## Bilingual project documentation and UI / 项目中英支持（2026-11-15）
 
 Current product, specification, architecture, interaction, development, release, plugin, and launcher docs now have Chinese/English navigation. AGENTS.md is maintained in English, with AGENTS.zh-CN.md retaining the Chinese counterpart. Package changelogs are bilingual. Launcher and notes CLI help/errors use English. Historical archives, vendor sources, user data, tutor prompts/skills, host teaching tools, and answer protocol modules were not translated or changed.
