@@ -6,6 +6,7 @@
  */
 import * as store from './store.js'
 import { resolve } from 'node:path'
+import { realpath, stat } from 'node:fs/promises'
 
 export const REMINDER_TITLE = '今日复习'
 export const REMINDER_PROMPT =
@@ -24,9 +25,13 @@ export function dailyAt(time, timeZone) {
 // than a scoped schedule wrapper's object identity, owns the persisted binding.
 // This serializes one process only; it is not a distributed service transaction.
 const pending = new Map()
-function queue(cwd, operation) {
-  const key = resolve(cwd)
-  const result = (pending.get(key) ?? Promise.resolve()).then(operation)
+async function queue(cwd, operation) {
+  // Session cwd may be a symlink alias. Resolve once before queuing and keep
+  // store operations on this same physical path, even if the alias is retargeted.
+  // Missing/non-directory workspaces fail before any native reminder is created.
+  const key = await realpath(resolve(cwd))
+  if (!(await stat(key)).isDirectory()) throw new Error('Reminder workspace must be a directory')
+  const result = (pending.get(key) ?? Promise.resolve()).then(() => operation(key))
   const tail = result.then(() => {}, () => {})
   pending.set(key, tail)
   void tail.then(() => { if (pending.get(key) === tail) pending.delete(key) })
@@ -46,15 +51,15 @@ export function createReminders(schedule, defaults) {
      * restores it; automatic checks respect tasks paused, ended, or deleted by the user.
      */
     ensure(cwd, sessionId, time) {
-      return queue(cwd, async () => {
-        const saved = await store.withWorkspaceRead(cwd, () => store.readJson(store.paths(cwd).reminder, null))
+      return queue(cwd, async (workspace) => {
+        const saved = await store.withWorkspaceRead(workspace, () => store.readJson(store.paths(workspace).reminder, null))
         const existing = saved ? (await schedule.catalog()).find((e) => e.id === saved.id) : null
         if (!time && saved) return existing ?? null
         if (!existing) {
           const record = await schedule.create({ title: REMINDER_TITLE, prompt: REMINDER_PROMPT,
             timing: { kind: 'daily', daily: dailyAt(time ?? defaults.time, defaults.timeZone) },
             target: { kind: 'session', sessionId } }, sessionId)
-          await store.withWorkspaceWrite(cwd, () => store.writeJson(store.paths(cwd).reminder, { sessionId, id: record.id }))
+          await store.withWorkspaceWrite(workspace, () => store.writeJson(store.paths(workspace).reminder, { sessionId, id: record.id }))
           return record
         }
         const record = await schedule.edit({ id: existing.id, action: 'update', expectedUpdatedAt: existing.updatedAt ?? null,

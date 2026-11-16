@@ -3,6 +3,7 @@ import { constants } from 'node:fs'
 import { lstat, mkdir, open, readdir, readFile, link, unlink } from 'node:fs/promises'
 import { resolve, join, relative, sep } from 'node:path'
 import { randomBytes, createHash } from 'node:crypto'
+import { withRecoveryLease, canonicalRecoveryWorkspace } from './recovery-lock.js'
 import { createSqliteSnapshot, readSqliteSnapshot, inspectSqlite, snapshotDigest, snapshotCounts } from './sqlite-store.js'
 
 const FORMAT = 'corilo-learner-migration-v1'
@@ -227,6 +228,12 @@ export async function exportStore(cwd, output) {
 
 /** Explicit recovery removes only this tool's lock after inspecting the publication state. */
 export async function recoverMigration(cwd, { apply = false } = {}) {
+  cwd = canonicalRecoveryWorkspace(cwd)
+  if (!apply) return recoverMigrationState(cwd)
+  await recoverMigrationState(cwd, true, true)
+  return withRecoveryLease(cwd, () => recoverMigrationState(cwd, true))
+}
+async function recoverMigrationState(cwd, apply = false, preflight = false) {
   const root = rootOf(cwd), lockPath = join(root, '.migration.lock')
   await directory(root)
   if (!(await absent(join(root, '.initialization.json')))) fail('Initialization and migration markers overlap; manual inspection required')
@@ -262,6 +269,7 @@ export async function recoverMigration(cwd, { apply = false } = {}) {
   }
   if (running) fail('The migration process is still running; stop services before recovery')
   if (JSON.stringify(parseJson(await readBytes(lockPath), '.migration.lock')) !== JSON.stringify(lock)) fail('Migration lock changed during recovery; inspect it again')
+  if (preflight) return result
   if (pendingAlias) await unlink(stage)
   if (published) await ensureIdentity(cwd, databaseIdentity, { recoverIncomplete: true })
   for (const suffix of ['', '-journal', '-wal', '-shm']) {
@@ -295,6 +303,7 @@ export async function recoverMigration(cwd, { apply = false } = {}) {
 
 /** One explicit recovery entry point for initialization or legacy migration. */
 export async function recoverStore(cwd, options = {}) {
+  cwd = canonicalRecoveryWorkspace(cwd)
   const root = rootOf(cwd)
   await directory(root)
   const migration = !(await absent(join(root, '.migration.lock')))

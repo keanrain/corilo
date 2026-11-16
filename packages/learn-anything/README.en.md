@@ -139,6 +139,8 @@ Migration includes only courses, knowledge points, verifications, diagnoses, rev
 
 ### Export, first-initialization and migration recovery
 
+`recover --apply` takes an exclusive cross-process lease and revalidates state under it; another running recovery causes rejection. Process exit or termination releases the lease, allowing a retry. `.learn/.recovery-lock.sqlite` is a persistent empty coordinator with no learner records; never delete or replace it while recovery runs. Preview does not create it.
+
 ```sh
 # Export current SQLite learner records to a new separate directory.
 npm run store -- export --workspace /absolute/learning-workspace --output /absolute/new-export

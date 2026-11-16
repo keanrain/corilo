@@ -6,6 +6,9 @@ This records currently distributable code, not an npm publication. Maintain chan
 
 ## Unreleased / 未发布
 
+- 恢复应用增加跨进程互斥与取得锁后的重验，进程中断后可重试；提醒按工作区真实路径去重，覆盖软链接别名。
+  Recovery apply gains cross-process exclusion and locked revalidation with retry after process exit; reminders deduplicate by physical workspace path, including symlink aliases.
+
 - 修复初始化恢复遮蔽后来恢复的 JSON、多导师会话重复创建提醒，以及导出成功前未同步目录的问题；增加恢复文件保留、真实调度去重和目录同步失败回归。
   Reject initialization recovery that would shadow restored JSON, deduplicate reminders across tutor instances in one host, and persist export directories before acknowledging success; add preservation, native-scheduler and directory-sync failure regressions.
 
