@@ -1,5 +1,5 @@
 """Pinned DSH Web teaching flow, real client/host/tools, local scripted mock model."""
-import json, os, pathlib, re, shutil, socket, subprocess, tempfile, time
+import json, os, pathlib, re, shutil, socket, sqlite3, subprocess, tempfile, time
 from playwright.sync_api import sync_playwright, expect
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 DSH = os.environ.get('LEARN_ANYTHING_DSH') or str(ROOT.parents[1]/'plugins/notes/node_modules/@deepseek-ai/dsh/lib/bin.js')
@@ -23,6 +23,23 @@ for index,kind in [(1,'discriminate-neg'),(2,'rephrase')]:
  config['grade'+str(index)]=[{'name':'verification_record','args':{'kpId':'margin','modelId':'map','question':questions[index],'questionType':kind}},{'name':'progress_get','args':{}}]
 with tempfile.TemporaryDirectory(prefix='tutor-full-web-') as temp:
  base=pathlib.Path(temp); workspace=base/'workspace'; workspace.mkdir()
+ database=workspace/'.learn/learner.sqlite'
+ def read_document(key):
+  connection=sqlite3.connect(database.as_uri()+'?mode=ro',uri=True)
+  try:
+   row=connection.execute('SELECT payload FROM documents WHERE key=?',(key,)).fetchone()
+   return json.loads(row[0]) if row else None
+  finally: connection.close()
+ def read_verifications():
+  connection=sqlite3.connect(database.as_uri()+'?mode=ro',uri=True)
+  try: return [json.loads(row[0]) for row in connection.execute('SELECT payload FROM verifications ORDER BY seq')]
+  finally: connection.close()
+ def move_review_time(reviews):
+  # Simulate time only in this disposable fixture, through the actual store API.
+  script='import * as store from '+json.dumps((ROOT/'src/host/store.js').as_uri())+'; import {readFileSync} from "node:fs"; const cwd=process.argv[1]; await store.withWorkspaceWrite(cwd,()=>store.writeJson(store.paths(cwd).reviews,JSON.parse(readFileSync(0,"utf8"))));'
+  result=subprocess.run(['node','--input-type=module','-e',script,str(workspace)],input=json.dumps(reviews),text=True,capture_output=True)
+  assert result.returncode==0,result.stderr
+
  env=dict(os.environ,DSH_HOME=str(base/'harness'),DSH_AGENTS_HOME=str(base/'agents'),XDG_CONFIG_HOME=str(base/'config'),XDG_DATA_HOME=str(base/'data'),XDG_CACHE_HOME=str(base/'cache'),DSH_PERMISSION_MODE='danger-full-access')
  def cli(args):
   result=subprocess.run(['node',DSH,*args],cwd=base,env=env,capture_output=True,text=True,timeout=120)
@@ -46,7 +63,7 @@ with tempfile.TemporaryDirectory(prefix='tutor-full-web-') as temp:
    url=None
    for _ in range(500):
     found=re.search(r'dsh web: (http://127\.0\.0\.1:\d+/\?[^\s\x1b]+)',(base/'host.log').read_text())
-    if found and (workspace/'.learn/course.json').exists(): url=found[1]; break
+    if found and database.exists(): url=found[1]; break
     assert server.poll() is None, (base/'host.log').read_text()
     time.sleep(.1)
    assert url, (base/'host.log').read_text()
@@ -62,7 +79,7 @@ with tempfile.TemporaryDirectory(prefix='tutor-full-web-') as temp:
      page.get_by_role('button',name='Confirm and lock',exact=True).click()
     assert locked.value.status==200, locked.value.text()
     expect(page.get_by_role('button',name='Edit route',exact=True)).to_have_count(0)
-    assert json.loads((workspace/'.learn/course.json').read_text())['status']=='active'
+    assert read_document('course')['status']=='active'
     def send(text):
      editor=page.locator('[contenteditable=true]').first
      editor.fill(text); editor.press('Enter')
@@ -75,9 +92,10 @@ with tempfile.TemporaryDirectory(prefix='tutor-full-web-') as temp:
      page.get_by_role('button',name='Save notes',exact=True).click()
     assert saved.value.status==200, saved.value.text()
     expect(page.get_by_role('button',name='Save notes',exact=True)).to_have_count(0)
-    kp=json.loads((workspace/'.learn/kp/margin.json').read_text())
+    kp=read_document('kp/margin')
     assert kp['models'][0]['targetMap']['annotation']=='通过真实 DSH 页面编辑的笔记'
-    assert not (workspace/'.learn/verifications.jsonl').exists()
+    assert not read_verifications()
+    assert not (workspace/'.learn/course.json').exists(), 'new workspaces must not write legacy mirrors'
     for index in range(3):
      send('FLOW_QUIZ_'+str(index)+'：请用一个新情境验证。')
      quiz=page.locator('.la-quiz').last
@@ -87,17 +105,20 @@ with tempfile.TemporaryDirectory(prefix='tutor-full-web-') as temp:
      quiz.get_by_role('button',name='Confident',exact=True).click()
      quiz.get_by_role('button',name='Submit answer',exact=True).click()
      expect(page.get_by_text('grade'+str(index)+' 完成。',exact=False)).to_be_visible(timeout=30000)
-     records=[json.loads(line) for line in (workspace/'.learn/verifications.jsonl').read_text().splitlines()]
+     records=read_verifications()
      assert len(records)==index+1, records
      assert records[-1]['evidence']['sessionId']=='tutor-flow'
      assert records[-1]['evidence']['examinerDigest']
      assert records[-1]['verdict']=='correct' and records[-1]['novel']
-    reviews=json.loads((workspace/'.learn/reviews.json').read_text())
+    for name in ['course.json','reviews.json','reminder.json','verifications.jsonl','diagnoses.jsonl']:
+     assert not (workspace/'.learn'/name).exists(), 'SQLite must remain the sole learner authority'
+    assert not (workspace/'.learn/kp').exists(), 'knowledge points belong in SQLite'
+    reviews=read_document('reviews')
     assert 'margin/map' in reviews['cards']
-    assert json.loads((workspace/'.learn/kp/margin.json').read_text())['models'][0]['mastery']=='proficient'
+    assert read_document('kp/margin')['models'][0]['mastery']=='proficient'
     # Advance only the disposable fixture's due time; production schedules are untouched.
     reviews['cards']['margin/map']['card']['due']='2000-01-01T00:00:00.000Z'
-    (workspace/'.learn/reviews.json').write_text(json.dumps(reviews))
+    move_review_time(reviews)
     send('FLOW_REVIEW：现在有哪些到期复习？')
     expect(page.get_by_text('到期复习 1 项：',exact=False)).to_be_visible(timeout=30000)
     requests=[json.loads(line) for line in (base/'requests.jsonl').read_text().splitlines()]
@@ -105,7 +126,7 @@ with tempfile.TemporaryDirectory(prefix='tutor-full-web-') as temp:
     assert not failures, failures
     assert sum('这是宿主发起的正式判题' in json.dumps(request['messages'],ensure_ascii=False) for request in requests)==3
     assert not errors, errors
-    print('Pinned DSH Web tutoring flow passed: real outline lock, model/diagnosis tools, inline target save, 3 browser answers with independent mock-examiner evidence, mastery/FSRS scheduling and due review; synthetic local model, no live-model quality claim')
+    print('Pinned DSH Web tutoring flow passed: real outline lock, model/diagnosis tools, inline target save, 3 browser answers with independent mock-examiner evidence, SQLite evidence/mastery/FSRS scheduling and due review; synthetic local model, no live-model quality claim')
     browser.close()
   except Exception:
    if 'page' in locals() and not page.is_closed(): print('BROWSER BODY',page.locator('body').inner_text())

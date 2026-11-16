@@ -1,15 +1,16 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, readFile } from 'node:fs/promises'
-import { readFileSync } from 'node:fs'
+import { mkdtemp, rm, readFile, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as t from '../src/host/tools.js'
+import * as store from '../src/host/store.js'
 import { assessVerification, evidence } from './helpers/assessment.js'
 import { parseView } from '../src/host/render.js'
 
-async function workspace(userTexts = []) {
+async function workspace(userTexts = [], legacy = false) {
   const cwd = await mkdtemp(join(tmpdir(), 'learn-'))
+  if (legacy) { await mkdir(join(cwd, '.learn'), { recursive: true }); await writeFile(join(cwd, '.learn/course.json'), '{}') }
   let clock = new Date('2026-10-16T08:00:00Z')
   const env = {
     cwd,
@@ -50,12 +51,13 @@ test('course_save validates ids and prerequisites, keeps progress on re-save', a
     await assert.rejects(t.courseSave.execute({ ...COURSE, chapters: [{ title: 'x', kps: [{ id: 'a', title: 'a', kind: 'knowledge', prerequisites: ['zz'] }] }] }, env), /unknown prerequisites zz/)
     await assert.rejects(t.courseSave.execute({ ...COURSE, chapters: [{ title: 'x', kps: [{ id: '../a', title: 'a', kind: 'knowledge' }] }] }, env), /invalid id/)
     const out = await t.courseSave.execute(COURSE, env)
+    assert.equal(await store.backend(env.cwd), 'sqlite', 'new learner workspaces use SQLite')
     const view = parseView(out)
     assert.equal(view.view, 'outline')
     assert.equal(view.chapters[1].kps.length, 2)
     await t.kpDefineModels.execute({ kpId: 'scope', models: [{ id: 'map', type: 'associative', input: '变量引用位置', output: '解析到的绑定', reference: '沿定义位置的作用域链向外查找' }] }, env)
     await t.courseSave.execute({ ...COURSE, status: 'active' }, env)
-    const kp = JSON.parse(await readFile(join(env.cwd, '.learn/kp/scope.json'), 'utf8'))
+    const kp = await store.readJson(join(env.cwd, '.learn/kp/scope.json'))
     assert.equal(kp.models.length, 1, 're-saving the outline keeps defined models')
     assert.match(await t.learnStatus.execute({}, env), /当前知识点：词法作用域/)
   } finally { await cleanup() }
@@ -75,7 +77,7 @@ test('target_map_update only accepts the learner\'s own words', async () => {
     const view = parseView(ok)
     assert.equal(view.models[0].statement, '函数记住了它定义时所在作用域里的变量，即使在外面调用也能用')
     await t.targetMapUpdate.execute({ kpId: 'closure', modelId: 'in', addExamples: [{ tag: 'e', polarity: 'neg', input: 'function f(){ return 1 }', output: '不是闭包：没有引用外部变量', origin: 'ai' }] }, env)
-    const kp = JSON.parse(await readFile(join(env.cwd, '.learn/kp/closure.json'), 'utf8'))
+    const kp = await store.readJson(join(env.cwd, '.learn/kp/closure.json'))
     assert.equal(kp.models[0].targetMap.examples[0].checked, false)
     assert.equal(kp.models[0].targetMap.statement.verified, true)
   } finally { await cleanup() }
@@ -99,7 +101,7 @@ test('phase transitions are validated', async () => {
     await assert.rejects(t.kpSetPhase.execute({ kpId: 'closure', modelId: 'in', phase: 'verify', reason: 'skip' }, env), /cannot go from assess to verify/)
     await assert.rejects(t.kpSetPhase.execute({ kpId: 'closure', modelId: 'in', phase: 'mastered', reason: 'x' }, env), /unknown phase|mastered is set automatically/)
     await t.diagnosisRecord.execute({ kpId: 'closure', modelId: 'in', findings: [{ type: 'prefers-examples', evidence: '用户说“先给我看个例子吧”' }], prescription: ['先例后规'] }, env)
-    const course = JSON.parse(await readFile(join(env.cwd, '.learn/course.json'), 'utf8'))
+    const course = await store.readJson(join(env.cwd, '.learn/course.json'))
     assert.equal(course.learner.preferOrder, 'example-first')
     assert.match(await t.kpSetPhase.execute({ kpId: 'closure', modelId: 'in', phase: 'build', reason: '材料就绪' }, env), /→ build/)
     await t.kpSetPhase.execute({ kpId: 'closure', modelId: 'in', phase: 'verify', reason: '已写表述' }, env)
@@ -134,7 +136,7 @@ test('verification gate: novice until streak + required types, then mastered and
     assert.match(await rec('predict'), /入门/)
     assert.match(await rec('discriminate-neg'), /离「熟练」还差：再连续答对 1 题.*rephrase/)
     assert.match(await rec('rephrase', 'correct', { expected: { output: '外层的 x' } }), /熟练.*\n.*\n该知识点已达标/)
-    const kp = JSON.parse(await readFile(join(env.cwd, '.learn/kp/scope.json'), 'utf8'))
+    const kp = await store.readJson(join(env.cwd, '.learn/kp/scope.json'))
     assert.equal(kp.phase, 'mastered')
     assert.equal(kp.models[0].targetMap.examples.at(-1).tag, 'v')
     assert.equal(await t.reviewDue.execute({}, env), '今天没有到期的复习。')
@@ -163,14 +165,14 @@ test('a graded answer returns a feedback card: verdict, attribution, level-up an
     assert.equal(wrong.feedback, undefined, 'the examiner\'s notes stay with the tutor')
     assert.deepEqual(wrong.level, { from: 'none', to: 'none' })
     assert.deepEqual([wrong.flow.next, wrong.flow.last.zone], [1, 'hard'], 'a wrong answer at the default 2 steps down')
-    const kpFile = () => JSON.parse(readFileSync(join(env.cwd, '.learn/kp/scope.json'), 'utf8'))
-    assert.equal(kpFile().models[0].phase, 'assess')
+    const kpFile = () => store.readJson(join(env.cwd, '.learn/kp/scope.json'))
+    assert.equal((await kpFile()).models[0].phase, 'assess')
     const quick = await rec('contrast', 'partial', { difficulty: 1, attribution: 'careless' })
     assert.match(quick, /回到评估学况/, 'an answer outside a practice run keeps the route to diagnosis')
     for (const phase of ['prescribe', 'build', 'verify']) await t.kpSetPhase.execute({ kpId: 'scope', modelId: 'map', phase, reason: 'r' }, env)
     const firstText = await rec('predict', 'correct', { difficulty: 1, confidence: 'unsure' })
     assert.match(firstText, /留在验证阶段/, 'in a practice run a correct answer keeps going without a diagnosis round')
-    assert.equal(kpFile().models[0].phase, 'verify')
+    assert.equal((await kpFile()).models[0].phase, 'verify')
     const first = parseView(firstText)
     assert.deepEqual([first.level, first.attribution, first.calibration.kind], [{ from: 'none', to: 'novice' }, undefined, 'under'])
     assert.deepEqual(first.flow.progress, { target: 'proficient', streak: { have: 1, need: 3 }, missing: ['discriminate-neg', 'rephrase'] })
@@ -214,7 +216,7 @@ test('information points use facts and recall', async () => {
     await assert.rejects(t.kpDefineModels.execute({ kpId: 'iife', models: [{ id: 'x', type: 'discriminative', concept: 'c', reference: 'r' }] }, env), /is information/)
     assert.match(await t.kpDefineModels.execute({ kpId: 'iife', facts: [{ prompt: 'IIFE 的基本写法？', answer: '(function(){ ... })()' }] }, env), /记忆阶段/)
     for (let i = 0; i < 2; i++) await t.verificationRecord.execute({ kpId: 'iife', question: 'IIFE 写法', questionType: 'recall', answer: '(function(){})()', verdict: 'correct' }, env)
-    const kp = JSON.parse(await readFile(join(env.cwd, '.learn/kp/iife.json'), 'utf8'))
+    const kp = await store.readJson(join(env.cwd, '.learn/kp/iife.json'))
     assert.equal(kp.mastery, 'proficient')
     assert.equal(kp.phase, 'mastered')
   } finally { await cleanup() }
@@ -257,7 +259,7 @@ test('example ids stay unique after a removal', async () => {
     await t.targetMapUpdate.execute({ kpId: 'scope', modelId: 'map', removeExampleIds: ['map-e2'] }, env)
     await t.targetMapUpdate.execute({ kpId: 'scope', modelId: 'map', addExamples: [ex(4)] }, env)
     await t.verificationRecord.execute({ kpId: 'scope', modelId: 'map', question: 'q', questionType: 'predict', answer: 'a', verdict: 'correct', hintsUsed: 0, expected: { output: 'y' } }, env)
-    const kp = JSON.parse(await readFile(join(env.cwd, '.learn/kp/scope.json'), 'utf8'))
+    const kp = await store.readJson(join(env.cwd, '.learn/kp/scope.json'))
     assert.deepEqual(kp.models[0].targetMap.examples.map((e) => e.id), ['map-e1', 'map-e3', 'map-e4', 'map-e5'])
   } finally { await cleanup() }
 })
@@ -271,7 +273,7 @@ test('a discriminate question writes its example back with the polarity of its t
     await record('discriminate-neg', 'pos')
     await record('discriminate-pos')
     await record('predict', 'neg')
-    const kp = JSON.parse(await readFile(join(env.cwd, '.learn/kp/scope.json'), 'utf8'))
+    const kp = await store.readJson(join(env.cwd, '.learn/kp/scope.json'))
     assert.deepEqual(kp.models[0].targetMap.examples.map((e) => e.polarity), ['neg', 'pos', 'neg'])
   } finally { await cleanup() }
 })
@@ -303,16 +305,16 @@ test('course_save checks the complete outline before writing any knowledge point
   try {
     await t.courseSave.execute(COURSE, env)
     await t.kpDefineModels.execute({ kpId: 'closure', models: [{ id: 'map', type: 'associative', input: 'x', output: 'y', reference: 'r' }] }, env)
-    const courseBefore = await readFile(join(env.cwd, '.learn/course.json'), 'utf8')
-    const scopeBefore = await readFile(join(env.cwd, '.learn/kp/scope.json'), 'utf8')
+    const courseBefore = JSON.stringify(await store.readJson(join(env.cwd, '.learn/course.json')))
+    const scopeBefore = JSON.stringify(await store.readJson(join(env.cwd, '.learn/kp/scope.json')))
     await assert.rejects(t.courseSave.execute({ ...COURSE, chapters: [{ title: 'new', kps: [
       { id: 'scope', title: 'changed', kind: 'knowledge' },
       { id: 'new-point', title: 'new', kind: 'knowledge' },
       { id: 'closure', title: 'invalid conversion', kind: 'information' },
     ] }] }, env), /different id instead of changing its kind/)
-    assert.equal(await readFile(join(env.cwd, '.learn/course.json'), 'utf8'), courseBefore)
-    assert.equal(await readFile(join(env.cwd, '.learn/kp/scope.json'), 'utf8'), scopeBefore)
-    await assert.rejects(readFile(join(env.cwd, '.learn/kp/new-point.json')), { code: 'ENOENT' })
+    assert.equal(JSON.stringify(await store.readJson(join(env.cwd, '.learn/course.json'))), courseBefore)
+    assert.equal(JSON.stringify(await store.readJson(join(env.cwd, '.learn/kp/scope.json'))), scopeBefore)
+    assert.equal(await store.readJson(join(env.cwd, '.learn/kp/new-point.json'), null), null)
   } finally { await cleanup() }
 })
 
@@ -326,13 +328,13 @@ test('answered model definitions need a new id when their meaning changes', asyn
       await t.verificationRecord.execute({ kpId: 'scope', modelId: 'map', question: questionType, questionType, answer: 'a', verdict: 'correct' }, env)
     }
     const file = join(env.cwd, '.learn/kp/scope.json')
-    const before = await readFile(file, 'utf8')
+    const before = JSON.stringify(await store.readJson(file))
     await assert.rejects(t.kpDefineModels.execute({ kpId: 'scope', models: [{ ...model, reference: 'y=x*x' }] }, env), /use a new model id/)
-    assert.equal(await readFile(file, 'utf8'), before)
+    assert.equal(JSON.stringify(await store.readJson(file)), before)
     await t.kpDefineModels.execute({ kpId: 'scope', models: [model] }, env)
-    assert.equal(JSON.parse(await readFile(file, 'utf8')).mastery, 'proficient')
+    assert.equal((await store.readJson(file)).mastery, 'proficient')
     await t.kpDefineModels.execute({ kpId: 'scope', models: [{ ...model, id: 'new-map', reference: 'y=x*x' }] }, env)
-    assert.equal(JSON.parse(await readFile(file, 'utf8')).mastery, 'none')
+    assert.equal((await store.readJson(file)).mastery, 'none')
     await assert.rejects(t.kpDefineModels.execute({ kpId: 'scope', models: [model] }, env), /use a new model id/)
   } finally { await cleanup() }
 })
@@ -344,13 +346,13 @@ test('every information fact must pass, while fact ids survive ordinary saves', 
     const facts = [{ prompt: 'A?', answer: 'a' }, { prompt: 'B?', answer: 'b' }]
     await t.kpDefineModels.execute({ kpId: 'iife', facts }, env)
     const file = join(env.cwd, '.learn/kp/iife.json')
-    const load = async () => JSON.parse(await readFile(file, 'utf8'))
+    const load = async () => await store.readJson(file)
     const ids = (await load()).facts.map((fact) => fact.id)
     const rec = (factId, extra = {}) => t.verificationRecord.execute({ kpId: 'iife', factId, question: 'recall', questionType: 'recall', answer: 'a', verdict: 'correct', ...extra }, env)
     await assert.rejects(rec(undefined), /valid factId/)
     await assert.rejects(rec('missing'), /valid factId/)
     await assert.rejects(rec(ids[0], { questionType: 'scenario' }), /need recall/)
-    await assert.rejects(readFile(join(env.cwd, '.learn/verifications.jsonl')), { code: 'ENOENT' })
+    assert.deepEqual(await store.readJsonl(store.paths(env.cwd).verifications), [])
     await rec(ids[0])
     const afterA = await rec(ids[0])
     assert.match(afterA, new RegExp(`未达标记忆卡：${ids[1]}；`))
@@ -371,8 +373,34 @@ test('every information fact must pass, while fact ids survive ordinary saves', 
   } finally { await cleanup() }
 })
 
-test('old unlabelled recalls only prove the original single fact, not a multi-fact point', async () => {
+test('review queues and counts ignore dropped points and replaced models without deleting history', async () => {
   const { env, cleanup } = await workspace()
+  env.gate = { streak: 1, requiredTypes: [], recallStreak: 2 }
+  try {
+    const point = (id) => ({ id, title: id, kind: 'knowledge' })
+    const course = { goal: 'review', status: 'active', chapters: [{ title: 'c', kps: ['active', 'replaced', 'dropped'].map(point) }] }
+    await t.courseSave.execute(course, env)
+    const model = { id: 'map', type: 'associative', input: 'x', output: 'y', reference: 'r' }
+    for (const kpId of ['active', 'replaced', 'dropped']) {
+      await t.kpDefineModels.execute({ kpId, models: [model] }, env)
+      await t.verificationRecord.execute({ kpId, modelId: 'map', question: 'q', questionType: 'scenario', answer: 'a', verdict: 'correct' }, env)
+    }
+    const historyBefore = JSON.stringify(await store.readJson(join(env.cwd, '.learn/reviews.json')))
+    await t.kpDefineModels.execute({ kpId: 'replaced', models: [{ ...model, id: 'new' }] }, env)
+    await t.courseSave.execute({ ...course, chapters: [{ title: 'c', kps: ['active', 'replaced'].map(point) }] }, env)
+    env.advance(365)
+    const queue = await t.reviewDue.execute({}, env)
+    assert.match(queue, /到期复习 1 项/)
+    assert.match(queue, /active \/ map/)
+    assert.doesNotMatch(queue, /replaced|dropped|（信息）/)
+    assert.match(await t.learnStatus.execute({}, env), /待复习 1 项/)
+    assert.equal(parseView(await t.progressGet.execute({}, env)).due, 1)
+    assert.equal((await t.learnStats(env.cwd, env.now())).due, 1)
+    assert.equal(JSON.stringify(await store.readJson(join(env.cwd, '.learn/reviews.json'))), historyBefore)
+  } finally { await cleanup() }
+})
+test('old unlabelled recalls only prove the original single fact, not a multi-fact point', async () => {
+  const { env, cleanup } = await workspace([], true)
   const { writeFile } = await import('node:fs/promises')
   try {
     await t.courseSave.execute(COURSE, env)
@@ -394,32 +422,5 @@ test('old unlabelled recalls only prove the original single fact, not a multi-fa
     assert.equal(JSON.parse(await readFile(file, 'utf8')).mastery, 'proficient')
     await t.kpDefineModels.execute({ kpId: 'iife', facts: [{ prompt: 'new?', answer: 'new' }] }, env)
     assert.equal(JSON.parse(await readFile(file, 'utf8')).mastery, 'none', 'new content cannot inherit unlabelled old answers')
-  } finally { await cleanup() }
-})
-
-test('review queues and counts ignore dropped points and replaced models without deleting history', async () => {
-  const { env, cleanup } = await workspace()
-  env.gate = { streak: 1, requiredTypes: [], recallStreak: 2 }
-  try {
-    const point = (id) => ({ id, title: id, kind: 'knowledge' })
-    const course = { goal: 'review', status: 'active', chapters: [{ title: 'c', kps: ['active', 'replaced', 'dropped'].map(point) }] }
-    await t.courseSave.execute(course, env)
-    const model = { id: 'map', type: 'associative', input: 'x', output: 'y', reference: 'r' }
-    for (const kpId of ['active', 'replaced', 'dropped']) {
-      await t.kpDefineModels.execute({ kpId, models: [model] }, env)
-      await t.verificationRecord.execute({ kpId, modelId: 'map', question: 'q', questionType: 'scenario', answer: 'a', verdict: 'correct' }, env)
-    }
-    const historyBefore = await readFile(join(env.cwd, '.learn/reviews.json'), 'utf8')
-    await t.kpDefineModels.execute({ kpId: 'replaced', models: [{ ...model, id: 'new' }] }, env)
-    await t.courseSave.execute({ ...course, chapters: [{ title: 'c', kps: ['active', 'replaced'].map(point) }] }, env)
-    env.advance(365)
-    const queue = await t.reviewDue.execute({}, env)
-    assert.match(queue, /到期复习 1 项/)
-    assert.match(queue, /active \/ map/)
-    assert.doesNotMatch(queue, /replaced|dropped|（信息）/)
-    assert.match(await t.learnStatus.execute({}, env), /待复习 1 项/)
-    assert.equal(parseView(await t.progressGet.execute({}, env)).due, 1)
-    assert.equal((await t.learnStats(env.cwd, env.now())).due, 1)
-    assert.equal(await readFile(join(env.cwd, '.learn/reviews.json'), 'utf8'), historyBefore)
   } finally { await cleanup() }
 })

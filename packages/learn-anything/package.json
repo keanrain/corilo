@@ -32,7 +32,8 @@
     "test:browser": "npm run build && node test/browser/smoke.mjs",
     "test:boot": "node test/boot/run.mjs",
     "eval": "node eval/run.mjs",
-    "eval:mock": "node eval/run.mjs --mock"
+    "eval:mock": "node eval/run.mjs --mock",
+    "store": "node src/host/migrate-cli.js"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "~3.18.4",
@@ -70,5 +71,8 @@
     "esbuild": "^0.28.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
+  },
+  "bin": {
+    "corilo-learn-store": "./src/host/migrate-cli.js"
   }
 }

@@ -1,7 +1,7 @@
 /** Authenticated UI actions resolve paths exclusively through an existing host session. */
 import { readTargetMap, saveTargetMap } from './target-edit.js'
 import { readOutline, saveOutline } from './tools/course.js'
-import { withWorkspaceWrite } from './store.js'
+import { withWorkspaceWrite, withWorkspaceRead } from './store.js'
 
 export const name = 'learn-anything-ui'
 export function registerLearningApi(ctx, outline) {
@@ -34,9 +34,12 @@ export function registerLearningApi(ctx, outline) {
       if (!session?.header.cwd) return new Response('Session unavailable', { status: 404 })
       if (session.header.agentPreset !== 'learn-tutor' || session.header.origin === 'subagent') return new Response('Tutor session required', { status: 403 })
       try {
-        const value = await withWorkspaceWrite(session.header.cwd, async () => {
+        const transaction = action.endsWith('/read') ? withWorkspaceRead : withWorkspaceWrite
+        const value = await transaction(session.header.cwd, async () => {
           request.signal.throwIfAborted()
-          return run(session.header.cwd, args)
+          const value = await run(session.header.cwd, args)
+          request.signal.throwIfAborted()
+          return value
         })
         return Response.json({ ok: true, value }, { headers })
       } catch (error) {

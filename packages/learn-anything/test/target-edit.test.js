@@ -1,20 +1,22 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, symlink } from 'node:fs/promises'
+import { mkdtemp, rm, symlink, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as store from '../src/host/store.js'
 import { readTargetMap, saveTargetMap } from '../src/host/target-edit.js'
 import { editModels } from '../src/client/target-editor.js'
-const fixture = async (t) => {
+const fixture = async (t, legacy = false) => {
   const cwd = await mkdtemp(join(tmpdir(), 'learn-target-'))
   t.after(() => rm(cwd, { recursive: true, force: true }))
+  if (legacy) { await mkdir(join(cwd, '.learn'), { recursive: true }); await writeFile(join(cwd, '.learn/course.json'), '{}') }
   const kp = { id: 'kp', kind: 'knowledge', title: 'Demo', phase: 'build', mastery: 'none', models: [{ id: 'm', type: 'discriminative', concept: 'A', phase: 'build', mastery: 'none', targetMap: { statement: { text: 'old words', history: [], at: 'old' }, examples: [
     { id: 'v1', tag: 'v', origin: 'verification', checked: true, input: 'exam', output: 'answer' },
     { id: 'u1', tag: 'e', origin: 'user', input: 'personal', output: 'answer' },
   ] } }] }
   await store.writeJson(store.paths(cwd).kp('kp'), kp)
   await store.appendJsonl(store.paths(cwd).verifications, { id: 'r1', kpId: 'kp', modelId: 'm', question: 'exam', verdict: 'correct' })
+  assert.equal(await store.backend(cwd), legacy ? 'legacy' : 'sqlite')
   return cwd
 }
 test('direct notes persist human provenance, annotations and examples without changing grades', async (t) => {
@@ -38,14 +40,14 @@ test('direct notes persist human provenance, annotations and examples without ch
   await assert.rejects(saveTargetMap(cwd, { kpId: 'kp', expected: original.revision, models }), (e) => e.status === 409)
 })
 test('reject forged evidence flags, traversal, and linked storage', async (t) => {
-  const cwd = await fixture(t)
+  const cwd = await fixture(t, true)
   const original = await readTargetMap(cwd, 'kp')
   const models = editModels(original.view)
   models[0].examples[0].checked = true
   await assert.rejects(saveTargetMap(cwd, { kpId: 'kp', expected: original.revision, models }), /Invalid personal example/)
   await assert.rejects(readTargetMap(cwd, '../outside'), /invalid id/)
   await symlink(store.paths(cwd).kp('kp'), store.paths(cwd).kp('linked'))
-  await assert.rejects(readTargetMap(cwd, 'linked'), /Linked learning data/)
+  await assert.rejects(readTargetMap(cwd, 'linked'), /Linked learning data|ordinary unlinked/)
 })
 
 test('authenticated route resolves only known host sessions and rejects conflicting edits', async (t) => {
@@ -76,10 +78,10 @@ test('authenticated route resolves only known host sessions and rejects conflict
 })
 
 test('linked evidence is rejected before exposing its contents', async (t) => {
-  const cwd = await fixture(t)
+  const cwd = await fixture(t, true)
   await rm(store.paths(cwd).verifications)
   await symlink(store.paths(cwd).kp('kp'), store.paths(cwd).verifications)
-  await assert.rejects(readTargetMap(cwd, 'kp'), /Linked learning data/)
+  await assert.rejects(readTargetMap(cwd, 'kp'), /Linked learning data|ordinary unlinked/)
 })
 
 test('annotation-only saves preserve personal example IDs and provenance; changed examples lose stale support', async (t) => {
@@ -117,14 +119,14 @@ test('personal IDs cannot target verified examples or repeat an existing example
 
 test('unsafe or corrupt evidence rejects saves before any note changes', async (t) => {
   const { writeFile } = await import('node:fs/promises')
-  const cwd = await fixture(t)
+  const cwd = await fixture(t, true)
   const current = await readTargetMap(cwd, 'kp')
   const before = await store.requireKp(cwd, 'kp')
   const models = editModels(current.view)
   models[0].annotation = 'must not be committed'
   await rm(store.paths(cwd).verifications)
   await symlink(store.paths(cwd).kp('kp'), store.paths(cwd).verifications)
-  await assert.rejects(saveTargetMap(cwd, { kpId: 'kp', expected: current.revision, models }), /Linked learning data/)
+  await assert.rejects(saveTargetMap(cwd, { kpId: 'kp', expected: current.revision, models }), /Linked learning data|ordinary unlinked/)
   assert.deepEqual(await store.requireKp(cwd, 'kp'), before)
   await rm(store.paths(cwd).verifications)
   await writeFile(store.paths(cwd).verifications, 'invalid JSON\n')

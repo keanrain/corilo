@@ -22,7 +22,7 @@ import { createReminders } from './reminder.js'
 import { titleAfterGoal } from './title.js'
 import { DELEGATES, delegateTool } from './delegates.js'
 import { ANSWER_PREFIX, HINT_PREFIX, HELP_PREFIX, PACE_PREFIX, BREAK_PREFIX, quizLanguageSection, quizShowTool } from './quiz.js'
-import { withWorkspaceWrite } from './store.js'
+import { withWorkspaceWrite, withWorkspaceRead } from './store.js'
 import { flashcardShowTool } from './flashcard.js'
 import { withCardReference } from './render.js'
 
@@ -148,19 +148,23 @@ export async function apply(ctx, config) {
         const run = async () => {
           exec.signal?.throwIfAborted()
           const result = await tool.execute(args, env)
+          exec.signal?.throwIfAborted()
           const text = !config.readOnly && CARD_TOOLS.has(tool.name) ? withCardReference(result, exec.callId) : result
-          // Keep reminder writes in the same workspace queue as the graded answer.
-          if (tool.name === 'verification_record' && session && reminders) {
-            try { await reminders.ensure(env.cwd, session.id) } catch (e) { ctx.logger.warn(`learn-anything: review reminder: ${e}`) }
-          }
-          if (tool.name === 'course_save' && session && titles) {
-            try { titleAfterGoal(titles, session, args.goal) } catch (e) { ctx.logger.warn(`learn-anything: session title: ${e}`) }
-          }
           let stats
           try { stats = await learnStats(env.cwd, env.now(), gate) } catch (e) { ctx.logger.warn(`learn-anything: stats: ${e}`) }
           return stats === undefined ? { text } : { text, stats }
         }
-        return tool.readOnly ? run() : withWorkspaceWrite(env.cwd, run)
+        const response = await (tool.readOnly ? withWorkspaceRead : withWorkspaceWrite)(env.cwd, run)
+        // Host services cannot participate in the learner database transaction.
+        // Invoke them only after a successful commit, so a grading conflict or
+        // rollback cannot create a reminder/title for an uncommitted operation.
+        if (tool.name === 'verification_record' && session && reminders) {
+          try { if (!exec.signal?.aborted) await reminders.ensure(env.cwd, session.id) } catch (e) { ctx.logger.warn(`learn-anything: review reminder: ${e}`) }
+        }
+        if (tool.name === 'course_save' && session && titles) {
+          try { titleAfterGoal(titles, session, args.goal) } catch (e) { ctx.logger.warn(`learn-anything: session title: ${e}`) }
+        }
+        return response
       },
     }))
   }
@@ -196,7 +200,7 @@ export async function apply(ctx, config) {
         const session = exec.agent?.session
         if (!session || !reminders) return '当前无法设置提醒。'
         const cwd = session.header.cwd ?? process.cwd()
-        const r = await withWorkspaceWrite(cwd, () => reminders.ensure(cwd, session.id, args.time))
+        const r = await reminders.ensure(cwd, session.id, args.time)
         return `每日复习提醒已设为 ${r.time.slice(0, 5)}（${r.timeZone}），下次 ${new Date(r.scheduledAt).toLocaleString('zh-CN', { timeZone: r.timeZone, hour12: false })}。`
       },
     })

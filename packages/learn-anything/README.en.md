@@ -114,11 +114,49 @@ Target maps show references and example sources, and grading cards show evidence
 
 Reimporting the same path reuses material IDs for identical content. Changed content receives a new ID while old chunks remain, preserving existing citations. Material lists and default searches show only the latest imported content for that path.
 
-## Storage decision
+## Learner storage and migration
 
-Learning records remain JSON/JSONL under `.learn/`, with writes queued per workspace in one host process. This is neither a cross-process lock nor a multi-file transaction. The SQLite + files target in `PROMPT.md` is not fully implemented; this change does not automatically migrate existing records. Built-in `node:sqlite` and FTS5 were exercised on Node 24.19.0, which establishes availability rather than an implemented learner database.
+A new empty workspace creates `.learn/learner.sqlite` on its first learner-record write, using built-in `node:sqlite` on Node ≥24.9.0 without a native compilation dependency. The database stores courses, knowledge points and target maps, verifications, diagnoses, review schedules and reminder bindings. Original materials, blocks and citation metadata remain under `.learn/materials/`. SQLite does not replace DSH's own sessions, credentials or scheduled-task storage. The storage API still loads a consistent learner-state snapshot into memory, and business logic still scans historical verifications and diagnoses in that snapshot. SQL has target indexes and a duplicate-answer constraint, but reads have not been converted to an indexed-query API. Cross-course analytics and FTS5 retrieval are not added; Chinese BM25 still runs in memory.
 
-A future migration needs explicit requirements for cross-course statistics, indexed retrieval or multi-process writes, followed by offline import, backup/rollback and record/evidence consistency checks. Startup must not replace existing data automatically. Chinese BM25 currently runs in memory; persistent large-material indexing needs separate evaluation.
+Existing JSON/JSONL learner records retain the legacy backend without startup migration. After explicit migration, SQLite is authoritative: preserved source files stop receiving learner updates and are not synchronized with the database. `.learn/.backend.json` durably selects SQLite and its database instance. Missing, mismatched, corrupt or incompatible databases fail closed instead of falling back to old files or upgrading their schema automatically.
+
+In SQLite mode, learner records, mastery and review schedules changed by one tool/UI operation commit in one transaction. Changes are staged while asynchronous grading runs; commit checks the database revision without holding a write lock during model requests. Concurrent changes reject the commit without automatically rerunning the examiner or overwriting newer data. The legacy JSON/JSONL backend retains its single-host workspace queue and per-file atomic replacement; it does not gain SQLite's multi-record transaction guarantees.
+
+DSH external reminder creation runs after the learner transaction commits. The reminder service and learner database are not a distributed transaction: reminder failure does not undo committed grades, and a saved grade does not establish reminder delivery.
+
+### Explicit migration
+
+**Stop every DSH service using the workspace and back up the complete workspace and any DSH data you need first.** Run these commands from the tutor package directory. After installing through DSH, run the equivalent `pnpm exec corilo-learn-store` from the installation profile directory.
+
+```sh
+# Preview: read legacy records and report counts and consistency summaries.
+npm run store -- migrate --workspace /absolute/learning-workspace
+# Explicit apply: preserve source records, validate a staged database, then publish it.
+npm run store -- migrate --workspace /absolute/learning-workspace --apply
+```
+
+Migration includes only courses, knowledge points, verifications, diagnoses, reviews and reminder bindings. Original JSON/JSONL files remain byte-identical. Backups live under `.learn/migrations/<timestamp-random-id>/legacy/`; sibling `manifest.json` records file SHA-256 values, record counts and a snapshot digest, and `receipt.json` records completed publication. Materials remain in place and are excluded from this learner-only backup. Database integrity and import/export equivalence are checked before publication; an existing database is never overwritten.
+
+### Export, first-initialization and migration recovery
+
+```sh
+# Export current SQLite learner records to a new separate directory.
+npm run store -- export --workspace /absolute/learning-workspace --output /absolute/new-export
+# Preview interrupted first initialization or migration, then explicitly recover it.
+npm run store -- recover --workspace /absolute/learning-workspace
+npm run store -- recover --workspace /absolute/learning-workspace --apply
+```
+
+The export contains a `.learn/` JSON/JSONL tree and a root `learner-export.json` manifest, without material files. The default `recover` command is a read-only preview and distinguishes first initialization from legacy migration by its marker:
+
+- First initialization uses `.learn/.initialization.json`. After the initializer stops, `--apply` requires a matching manifest and snapshot digest: it publishes a complete pending database, or accepts the published database and removes its owned staging alias. If neither database nor candidate exists, it only releases the marker. A pending first initialization is not discarded as an aborted migration.
+- Legacy migration uses `.learn/.migration.lock`. For an unpublished migration, `--apply` aborts the import and releases its lock while archiving the staged database and its sidecars. A published database is accepted only when integrity, imported snapshot digest and original JSON/JSONL file digests all match.
+
+A live process, overlapping markers, unknown file aliases or changed database/source files block automatic recovery. Preserve the artifacts for manual inspection.
+
+Stop related services before export, recovery and restore too. Do not delete the database as a rollback: post-migration learning is not written back to legacy JSON/JSONL. To retain current records, export first and verify a restore in a separate workspace; preserve original `.learn/materials/` separately for citations. Restoring the pre-migration backup requires retaining the current database first and explicitly accepting that newer changes are absent from the old snapshot.
+
+Exports and migration backups are not whole-instance backups: they exclude original materials, DSH sessions, credentials and external reminder tasks. Normal commits use WAL. The store validates the database and its `-wal`/`-shm`/`-journal` sidecars, rejecting links and special files; those checks do not make arbitrary copying or deleting of journals safe. Back up the database and `.backend.json` together after all services using them have stopped, preserving any remaining sidecars. Do not copy only the main file of a live database.
 
 ## Development
 

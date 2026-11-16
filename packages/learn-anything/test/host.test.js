@@ -1,11 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, readFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { apply } from '../src/host/index.js'
 import { DEFAULT_GATE } from '../src/host/mastery.js'
-import { requireKp } from '../src/host/store.js'
+import { readJson, readJsonl, paths, requireKp } from '../src/host/store.js'
 import { quizShowTool } from '../src/host/quiz.js'
 import { parseView } from '../src/host/render.js'
 import { formatQuizAnswer } from '../src/quiz/answer.js'
@@ -80,7 +80,7 @@ test('learning help requests cannot create verification records or change master
       answer: '【学习补给】不知道从哪开始：原题（互动题 q-test）', verdict }), /求助，不是作答/)
   }
   assert.deepEqual(await requireKp(app.cwd, 'closure'), before)
-  await assert.rejects(readFile(join(app.cwd, '.learn/verifications.jsonl')), { code: 'ENOENT' })
+  assert.deepEqual(await readJsonl(paths(app.cwd).verifications), [])
 })
 
 test('moving a prerequisite before an unfinished point preserves evidence and returns after learning it', async (t) => {
@@ -88,7 +88,7 @@ test('moving a prerequisite before an unfinished point preserves evidence and re
   await app.call('verification_record', { kpId: 'closure', modelId: 'm', question: '换个函数还能保留环境吗？',
     questionType: 'scenario', answer: '我认为环境指调用处的变量', verdict: 'partial' })
   const before = await requireKp(app.cwd, 'closure')
-  const records = await readFile(join(app.cwd, '.learn/verifications.jsonl'), 'utf8')
+  const records = await readJsonl(paths(app.cwd).verifications)
   await app.call('course_save', { goal: '闭包', status: 'active', chapters: [{ title: '先补基础', kps: [
     { id: 'scope', title: '作用域', kind: 'information' },
     { id: 'closure', title: '闭包', kind: 'knowledge', prerequisites: ['scope'] },
@@ -102,7 +102,7 @@ test('moving a prerequisite before an unfinished point preserves evidence and re
     question: '作用域是什么？', questionType: 'recall', answer: '名字可见的范围', verdict: 'correct' })
   assert.match((await app.call('learn_status', {})).text, /当前知识点：闭包/)
   assert.deepEqual((await requireKp(app.cwd, 'closure')).models, before.models)
-  assert.ok((await readFile(join(app.cwd, '.learn/verifications.jsonl'), 'utf8')).startsWith(records))
+  assert.deepEqual((await readJsonl(paths(app.cwd).verifications)).slice(0, records.length), records)
 })
 
 test('showing and submitting an understanding practice cannot create mastery evidence', async (t) => {
@@ -117,7 +117,8 @@ test('showing and submitting an understanding practice cannot create mastery evi
     kpId: 'closure', modelId: 'm', question: view.question, questionType: 'contrast', answer, verdict,
   }), /理解练习不记验证结果/)
   assert.deepEqual(await requireKp(app.cwd, 'closure'), before)
-  for (const file of ['verifications.jsonl', 'reviews.json']) await assert.rejects(readFile(join(app.cwd, '.learn', file)), { code: 'ENOENT' })
+  assert.deepEqual(await readJsonl(paths(app.cwd).verifications), [])
+  assert.equal(await readJson(paths(app.cwd).reviews, null), null)
 })
 
 test('registered write tools serialize updates from separate sessions sharing a workspace', async (t) => {

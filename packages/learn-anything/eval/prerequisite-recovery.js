@@ -1,6 +1,5 @@
 // An anonymized regression of the camera course's repeated diagnosis loop.
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { learnerDocument } from './learner-store.js'
 
 export const RECOVERY_SCENARIO = {
   id: 'prerequisite-recovery/camera', recovery: true, defect: 'missing-prereq',
@@ -22,9 +21,9 @@ export const RECOVERY_SCENARIO = {
 }
 
 export function scoreRecovery(ws, events, history) {
-  const course = JSON.parse(readFileSync(join(ws, '.learn/course.json'), 'utf8'))
+  const course = learnerDocument(ws, 'course')
   const ids = course.chapters.flatMap((ch) => ch.kpIds)
-  const original = JSON.parse(readFileSync(join(ws, '.learn/kp/system-map.json'), 'utf8'))
+  const original = learnerDocument(ws, 'kp/system-map')
   const calls = events.filter((e) => e.type === 'tool/call').map((e) => ({ name: e.data.name,
     args: typeof e.data.arguments === 'string' ? JSON.parse(e.data.arguments) : e.data.arguments }))
   const failures = []

@@ -1,18 +1,20 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, rename, symlink, link, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, rename, symlink, link, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { courseSave, readOutline, saveOutline } from '../src/host/tools/course.js'
 import * as store from '../src/host/store.js'
 import { moveOutlineItem, outlineRequest } from '../src/client/outline.js'
 
-async function setup(t) {
+async function setup(t, legacy = false) {
   const cwd = await mkdtemp(join(tmpdir(), 'learn-outline-'))
   t.after(() => rm(cwd, { recursive: true, force: true }))
+  if (legacy) { await mkdir(join(cwd, '.learn'), { recursive: true }); await writeFile(join(cwd, '.learn/course.json'), '{}') }
   await courseSave.execute({ goal: '用户的目标', status: 'planning', learner: { background: '用户背景' }, resources: [], chapters: [{ title: '基础', kps: [
     { id: 'one', title: '一', kind: 'knowledge' }, { id: 'two', title: '二', kind: 'information', prerequisites: ['one'] },
   ] }] }, { cwd, now: () => new Date() })
+  assert.equal(await store.backend(cwd), legacy ? 'legacy' : 'sqlite')
   return cwd
 }
 
@@ -78,7 +80,7 @@ test('outline transport reports host conflict instead of claiming a save', async
 
 
 test('outline routes reject linked course, linked knowledge records, and forged mastery edits', async (t) => {
-  const cwd = await setup(t)
+  const cwd = await setup(t, true)
   const current = await readOutline(cwd)
   const chapters = structuredClone(current.view.chapters)
   chapters[0].kps[0].mastery = 'expert'
@@ -89,26 +91,26 @@ test('outline routes reject linked course, linked knowledge records, and forged 
   const p = store.paths(cwd)
   await rename(p.course, p.course + '.backup')
   await symlink(p.course + '.backup', p.course)
-  await assert.rejects(readOutline(cwd), /Linked learning data/)
+  await assert.rejects(readOutline(cwd), /Linked learning data|ordinary unlinked/)
   await rm(p.course)
   await rename(p.course + '.backup', p.course)
   await link(p.kp('one'), p.kp('one') + '.backup')
-  await assert.rejects(readOutline(cwd), /Linked learning data/)
+  await assert.rejects(readOutline(cwd), /Linked learning data|ordinary unlinked/)
   await rm(p.kp('one') + '.backup')
   const before = await readOutline(cwd)
   await writeFile(join(cwd, 'outside.json'), '{}')
   await symlink(join(cwd, 'outside.json'), p.kp('new'))
-  await assert.rejects(saveOutline(cwd, { expected: before.revision, chapters: [{ title: 'x', kps: [{ id: 'new', title: 'x', kind: 'knowledge' }] }], status: 'planning' }), /Linked learning data/)
+  await assert.rejects(saveOutline(cwd, { expected: before.revision, chapters: [{ title: 'x', kps: [{ id: 'new', title: 'x', kind: 'knowledge' }] }], status: 'planning' }), /Linked learning data|ordinary unlinked/)
 })
 
 test('unsafe or malformed evidence cannot cause an outline save to fail after changing records', async (t) => {
-  const cwd = await setup(t)
+  const cwd = await setup(t, true)
   const before = await readOutline(cwd)
   const chapters = structuredClone(before.view.chapters)
   chapters[0].title = 'should not be saved'
   const log = store.paths(cwd).verifications
   await symlink(store.paths(cwd).course, log)
-  await assert.rejects(saveOutline(cwd, { expected: before.revision, chapters, status: 'planning' }), /Linked learning data/)
+  await assert.rejects(saveOutline(cwd, { expected: before.revision, chapters, status: 'planning' }), /Linked learning data|ordinary unlinked/)
   await rm(log)
   await writeFile(log, 'malformed evidence\n')
   await assert.rejects(saveOutline(cwd, { expected: before.revision, chapters, status: 'planning' }))

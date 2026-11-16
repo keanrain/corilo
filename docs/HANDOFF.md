@@ -1,5 +1,20 @@
 # Corilo 可里交接文档
 
+## SQLite learner storage / 学习记录事务存储（2026-11-16）
+
+Implementation base: main `536914b`; development branch `feat/tutor-sqlite`. This section supersedes earlier JSON-only storage status below. Live-model acceptance was explicitly deferred by the user.
+
+- New empty workspaces create `.learn/learner.sqlite` on the first learner write using native Node SQLite. Existing JSON/JSONL stays legacy until an explicit migration. Materials remain files; no automatic user-data migration, schema upgrade, dual writes or default-profile changes.
+- Course/KP/target maps, verification/diagnosis history, FSRS state and reminder bindings are in SQLite. Public tools/UI share reentrant write snapshots; verification, mastery and review scheduling commit together. Async model work holds no SQL write lock. Cross-process revision/instance conflicts return 409 without replay; cancelled pre-commit work rolls back. Read tools use coherent nonblocking snapshots.
+- `.backend.json` durably selects the database instance. Missing/replaced/corrupt/unsupported databases do not reopen stale JSON or initialize empty state. Pending `.initialization.json` / `.migration.lock` requires explicit recovery. Publication and recovery account for hardlink aliases, directory persistence and interrupted identity-file writes; only proved canonical-prefix repairs are allowed and original bytes are retained.
+- `corilo-learn-store` / package `npm run store --` provides migrate (preview by default, `--apply` explicit), export to a new workspace, and recover (preview by default). Migration keeps original bytes and learner-only backups/checksums/counts/digests. Exports preserve current postmigration changes. Backups/exports exclude materials, DSH sessions/credentials and external schedule tasks; keep those separately. Do not delete the DB as a rollback shortcut. See the bilingual tutor README.
+- External DSH reminder calls run after the learner commit, outside learner ALS; reminder bindings use separate transactions. They are not a distributed transaction or delivery guarantee. Current storage reads still load full learner snapshots; indexed-query APIs, cross-course analytics and FTS remain future work.
+
+Executed in this checkout: 261 tutor Node tests passed; actual pinned DSH mock boot/native reminders passed; Chromium native API passed both legacy and SQLite, and full Web flow persisted SQL evidence/mastery/FSRS with three independent mock examiner requests and due-review rendering. Component and three legacy browser suites passed. Mock material eval passed 3 scenarios/46 requests using SQL-aware scoring. Tooling 16 tests and DSH pin checks passed. A fresh 73-file package passed build/test/content checks; its extracted executable CLI actually completed preview, explicit import, source preservation and export in a disposable workspace.
+
+Independent probes covered two-process existing/first-create races, kill-before-commit, duplicate evidence, unsafe sidecars, schema/instance rejection, missing authoritative DB, and explicit pending/published/torn-identity recovery. No real learner data, knowledge library, legacy app/Android/P0, stashes, prompts/skills or answer protocols were changed. No npm publication or deployment. Remote PR/CI results are separate from these local checks.
+
+
 ## Pre-merge review / 合并前审查（2026-11-16）
 
 Independent review repaired evidence and editing boundaries on `feat/tutor-learning-improvements`:
