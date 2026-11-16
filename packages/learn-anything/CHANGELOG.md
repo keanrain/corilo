@@ -6,6 +6,9 @@ This records currently distributable code, not an npm publication. Maintain chan
 
 ## Unreleased / 未发布
 
+- 修复初始化恢复遮蔽后来恢复的 JSON、多导师会话重复创建提醒，以及导出成功前未同步目录的问题；增加恢复文件保留、真实调度去重和目录同步失败回归。
+  Reject initialization recovery that would shadow restored JSON, deduplicate reminders across tutor instances in one host, and persist export directories before acknowledging success; add preservation, native-scheduler and directory-sync failure regressions.
+
 - 合并前审查补强出题来源、跨轮教学证据和原话语义保护，修复例子元数据丢失、跨会话编辑与演示切换崩溃；新增真实 DSH Web 模拟模型完整流程回归。
   Pre-merge review strengthens card provenance, earlier teaching evidence and learner-word semantics, fixes example metadata loss, cross-session editing and demo replacement crashes, and adds a native DSH Web full-flow regression with a mock model.
 

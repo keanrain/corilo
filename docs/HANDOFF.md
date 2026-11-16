@@ -1,5 +1,16 @@
 # Corilo 可里交接文档
 
+## Storage review fixes / 存储审查修复（2026-11-16）
+
+Base: main `997edba`; branch `fix/tutor-storage-review`. Fixes the three independently reproduced review findings:
+
+- Initialization recovery previews and apply reject newly restored learner JSON/JSONL, including pending, published and owned-alias states. Rechecks before publication/cleanup keep newer files and the interrupted snapshot available rather than silently choosing the old database.
+- Reminder helpers now share one host-process queue per resolved workspace, covering separately constructed Agent helpers and scoped service wrappers. Native service calls remain outside learner transactions. This does not add distributed coordination or a cross-service transaction.
+- Export syncs `.learn/kp`, `.learn`, the export directory and its parent after syncing records/manifest and before reporting success. Directory-sync errors propagate and preserve the output for inspection. Sync order and failure handling were traced/injected; physical power loss was not simulated.
+
+Executed: 293 tutor Node tests passed; actual pinned DSH mock boot passed, including concurrent-helper native reminder deduplication and existing pause/delete/timer behavior. Dual-backend Chromium API and shipped Web tutoring flow passed; three legacy browser suites passed. Tooling 16 tests/DSH pins passed. Fresh 73-file archive passed build/test/content validation. All data used was disposable synthetic data. No live-model acceptance, real-data migration, npm publication or deployment. Remote PR/CI results are separate from these local checks.
+
+
 ## SQLite learner storage / 学习记录事务存储（2026-11-16）
 
 Implementation base: main `536914b`; development branch `feat/tutor-sqlite`. This section supersedes earlier JSON-only storage status below. Live-model acceptance was explicitly deferred by the user.

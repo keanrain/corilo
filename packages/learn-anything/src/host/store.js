@@ -245,6 +245,12 @@ async function syncDirectory(path) {
   try { await handle.sync() } finally { await handle.close() }
 }
 const activeInitializations = new Set()
+function assertNoLegacyInitializationData(p) {
+  const documents = [p.course, p.reviews, p.reminder, p.verifications, p.diagnoses]
+  if (documents.some((file) => missing(file)) || directory(p.kpDir) && readdirSync(p.kpDir).some((name) => name.endsWith('.json'))) {
+    throw conflict('Legacy learner data appeared during initialization; it will not be shadowed. Preserve both states for manual inspection.')
+  }
+}
 async function publishFirstDatabase(cwd, snapshot) {
   const p = paths(cwd)
   await mkdir(p.root, { recursive: true })
@@ -265,7 +271,7 @@ async function publishFirstDatabase(cwd, snapshot) {
     // Check once more after acquiring the exclusive initialization marker.
     if (missing(p.database)) throw conflict('Another learner database already exists')
     if (missing(join(p.root, '.migration.lock'))) throw conflict('Migration started during initialization; stop services before retrying')
-    if ([p.course, p.reviews, p.reminder, p.verifications, p.diagnoses].some((file) => missing(file)) || directory(p.kpDir) && readdirSync(p.kpDir).some((name) => name.endsWith('.json'))) throw conflict('Legacy learner data appeared during initialization; it will not be shadowed')
+    assertNoLegacyInitializationData(p)
     if (['-wal', '-shm', '-journal'].some((suffix) => missing(p.database + suffix))) throw new Error('Orphan learner database sidecars require manual inspection')
     createSqliteSnapshot(temporary, snapshot)
     try { await link(temporary, p.database) } catch (error) { if (error.code === 'EEXIST') throw conflict(); throw error }
@@ -297,6 +303,9 @@ export async function recoverInitialization(cwd, { apply = false } = {}) {
   const p = paths(cwd), marker = join(p.root, '.initialization.json')
   directory(p.root, false); regular(marker, false)
   if (missing(join(p.root, '.migration.lock'))) throw new Error('Migration and initialization markers coexist; inspect both manually')
+  // Restored JSON may be newer than the interrupted first-write snapshot.
+  // Check before inspecting SQLite too: rejected previews must preserve files.
+  assertNoLegacyInitializationData(p)
   const markerInfo = lstatSync(marker)
   if (markerInfo.size > 4096) throw new Error('Invalid learner initialization manifest')
   const manifest = JSON.parse(await readFile(marker, 'utf8'))
@@ -322,13 +331,16 @@ export async function recoverInitialization(cwd, { apply = false } = {}) {
   if (live) throw new Error('The initializer process is still running; stop services before recovery')
   // Recheck the manifest and path identity after preview validation.
   if (JSON.stringify(JSON.parse(await readFile(marker, 'utf8'))) !== JSON.stringify(manifest)) throw conflict('Initialization manifest changed during recovery')
+  assertNoLegacyInitializationData(p)
   if (!databaseInfo && candidateInfo) {
     try { await link(candidate, p.database) } catch (error) { if (error.code === 'EEXIST') throw conflict(); throw error }
     await syncDirectory(p.root)
   }
+  assertNoLegacyInitializationData(p)
   if (candidateInfo) await rm(candidate)
   await syncDirectory(p.root)
   if (inspected) await ensureSqliteIdentity(cwd, inspected.instanceId, { recoverIncomplete: true })
+  assertNoLegacyInitializationData(p)
   await rm(marker); await syncDirectory(p.root)
   return { ...report, applied: true }
 }

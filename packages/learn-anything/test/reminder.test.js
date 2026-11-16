@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReminders, dailyAt, REMINDER_TITLE } from '../src/host/reminder.js'
+import * as store from '../src/host/store.js'
 
 /** In-memory stand-in for the dsh-schedule service, daily tasks only. */
 function fakeSchedule() {
@@ -96,4 +97,80 @@ test('the reminder prompt points the tutor at review_due\'s real timing', async 
   const { REMINDER_PROMPT } = await import('../src/host/reminder.js')
   assert.match(REMINDER_PROMPT, /review_due/)
   assert.match(REMINDER_PROMPT, /上次答题时间/)
+})
+
+const deferred = () => {
+  let resolve
+  const promise = new Promise((yes) => { resolve = yes })
+  return { promise, resolve }
+}
+const nextTurn = () => new Promise((resolve) => setImmediate(resolve))
+const defaults = { time: '20:00', timeZone: 'UTC' }
+async function sqlWorkspace(t) {
+  const cwd = await mkdtemp(join(tmpdir(), 'learn-reminder-queue-'))
+  t.after(() => rm(cwd, { recursive: true, force: true }))
+  await store.writeJson(store.paths(cwd).course, { goal: 'reminder queue', chapters: [] })
+  return cwd
+}
+
+test('separate agent helpers share a workspace queue even with distinct service wrappers', async (t) => {
+  const cwd = await sqlWorkspace(t)
+  const schedule = fakeSchedule(), entered = deferred(), release = deferred()
+  const create = schedule.create.bind(schedule)
+  let creates = 0
+  schedule.create = async (...args) => { creates++; entered.resolve(); await release.promise; return create(...args) }
+  const first = createReminders({ ...schedule }, defaults).ensure(cwd, 'session-a')
+  await entered.promise
+  // Harness may expose a different scoped service object to each Agent.
+  const second = createReminders({ ...schedule }, defaults).ensure(join(cwd, '.'), 'session-b')
+  await nextTurn()
+  const createsBeforeRelease = creates
+  release.resolve()
+  const [a, b] = await Promise.all([first, second])
+  assert.equal(createsBeforeRelease, 1, 'the second helper must wait until the first binding is stored')
+  assert.equal(schedule.rows.length, 1)
+  assert.equal(a.id, b.id)
+  assert.deepEqual(await store.readJson(store.paths(cwd).reminder, null), { sessionId: 'session-a', id: a.id })
+})
+
+test('a failed helper operation releases the shared queue for another agent', async (t) => {
+  const cwd = await sqlWorkspace(t)
+  const schedule = fakeSchedule(), entered = deferred(), release = deferred()
+  const create = schedule.create.bind(schedule)
+  let creates = 0
+  schedule.create = async (...args) => {
+    if (++creates === 1) { entered.resolve(); await release.promise; throw new Error('native schedule unavailable') }
+    return create(...args)
+  }
+  const failed = createReminders(schedule, defaults).ensure(cwd, 'session-a')
+  const rejected = assert.rejects(failed, /native schedule unavailable/)
+  await entered.promise
+  const after = createReminders({ ...schedule }, defaults).ensure(cwd, 'session-b')
+  release.resolve()
+  await rejected
+  const record = await after
+  assert.equal(creates, 2)
+  assert.equal(schedule.rows.length, 1)
+  assert.deepEqual(await store.readJson(store.paths(cwd).reminder, null), { sessionId: 'session-b', id: record.id })
+})
+
+test('a blocked workspace does not block reminder creation for another workspace', async (t) => {
+  const firstWorkspace = await sqlWorkspace(t), secondWorkspace = await sqlWorkspace(t)
+  const firstSchedule = fakeSchedule(), entered = deferred(), release = deferred()
+  const create = firstSchedule.create.bind(firstSchedule)
+  firstSchedule.create = async (...args) => { entered.resolve(); await release.promise; return create(...args) }
+  const first = createReminders(firstSchedule, defaults).ensure(firstWorkspace, 'session-a')
+  await entered.promise
+  const secondSchedule = fakeSchedule()
+  const second = createReminders(secondSchedule, defaults).ensure(secondWorkspace, 'session-b')
+  let timeout
+  try {
+    const record = await Promise.race([
+      second,
+      new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('another workspace waited behind the blocked workspace')), 2000) }),
+    ])
+    assert.equal(secondSchedule.rows.length, 1)
+    assert.equal(record.target.sessionId, 'session-b')
+    assert.equal(firstSchedule.rows.length, 0, 'first workspace remains held while the second completes')
+  } finally { clearTimeout(timeout); release.resolve(); await Promise.allSettled([first, second]) }
 })

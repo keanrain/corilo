@@ -24,8 +24,16 @@ export function apply(ctx) {
     ctx.on('schedule/resolve-agent', async (sessionId, next) => sessionId === agent.session.id ? agent : next());
     await agent.whenIdle();
     const schedule = ctx.get('schedule');
-    const reminders = createReminders(schedule, { time: '23:59', timeZone: 'Asia/Taipei' });
-    const reminder = await reminders.ensure(process.cwd(), agent.session.id);
+    const reminderDefaults = { time: '23:59', timeZone: 'Asia/Taipei' };
+    const reminders = createReminders(schedule, reminderDefaults);
+    const anotherAgentReminders = createReminders(schedule, reminderDefaults);
+    const [reminder, concurrentReminder] = await Promise.all([
+      reminders.ensure(process.cwd(), agent.session.id),
+      anotherAgentReminders.ensure(process.cwd(), agent.session.id),
+    ]);
+    assert.equal(concurrentReminder.id, reminder.id, 'separate helpers share one native reminder');
+    assert.equal((await schedule.catalog()).length, 1, 'concurrent helpers cannot create duplicate native tasks');
+    console.error('[driver] native multi-helper reminder deduplication passed');
     const paused = await schedule.edit({ id: reminder.id, action: 'update', patch: { active: false } }, agent.session.id);
     assert.equal(paused.status, 'paused');
     assert.equal((await reminders.ensure(process.cwd(), agent.session.id)).status, 'paused');
