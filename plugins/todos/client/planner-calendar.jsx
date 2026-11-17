@@ -1,4 +1,5 @@
 import { uiText, useTodosLocale } from './i18n.mjs';
+import { CalendarPlus } from 'lucide-react';
 import React, { useRef, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGrid from "@fullcalendar/daygrid";
@@ -67,15 +68,17 @@ export function PlannerCalendar({ s, set, open, refresh }) {
       </label></div>
       <div className="planner-calendar">
         <aside className="planner-calendar-tasks" ref={drags} aria-label={uiText("可安排任务")}>
-          <h2>{uiText("可安排任务")}</h2>
+          <h2>{uiText("可安排任务")}</h2><p>{uiText("拖动任务，或点击安排时间。")}</p>
           {s.items.map((t) => (
             <div key={t.id} data-task-id={t.id} data-title={t.title}>
               <button
+                aria-label={`${t.title} ${uiText("· 安排")}`}
+                title={t.title}
                 onClick={() =>
                   open("event", null, { title: t.title, taskId: t.id })
                 }
               >
-                {t.title}{" "}{uiText("· 安排")}</button>
+                <span>{t.title}</span><CalendarPlus size={15} aria-hidden="true" /></button>
             </div>
           ))}
           {s.cursor && (

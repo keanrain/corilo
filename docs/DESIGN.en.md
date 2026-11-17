@@ -18,7 +18,7 @@ Calendar views include month, week, day, and agenda, supporting independent even
 
 Reminders retain an in-app history. Browser notifications require explicit authorization; closing the page disables delivery. Do not describe a notification claim as guaranteed receipt.
 
-Planner 0.6.2 uses a dedicated sidebar, grouped task rows, collapsible filters, and a consistent calendar. Wide screens place details beside the list; narrow layouts have scrollable view navigation and a full-width editor. Theme and language follow the host. Native controls retain visible keyboard focus, and errors or unknown results appear beside the detail fields.
+Planner 0.6.3 uses compact top navigation, grouped task rows, collapsible filters, and a consistent calendar. Wide screens place details beside the list; narrow layouts have scrollable view navigation and a full-width editor. Theme and language follow the host. Native controls retain visible keyboard focus, and errors or unknown results appear beside the detail fields.
 
 ## Learning tutor
 

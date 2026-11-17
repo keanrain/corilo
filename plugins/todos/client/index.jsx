@@ -284,7 +284,7 @@ function TodosPage({ useStore, actions, call, getState }) {
       {model.editorOpen && model.item && <div className="corilo-todos-editor" onBlur={leaveDetail} onCompositionStart={() => { detailComposing.current = true; }} onCompositionEnd={() => { detailComposing.current = false; }}>
         <div className="corilo-todos-editor-heading">
           {<button className="corilo-todos-detail-check" role="checkbox" aria-checked={model.item.status === 'done'} aria-label={model.item.status === 'open' ? uiText('完成待办') : uiText('重新打开待办')} disabled={busy || model.conflict || model.leaveSaveBlocked} onClick={() => toggleRow(model.item)}>{model.item.status === 'done' ? <CircleCheck size={22} aria-hidden="true" /> : <span className="corilo-todos-detail-circle" />}</button>}
-          <span className="corilo-todos-record-state" data-testid="todo-record-state">{model.item ? labels[model.item.status] : ''}</span>
+          <span className="corilo-todos-record-state" data-testid="todo-record-state">{model.item ? uiText(labels[model.item.status]) : ''}</span>
           <span className="corilo-todos-save-state" role="status" data-state={model.conflict ? 'conflict' : model.saveState}>{model.loading ? uiText('读取中…') : model.saveState === 'saving' ? uiText('保存中…') : model.saveState === 'unknown' ? uiText('保存结果待确认') : model.conflict ? uiText('版本冲突') : model.saveState === 'failed' ? uiText('保存失败') : dirty ? uiText('未保存') : model.item ? uiText('已保存') : ''}</span>
           <button disabled={busy} aria-label={uiText("返回列表")} title={uiText("返回列表（Esc）")} onClick={() => leaveEditor()}><ArrowLeft size={18} className="corilo-todos-mobile-back" aria-hidden="true" /><X size={18} className="corilo-todos-desktop-close" aria-hidden="true" /></button>
         </div>

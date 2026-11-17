@@ -4,6 +4,15 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.6.3
+
+- 使用紧凑导航、容器宽度自适应列表／详情与统一的 planner／兼容版清单视觉；日期更易读，存储时区不变。
+  Use compact navigation, container-aware list/details layout, consistent planner/v1 styling, and readable dates without changing stored zones.
+- 任务可直接完成与恢复，保留版本校验、未知结果核对和原请求重试；冲突后刷新，不自动重复写入。
+  Complete/reopen tasks directly with version checks, unknown-result reconciliation, original-request retries, and conflict refresh without automatic repeated writes.
+- 精修伸缩标题／说明、干净关闭、草稿确认、Esc／键盘焦点、筛选收起、可读冲突预览和提醒状态；不迁移既有资料。
+  Refine growing titles/descriptions, clean and dirty close, Escape/focus handling, filter dismissal, readable conflict previews, and reminder states without migrating data.
+
 ## 0.6.2
 
 - 重做 planner 侧栏、任务分组、筛选、日历与详情布局，增加浅深色、窄屏和键盘交互的真实 DSH 浏览器检查。

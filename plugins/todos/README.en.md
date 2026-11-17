@@ -4,9 +4,11 @@
 
 Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts.
 
-## 0.6.2 planner interface
+## 0.6.3 interface and interaction polish
 
-The planner now has a quiet sidebar, grouped task rows, collapsible filters, and a matching calendar. Wide screens keep task details in a separate column; narrow screens use a full-width editor and scrollable view navigation. The host theme and language remain authoritative. Editing, version conflicts, operation receipts, and all storage formats retain their existing behavior.
+Compact top navigation leaves more space for tasks and calendars. Tasks can be completed or reopened directly; unknown results use the original receipt, while conflicts refresh the record before another attempt. Details have growing title/description fields, clean-close without unnecessary confirmation, guarded dirty-close, Escape support, and contained keyboard focus in narrow drawers. Filters dismiss outside or with Escape. Conflict previews show readable titles, bodies, and states instead of storage JSON.
+
+Planner and the v1 compatibility list share consistent colors, typography, spacing, and focus styles. Theme and language still follow the host. Date formatting leaves stored time zones, save snapshots, operation receipts, and data formats intact.
 
 ## 0.6.1 fixes and cleanup
 
@@ -30,9 +32,9 @@ Reminder facts persist in SQLite. The service catches up at startup and every 30
 
 ## v1 compatibility mode
 
-The page, storage, and tool descriptions below apply only to **existing instances that omit `planner`**, retaining the original 0.5.2 mode. New instances default to planner v2 above. Install and distribute the current 0.6.2 package; it does not upgrade old databases automatically. The handwritten overlay below deliberately omits `planner` to continue running v1.
+The page, storage, and tool descriptions below apply only to **existing instances that omit `planner`**, retaining the original 0.5.2 mode. New instances default to planner v2 above. Install and distribute the current 0.6.3 package; it does not upgrade old databases automatically. The handwritten overlay below deliberately omits `planner` to continue running v1.
 
-This independent personal-task plugin supports pinned Harness **0.2.2-rc.3** and Node.js **>=24.9.0**. It uses Node's built-in `node:sqlite`, with no separate database service, ORM, or second Agent loop. Node's SQLite API still emits an experimental notice; keep the tested runtime compatible. Package version 0.6.2 has not been published to npm.
+This independent personal-task plugin supports pinned Harness **0.2.2-rc.3** and Node.js **>=24.9.0**. It uses Node's built-in `node:sqlite`, with no separate database service, ORM, or second Agent loop. Node's SQLite API still emits an experimental notice; keep the tested runtime compatible. Package version 0.6.3 has not been published to npm.
 
 The page creates, reads, edits, completes, and reopens tasks without a model key. Agent tools share the same persistence service. Personal tasks are separate from Harness Agent execution plans. v1 has no dates, calendar, reminder scheduling, or notifications; creating a task does not schedule a notification.
 
@@ -121,7 +123,7 @@ cd plugins/todos
 npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-Recipients run `npm init -y` in their installation directory, then `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.6.2.tgz`. Configure from the example and launch using that directory's `./node_modules/.bin/dsh`. The first installation still downloads pinned production dependencies; retain its lockfile. A packaged installation needs neither source nor esbuild.
+Recipients run `npm init -y` in their installation directory, then `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.6.3.tgz`. Configure from the example and launch using that directory's `./node_modules/.bin/dsh`. The first installation still downloads pinned production dependencies; retain its lockfile. A packaged installation needs neither source nor esbuild.
 
 Source validation:
 
@@ -134,4 +136,4 @@ Style coexistence checks also need `plugins/notes` installed and built. Browser 
 
 ## Updating the package in v1 mode
 
-Save current input, stop the service, and back up the entire task directory before upgrading. Install package 0.6.2, retain the v1 configuration that omits `planner`, reuse the existing data directory, and restart Harness; reload the browser client. No database migration or cleanup occurs. Old browser drafts are readable only by the old version; recovery is not promised by the new version. Do not clear site data and then expect to find old drafts. Cancelled records and associations remain in JSON exports.
+Save current input, stop the service, and back up the entire task directory before upgrading. Install package 0.6.3, retain the v1 configuration that omits `planner`, reuse the existing data directory, and restart Harness; reload the browser client. No database migration or cleanup occurs. Old browser drafts are readable only by the old version; recovery is not promised by the new version. Do not clear site data and then expect to find old drafts. Cancelled records and associations remain in JSON exports.

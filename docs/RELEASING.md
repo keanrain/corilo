@@ -7,7 +7,7 @@
 | 产品选择 | 包目录 | 当前版本 | 当前渠道 |
 |---|---|---|---|
 | `notes` | `plugins/notes` | 0.7.0 | 本地 tgz，private |
-| `todos` | `plugins/todos` | 0.6.2 | 本地 tgz，private |
+| `todos` | `plugins/todos` | 0.6.3 | 本地 tgz，private |
 | `learn-anything` | `packages/learn-anything` | 0.1.0 | 本地 tgz，供已有 DSH 用户；未发布 npm |
 
 ## 准备一个产品
