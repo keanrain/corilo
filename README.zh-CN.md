@@ -14,7 +14,7 @@
 
 各包独立依赖锁、安装和分发。学习导师仅供已有 DSH 用户安装，通过 `npm run build:learn-anything` 构建、`npm run pack:learn-anything` 打包，不随默认 notes＋todos 组合自动启用。`app/`、`android/`、`p0/` 保留旧实现与研究；根 `npm start/test` 仍服务旧应用。
 
-当前版本为 **notes 0.7.0、todos 0.6.3**。源码新实例默认启用 notes＋todos planner v2；已有单插件或旧双插件配置按原模式运行，数据库不自动迁移。
+当前版本为 **notes 0.7.0、todos 0.6.4**。源码新实例默认启用 notes＋todos planner v2；已有单插件或旧双插件配置按原模式运行，数据库不自动迁移。
 
 笔记使用 Files.md 工作区，保留文件树、Markdown、清单、收集、日记、附件和分栏编辑。任务插件提供任务日期、清单、优先级、日历、时间块、持久提醒和主动授权网页通知。普通页面操作不需要模型；Harness 负责模型、会话、登录和权限。
 
@@ -36,7 +36,7 @@ npm run start:corilo -- --directory /absolute/corilo-instance
 
 ## 旧实例与待办
 
-旧单插件及双插件配置保留。todos 0.6.3 在省略 `planner` 时继续使用 v1 模式；启用 planner 必须使用新的空资料目录，不能直接打开旧 v1 库。Files.md 仍支持 Markdown 清单；下面是可选单向导出，不再是默认退役流程：
+旧单插件及双插件配置保留。todos 0.6.4 在省略 `planner` 时继续使用 v1 模式；启用 planner 必须使用新的空资料目录，不能直接打开旧 v1 库。Files.md 仍支持 Markdown 清单；下面是可选单向导出，不再是默认退役流程：
 
 ```sh
 # 先停止源、目标服务并备份；默认仅预览

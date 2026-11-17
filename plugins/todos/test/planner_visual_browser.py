@@ -64,6 +64,8 @@ def exercise_interactions(page, panel, dialogs):
     expect(form.get_by_label('说明', exact=True)).to_have_value('必须保留的未保存草稿')
     form.get_by_role('button', name='保存', exact=True).click()
     expect(panel.get_by_role('status')).to_contain_text('已保存')
+    # The write notice precedes refresh completion; closing waits for both.
+    expect(form.get_by_role('button', name='保存', exact=True)).to_be_enabled()
     count = len(dialogs)
     page.keyboard.press('Escape')
     expect(form).to_have_count(0)

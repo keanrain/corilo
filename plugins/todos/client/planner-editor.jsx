@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from "react";
 import { X } from 'lucide-react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { plannerDraftChanged } from './planner-present.mjs';
+import { PlannerLatest } from './planner-latest.jsx';
 import { options, priorities } from "./planner-fields.jsx";
 import { strip } from "./planner-record.mjs";
 import { shiftStart, localInstant, Temporal } from "./planner-dates.mjs";
@@ -287,21 +288,27 @@ export function PlannerEditor({
       {s.editor.latest && (
         <section>
           <h3>{uiText("服务器最新内容")}</h3>
-          <div className="planner-latest-content"><strong>{s.editor.latest.title}</strong><p>{s.editor.latest.body}</p><small>{uiText("状态")} · {uiText(({ open: "未完成／恢复", done: "完成", active: "有效", cancelled: "取消" })[s.editor.latest.status])}</small></div>
+          <PlannerLatest kind={s.editor.kind} value={s.editor.latest} tasks={s.items} />
+          <p className="planner-conflict-help">{uiText("保留输入会用当前表单的全部内容替换此版本，请先核对以上字段。")}</p>
           <button
             type="button"
+            disabled={s.busy || Boolean(s.pending)}
             onClick={() =>
               set({
                 editor: {
                   ...s.editor,
                   item: s.editor.latest,
                   latest: null,
+                  conflict: false,
                 },
+                error: "",
+                notice: "未保存",
               })
             }
           >{uiText("保留输入，按最新版本编辑")}</button>
           <button
             type="button"
+            disabled={s.busy || Boolean(s.pending)}
             onClick={() =>
               set({
                 editor: {
@@ -309,7 +316,10 @@ export function PlannerEditor({
                   item: s.editor.latest,
                   value: strip(s.editor.latest),
                   latest: null,
+                  conflict: false,
                 },
+                error: "",
+                notice: "",
               })
             }
           >{uiText("采用服务器内容")}</button>
@@ -325,7 +335,7 @@ export function PlannerEditor({
           disabled={s.busy || Boolean(s.pending)}
           onClick={close}
         >{uiText("关闭")}</button>
-        {s.editor.item && s.notice === "版本冲突，请查看最新记录" && (
+        {s.editor.item && s.editor.conflict && (
           <button
             type="button"
             disabled={s.busy || Boolean(s.pending)}

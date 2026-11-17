@@ -7,7 +7,7 @@ The three products have independent versions, lockfiles, and packages. The root 
 | Product selector | Package directory | Current version | Current channel |
 |---|---|---|---|
 | `notes` | `plugins/notes` | 0.7.0 | Local tgz, private |
-| `todos` | `plugins/todos` | 0.6.3 | Local tgz, private |
+| `todos` | `plugins/todos` | 0.6.4 | Local tgz, private |
 | `learn-anything` | `packages/learn-anything` | 0.1.0 | Local tgz for existing DSH users; not published to npm |
 
 ## Prepare one product
