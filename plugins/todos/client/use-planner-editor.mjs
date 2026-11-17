@@ -57,11 +57,13 @@ export function usePlannerEditor({ s, set, ref, call, refresh }) {
     } else if (e) {
       const changed = JSON.stringify(e.value) !== JSON.stringify(p.snapshot);
       set({
-        editor: { ...e, item: value, value: changed ? e.value : strip(value) },
+        editor: { ...e, item: value, value: changed ? e.value : strip(value), conflict: false, latest: null },
         notice: changed ? "提交快照已保存，后续输入仍未保存" : "已保存",
       });
     }
-    set({ pending: null, busy: false, error: "" });
+    // The write is confirmed, but controls stay busy until its refresh completes.
+    // submit/reconcile release the synchronous lock and UI state together.
+    set({ pending: null, error: "" });
     await refresh();
   }
   async function submit(p) {
@@ -71,8 +73,10 @@ export function usePlannerEditor({ s, set, ref, call, refresh }) {
     try {
       await accept(await call(p.method, p.args), p);
     } catch (e) {
-      set({
-        busy: false,
+      set((old) => ({
+        ...(e.code === "schedule/409" && p.operation !== "task-status" && old.editor
+          ? { editor: { ...old.editor, conflict: true, latest: null } }
+          : {}),
         pending: e.unknown ? p : null,
         error: e.message,
         notice: e.unknown
@@ -80,10 +84,11 @@ export function usePlannerEditor({ s, set, ref, call, refresh }) {
           : e.code === "schedule/409"
             ? p.operation === "task-status" ? "任务已更新，请核对后重试" : "版本冲突，请查看最新记录"
             : "保存失败",
-      });
+      }));
       if (p.operation === "task-status" && e.code === "schedule/409") await refresh();
     } finally {
       networkBusy.current = false;
+      set({ busy: false });
     }
   }
   async function toggleTask(item) {
@@ -124,23 +129,26 @@ export function usePlannerEditor({ s, set, ref, call, refresh }) {
     try {
       const r = await call("requests/read", { requestId: p.args.requestId });
       if (r.found) await accept(r.value, p);
-      else set({ busy: false, notice: "未找到回执，可重试原请求" });
+      else set({ notice: "未找到回执，可重试原请求" });
     } catch (e) {
-      set({ busy: false, error: e.message });
+      set({ error: e.message });
     } finally {
       networkBusy.current = false;
+      set({ busy: false });
     }
   }
   async function latest() {
     try {
-      const e = s.editor;
+      const e = ref.current.editor;
+      if (!e?.conflict || !e.item) return;
       const item = await call(
         `${e.kind === "task" ? "tasks" : "calendar"}/read`,
         { id: e.item.id },
       );
       set((current) =>
-        current.editor?.kind === e.kind &&
-        current.editor?.item?.id === e.item.id
+        current.editor?.conflict && current.editor.kind === e.kind &&
+        current.editor.item?.id === e.item.id &&
+        current.editor.item.version === e.item.version
           ? { editor: { ...current.editor, latest: item } }
           : {},
       );

@@ -7,7 +7,7 @@
 | Product | Current version | Purpose |
 |---|---|---|
 | notes | 0.7.0 | Files.md notes, files, capture, journals, and Markdown checklists |
-| todos | 0.6.3 | Tasks, dates and deadlines, calendars, task time blocks, and persistent in-app reminders |
+| todos | 0.6.4 | Tasks, dates and deadlines, calendars, task time blocks, and persistent in-app reminders |
 | Learning tutor | 0.1.0 | Learning routes, diagnosis, interactive practice, examiner verification, and spaced review |
 
 The source launcher configures notes + todos planner for new instances. The learning tutor is installed separately by existing DSH users and is not included in the default composition. Users choose a workspace and teaching preset after installation. All three plugins reuse DSH authentication, sessions, models, and permissions.

@@ -122,8 +122,10 @@
 .planner-editor > section { padding: 16px; border: 1px solid var(--planner-border); border-radius: 8px; }
 .planner-editor h3 { font-size: 12px; font-weight: 600; margin-bottom: 10px; }
 .planner-latest-content { display: grid; gap: 8px; margin-bottom: 14px; overflow-wrap: anywhere; }
-.planner-latest-content p { white-space: pre-wrap; font-size: 13px; }
-.planner-latest-content small { color: var(--planner-muted); }
+.planner-latest-content > div { display: grid; gap: 3px; min-width: 0; }
+.planner-latest-content dt { font-size: 11px; color: var(--planner-muted); }
+.planner-latest-content dd { margin: 0; white-space: pre-wrap; font-size: 13px; }
+.planner-conflict-help { font-size: 12px; color: var(--planner-muted); line-height: 1.6; margin-bottom: 10px !important; }
 .planner-editor > section button { font-size: 12px; margin: 4px 4px 0 0; }
 .planner-calendar-controls { display: flex; justify-content: flex-end; margin-bottom: 16px; }
 .corilo-planner .planner-calendar-controls label { flex-direction: row; align-items: center; white-space: nowrap; }

@@ -4,6 +4,17 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.6.4
+
+- 冲突预览完整列出任务与日程可编辑字段，包括已清空的值、截止时区、关联任务与提醒；保留输入前提示核对全部字段。
+  Show every editable task/event field in conflict previews, including cleared values, deadline zones, linked tasks, and reminders; explain full-form replacement before keeping local input.
+- 冲突恢复入口不再随继续编辑消失；采用服务器内容、保留输入或成功保存后清除冲突状态。
+  Keep conflict recovery available while editing; clear it after adopting the server version, rebasing local input, or saving successfully.
+- 保存和回执核对在刷新完成后同时释放提交锁与按钮状态；刷新期间的新输入继续保留。
+  Release the submission lock and busy controls together after save/receipt refresh; preserve input entered during refresh.
+- 增加真实 DSH 冲突与延迟刷新回归测试。保持 v1、配置和 SQLite 数据格式兼容，不自动迁移资料。
+  Add real DSH conflict and delayed-refresh regressions. Preserve v1, configuration, and SQLite formats without automatic data migration.
+
 ## 0.6.3
 
 - 使用紧凑导航、容器宽度自适应列表／详情与统一的 planner／兼容版清单视觉；日期更易读，存储时区不变。
