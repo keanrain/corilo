@@ -18,6 +18,8 @@ Calendar views include month, week, day, and agenda, supporting independent even
 
 Reminders retain an in-app history. Browser notifications require explicit authorization; closing the page disables delivery. Do not describe a notification claim as guaranteed receipt.
 
+Planner 0.6.2 uses a dedicated sidebar, grouped task rows, collapsible filters, and a consistent calendar. Wide screens place details beside the list; narrow layouts have scrollable view navigation and a full-width editor. Theme and language follow the host. Native controls retain visible keyboard focus, and errors or unknown results appear beside the detail fields.
+
 ## Learning tutor
 
 After installation, users select the learning tutor preset in an existing DSH workspace. The plugin does not force directory navigation or change default presets. Route, target-map, progress, and feedback cards appear with responses. Planning routes and target maps support direct editing through host authentication and revision checks; personal notes do not grant verification credit. Interactive exercises and flashcards use the native right learning pane. See the [tutor guide](../packages/learn-anything/README.en.md).

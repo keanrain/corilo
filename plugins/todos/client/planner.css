@@ -1,140 +1,168 @@
+/* Scoped planner workspace. Native host typography, theme and permissions stay authoritative. */
 .corilo-planner {
-  color: inherit;
-  padding: 20px;
-  max-width: 1500px;
-  margin: auto;
-  height: 100%;
-  overflow: auto;
-  font: inherit;
+  --planner-text: light-dark(#282826, #ecebe8);
+  --planner-muted: light-dark(#6c6c69, #afafa9);
+  --planner-border: light-dark(#eae9e6, #393936);
+  --planner-input-border: light-dark(#d9d8d3, #55554f);
+  --planner-surface: light-dark(#fff, #222222);
+  --planner-sidebar: light-dark(#f7f7f5, #1b1b1b);
+  --planner-text: light-dark(#292925, #ededeb);
+  --planner-muted: light-dark(#71716a, #adada5);
+  --planner-border: light-dark(#eaeae5, #393936);
+  --planner-input-border: light-dark(#c7c7bf, #686862);
+  --planner-hover: light-dark(#f5f5f1, #30302c);
+  --planner-accent: light-dark(#b33d30, #f2a498);
+  --planner-accent-bg: light-dark(#f7e9e5, #3a2925);
+  --planner-button-bg: light-dark(#b33d30, #f2a498);
+  --planner-button-text: light-dark(#fff, #33201c);
+  --planner-focus: light-dark(#2c69b0, #9fc7ff);
+  height: 100%; min-height: 0; min-width: 0; width: 100%; display: grid; grid-template-columns: 196px minmax(0, 1fr); overflow: hidden;
+  color: var(--planner-text); background: var(--planner-surface); font: inherit; font-size: 14px; line-height: 1.5; color-scheme: inherit;
 }
-.corilo-planner * {
-  box-sizing: border-box;
+.corilo-planner *, .corilo-planner *::before, .corilo-planner *::after { box-sizing: border-box; }
+.corilo-planner button, .corilo-planner input, .corilo-planner select, .corilo-planner textarea { font: inherit; color: inherit; border: 1px solid var(--planner-input-border); border-radius: 7px; background: var(--planner-surface); min-height: 38px; padding: 8px 11px; }
+.corilo-planner button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; cursor: pointer; transition: background-color 120ms, border-color 120ms; }
+.corilo-planner button:hover:not(:disabled) { background: var(--planner-hover); }
+.corilo-planner button:disabled { opacity: .5; cursor: default; }
+.corilo-planner :focus-visible { outline: 2px solid var(--planner-focus); outline-offset: 3px; }
+.corilo-planner input, .corilo-planner select, .corilo-planner textarea { min-width: 0; width: 100%; }
+.corilo-planner input::placeholder, .corilo-planner textarea::placeholder { color: var(--planner-muted); opacity: 1; }
+.corilo-planner label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; color: var(--planner-muted); }
+.corilo-planner label input, .corilo-planner label select, .corilo-planner label textarea { color: var(--planner-text); font-size: 14px; }
+.corilo-planner h1, .corilo-planner h2, .corilo-planner p { margin: 0; }
+.corilo-planner .planner-primary { color: var(--planner-button-text); background: var(--planner-button-bg); border-color: transparent; font-weight: 500; }
+.corilo-planner .planner-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--planner-button-bg) 90%, var(--planner-text)); }
+.planner-sidebar { background: var(--planner-sidebar); border-inline-end: 1px solid var(--planner-border); padding: 24px 12px 14px; display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.planner-brand { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; padding: 0 10px 22px; }
+.corilo-planner .planner-add { justify-content: flex-start; margin: 0 4px 18px; padding-inline: 11px; }
+.planner-sidebar nav { display: flex; flex-direction: column; gap: 3px; }
+.corilo-planner .planner-sidebar nav button { border: 0; justify-content: flex-start; background: transparent; text-align: start; padding: 9px 12px; font-size: 13px; color: var(--planner-muted); }
+.planner-sidebar nav button > span { flex: 1; }
+.planner-sidebar nav button small { font-size: 11px; font-weight: 500; }
+.corilo-planner .planner-sidebar nav button[aria-pressed="true"] { color: var(--planner-accent); background: var(--planner-accent-bg); font-weight: 600; }
+.planner-sidebar nav button:nth-child(5), .planner-sidebar nav button:nth-child(7) { margin-top: 15px; }
+.planner-timezone { margin-top: auto; padding-top: 28px; }
+.planner-timezone summary { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--planner-muted); padding: 10px; cursor: pointer; overflow-wrap: anywhere; }
+.planner-timezone summary svg { flex-shrink: 0; }
+.planner-timezone summary::-webkit-details-marker, .planner-filter-options summary::-webkit-details-marker { display: none; }
+.planner-timezone-fields { display: grid; gap: 10px; padding: 8px 4px; }
+.corilo-planner .planner-timezone input { font-size: 12px; }
+.corilo-planner .planner-timezone button { font-size: 12px; }
+.planner-main { min-height: 0; min-width: 0; overflow: auto; padding: 42px clamp(24px, 4vw, 56px) 64px; }
+.planner-content { max-width: 860px; margin: 0 auto; }
+.planner-content.is-calendar { max-width: 1250px; }
+.planner-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; }
+.planner-eyebrow { color: var(--planner-muted); font-size: 11px; margin-bottom: 8px !important; }
+.corilo-planner h1 { font-size: 28px; line-height: 1.3; font-weight: 650; letter-spacing: -.04em; }
+.planner-description { font-size: 12px; color: var(--planner-muted); margin-top: 10px !important; }
+.planner-toolbar { display: flex; gap: 4px; align-items: center; padding-top: 20px; flex-shrink: 0; }
+.corilo-planner .planner-icon-button { border-color: transparent; background: transparent; width: 36px; padding: 7px; color: var(--planner-muted); }
+.corilo-planner .planner-event-add { margin-inline-start: 6px; font-size: 12px; border-color: var(--planner-border); }
+.planner-filters { display: flex; gap: 10px; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--planner-border); }
+.corilo-planner .planner-search { flex: 1; display: flex; flex-direction: row; align-items: center; gap: 10px; color: var(--planner-muted); }
+.corilo-planner .planner-search input { border: 0; background: transparent; min-height: 36px; padding: 6px 0; font-size: 13px; }
+.planner-search svg { flex-shrink: 0; }
+.planner-filter-options { position: relative; }
+.planner-filter-options summary { display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; color: var(--planner-muted); font-size: 12px; min-height: 36px; padding: 6px 10px; border-radius: 6px; }
+.planner-filter-options summary:hover { background: var(--planner-hover); }
+.planner-filter-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--planner-accent); }
+.planner-filter-fields { position: absolute; inset-inline-end: 0; top: calc(100% + 8px); width: 250px; padding: 18px; background: var(--planner-surface); border: 1px solid var(--planner-border); border-radius: 10px; box-shadow: 0 8px 24px #00000012; z-index: 12; display: grid; gap: 14px; }
+.corilo-planner .planner-filter-fields button { font-size: 12px; }
+.planner-list-summary { display: flex; justify-content: space-between; align-items: center; min-height: 44px; font-size: 11px; color: var(--planner-muted); }
+.corilo-planner .planner-list-summary button { font-size: 11px; border: 0; min-height: 30px; padding: 4px; color: var(--planner-accent); }
+.planner-group-heading { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; padding: 18px 0 8px; }
+.planner-group-heading small { font-weight: 400; color: var(--planner-muted); }
+.corilo-planner [data-overdue="true"] { color: var(--planner-accent); }
+.planner-task-rows { list-style: none; margin: 0; padding: 0; }
+.planner-task-rows > li { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--planner-border); border-radius: 5px; min-width: 0; }
+.planner-task-rows > li:hover, .planner-task-rows > li[data-selected] { background: var(--planner-hover); }
+.corilo-planner .planner-task-open { flex: 1; min-width: 0; display: flex; align-items: flex-start; justify-content: flex-start; gap: 12px; text-align: start; border: 0; background: transparent; padding: 16px 6px; border-radius: 4px; }
+.planner-task-circle { color: var(--planner-muted); display: inline-flex; flex-shrink: 0; padding-top: 2px; }
+[data-priority="urgent"] .planner-task-circle, [data-priority="urgent"] .planner-priority { color: var(--planner-accent); }
+[data-priority="high"] .planner-priority { color: light-dark(#8c6719, #d8bc78); }
+.planner-task-copy { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.planner-task-title { font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+[data-status="done"] .planner-task-title { text-decoration: line-through; color: var(--planner-muted); }
+.planner-task-preview { font-size: 12px; color: var(--planner-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planner-task-meta { display: flex; flex-wrap: wrap; gap: 5px 12px; font-size: 11px; color: var(--planner-muted); }
+.planner-task-meta > span { display: inline-flex; align-items: center; gap: 4px; overflow-wrap: anywhere; }
+.corilo-planner .planner-schedule-button { color: var(--planner-muted); border: 0; font-size: 11px; margin-inline-end: 4px; padding: 8px; opacity: 0; flex-shrink: 0; }
+.planner-task-rows > li:hover .planner-schedule-button, .planner-task-rows > li:focus-within .planner-schedule-button { opacity: 1; }
+.corilo-planner .planner-load-more { display: flex; margin: 20px auto; font-size: 12px; }
+.planner-empty, .planner-welcome { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 82px 16px; color: var(--planner-muted); }
+.corilo-planner .planner-empty h2, .corilo-planner .planner-welcome h2 { font-size: 15px; font-weight: 500; color: var(--planner-text); }
+.planner-empty p, .planner-welcome p { font-size: 12px; }
+.planner-notice, .planner-alert { padding: 11px 14px; margin-bottom: 16px !important; font-size: 12px; border-radius: 7px; overflow-wrap: anywhere; }
+.planner-notice { background: var(--planner-hover); color: var(--planner-muted); }
+.planner-alert { background: var(--planner-accent-bg); color: var(--planner-accent); }
+.planner-editor { position: fixed; z-index: 90; inset-block: 0; inset-inline-end: 0; width: min(480px, 100vw); overflow: auto; padding: 28px; background: var(--planner-surface); box-shadow: -12px 0 48px #00000012; border-inline-start: 1px solid var(--planner-border); display: flex; flex-direction: column; gap: 18px; }
+.planner-editor h2 { font-size: 13px; color: var(--planner-muted); font-weight: 500; margin-bottom: 4px; }
+.planner-editor-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.planner-editor > label:has(input[maxlength="200"]) input { font-size: 22px; font-weight: 600; letter-spacing: -.025em; border-color: transparent; border-radius: 0; padding-inline: 0; }
+.planner-editor textarea { min-height: 100px; resize: vertical; line-height: 1.7; }
+.planner-editor-properties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.planner-editor label:has(input[type="checkbox"]) { flex-direction: row; align-items: center; min-height: 38px; }
+.corilo-planner input[type="checkbox"] { width: 16px; min-height: 16px; accent-color: var(--planner-accent); }
+.planner-editor footer { position: sticky; bottom: -28px; background: var(--planner-surface); border-top: 1px solid var(--planner-border); padding: 18px 0 6px; display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+.planner-editor footer > button { font-size: 12px; }
+.planner-editor footer > button[type="submit"] { color: var(--planner-button-text); background: var(--planner-button-bg); border-color: transparent; padding-inline: 24px; }
+.planner-editor pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.planner-calendar-controls { display: flex; justify-content: flex-end; margin-bottom: 18px; }
+.corilo-planner .planner-calendar-controls label { flex-direction: row; align-items: center; white-space: nowrap; }
+.planner-calendar-controls input { max-width: 160px; }
+.planner-calendar { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 24px; }
+.planner-calendar-tasks { min-width: 0; }
+.planner-calendar-tasks h2 { font-size: 12px; font-weight: 600; margin: 8px 0 12px; }
+.corilo-planner .planner-calendar-tasks button { width: 100%; text-align: start; justify-content: flex-start; font-size: 12px; border-color: transparent; background: var(--planner-sidebar); margin-bottom: 7px; overflow-wrap: anywhere; }
+.planner-calendar-help { color: var(--planner-muted); font-size: 11px; margin-top: 16px !important; }
+.corilo-planner .fc { --fc-border-color: var(--planner-border); --fc-page-bg-color: var(--planner-surface); --fc-neutral-bg-color: var(--planner-sidebar); --fc-today-bg-color: var(--planner-accent-bg); --fc-event-bg-color: var(--planner-accent-bg); --fc-event-border-color: transparent; --fc-event-text-color: var(--planner-accent); --fc-button-bg-color: var(--planner-surface); --fc-button-text-color: var(--planner-muted); --fc-button-border-color: var(--planner-border); --fc-button-hover-bg-color: var(--planner-hover); --fc-button-hover-border-color: var(--planner-border); --fc-button-active-bg-color: var(--planner-hover); --fc-button-active-border-color: var(--planner-input-border); min-width: 0; font-size: 12px; }
+.corilo-planner .fc .fc-toolbar-title { font-size: 18px; font-weight: 600; letter-spacing: -.03em; }
+.corilo-planner .fc .fc-button { font-size: 11px; min-height: 32px; padding: 5px 8px; box-shadow: none; }
+.corilo-planner .fc .fc-toolbar { flex-wrap: wrap; gap: 10px; }
+.corilo-planner .fc .fc-col-header-cell-cushion { padding: 10px 4px; font-weight: 500; color: var(--planner-muted); }
+.corilo-planner .fc .fc-daygrid-day-number { padding: 8px; font-size: 11px; }
+.corilo-planner .fc .fc-daygrid-event { padding: 2px 5px; border-radius: 4px; }
+.planner-reminders-intro { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px; border: 1px solid var(--planner-border); border-radius: 8px; font-size: 12px; color: var(--planner-muted); }
+.planner-reminders-intro button { flex-shrink: 0; font-size: 12px; }
+.planner-reminder-list { list-style: none; margin: 20px 0; padding: 0; }
+.planner-reminder-list li { display: flex; align-items: flex-start; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--planner-border); }
+.planner-reminder-list li > svg { flex-shrink: 0; color: var(--planner-accent); margin-top: 3px; }
+.planner-reminder-list li[data-read="true"] > svg { color: var(--planner-muted); }
+.planner-reminder-copy { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.planner-reminder-copy p { font-size: 14px; margin-bottom: 5px; }
+.planner-reminder-copy small { font-size: 11px; color: var(--planner-muted); }
+.planner-reminder-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.planner-reminder-actions button { font-size: 11px; }
+.planner-reminders-intro button { flex-shrink: 0; }
+.planner-reminders-list { list-style: none; padding: 0; margin: 20px 0; }
+.planner-reminders-list li { display: flex; align-items: center; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--planner-border); }
+.planner-reminders-list li > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.planner-reminders-list button { font-size: 12px; }
+.planner-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+@media (min-width: 1350px) {
+  .corilo-planner.is-editing { grid-template-columns: 196px minmax(0, 1fr) 400px; }
+  .is-editing .planner-main { padding: 32px 24px 48px; }
+  .corilo-planner.is-editing .planner-editor { position: relative; width: auto; padding: 24px; min-height: 0; box-shadow: none; }
+  .corilo-planner.is-editing .planner-editor footer { bottom: -24px; }
 }
-.corilo-planner header,
-.planner-toolbar,
-.planner-filters,
-.corilo-planner nav {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-.corilo-planner h1 {
-  font-size: 22px;
-  margin-right: auto;
-}
-.corilo-planner button,
-.corilo-planner input,
-.corilo-planner select,
-.corilo-planner textarea {
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: 1px solid #8886;
-  border-radius: 7px;
-  padding: 10px;
-  min-height: 44px;
-}
-.corilo-planner button {
-  cursor: pointer;
-}
-.corilo-planner button[aria-pressed="true"] {
-  background: #3b82f622;
-  border-color: #3b82f6;
-}
-.corilo-planner button:disabled {
-  opacity: 0.5;
-  cursor: wait;
-}
-.corilo-planner label {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.corilo-planner ul {
-  list-style: none;
-  padding: 0;
-}
-.corilo-planner li {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #8884;
-  flex-wrap: wrap;
-}
-.corilo-planner li span {
-  flex: 1;
-  font-size: 13px;
-}
-.planner-editor {
-  position: fixed;
-  z-index: 90;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: min(520px, 100vw);
-  overflow: auto;
-  padding: 24px;
-  background: light-dark(#fff, #202226);
-  box-shadow: -5px 0 30px #0003;
-  color-scheme: light dark;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.planner-editor textarea {
-  min-height: 100px;
-}
-.planner-editor footer {
-  position: sticky;
-  bottom: -24px;
-  background: inherit;
-  padding: 16px 0;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.planner-editor pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.planner-calendar {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 15px;
-}
-.corilo-planner .fc {
-  --fc-border-color: #8885;
-  --fc-page-bg-color: transparent;
-  --fc-neutral-bg-color: #8882;
-  min-width: 0;
-}
-.corilo-planner :focus-visible {
-  outline: 3px solid #3b82f6;
-  outline-offset: 2px;
+@media (max-width: 1150px) { .corilo-planner { grid-template-columns: 170px minmax(0, 1fr); } .planner-main { padding: 32px 24px 48px; } .planner-calendar { grid-template-columns: minmax(0, 1fr); } .planner-calendar-tasks { max-height: 150px; overflow: auto; } }
+@media (max-width: 900px) {
+  .corilo-planner { display: flex; flex-direction: column; }
+  .planner-sidebar { flex: 0 0 auto; overflow: visible; padding: 12px 16px 0; border-inline-end: 0; border-bottom: 1px solid var(--planner-border); display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .planner-brand { padding: 8px 0; }.corilo-planner .planner-add { margin: 0; min-height: 38px; }
+  .planner-sidebar nav { grid-column: 1 / -1; flex-direction: row; overflow: auto; padding-bottom: 8px; gap: 4px; }
+  .corilo-planner .planner-sidebar nav button { flex-shrink: 0; padding: 8px 10px; font-size: 12px; }.planner-sidebar nav button:nth-child(n) { margin-top: 0; }
+  .planner-timezone { grid-column: 1 / -1; padding-top: 0; margin-top: 0; }.planner-timezone summary { padding: 0 0 8px; }.planner-timezone-fields { grid-template-columns: minmax(0, 1fr) auto; align-items: end; padding: 4px 0 12px; }
+  .planner-main { flex: 1; padding: 24px 20px 48px; }.planner-heading { margin-bottom: 22px; gap: 12px; }.planner-toolbar { padding-top: 0; }.corilo-planner h1 { font-size: 25px; }
+  .planner-schedule-button span { display: none; }.corilo-planner .planner-schedule-button { opacity: 1; }
 }
 @media (max-width: 700px) {
-  .corilo-planner {
-    padding: 12px;
-  }
-  .planner-calendar {
-    display: block;
-  }
-  .planner-calendar aside {
-    max-height: 160px;
-    overflow: auto;
-  }
-  .corilo-planner .fc-toolbar {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .planner-editor {
-    width: 100vw;
-    padding: 16px;
-  }
-  .planner-editor footer {
-    bottom: -16px;
-  }
+  .planner-sidebar { padding-top: max(12px, var(--dsh-frame-top-clearance, 0px)); padding-inline-start: max(16px, var(--dsh-frame-leading-clearance, 0px)); }
+  .planner-heading { flex-wrap: nowrap; }.planner-toolbar { padding-top: 16px; }.planner-event-add span { display: none; }.planner-toolbar { gap: 0; }.corilo-planner .planner-event-add { padding-inline: 10px; margin-inline-start: 0; }
+  .corilo-planner input, .corilo-planner select, .corilo-planner textarea, .corilo-planner label input, .corilo-planner label select, .corilo-planner label textarea, .corilo-planner .planner-search input, .corilo-planner .planner-timezone input { font-size: 16px; }
+  .corilo-planner button, .corilo-planner .fc .fc-button, .planner-filter-options summary { min-height: 44px; }.corilo-planner .planner-icon-button, .corilo-planner .planner-schedule-button { min-width: 44px; }
+  .planner-task-preview { max-width: 100%; }.planner-task-open { gap: 9px !important; }.planner-task-title { font-size: 15px; }.planner-task-meta { font-size: 11px; }
+  .planner-editor { padding: 20px; }.planner-editor footer { bottom: -20px; }.planner-editor-properties { gap: 14px; }.planner-reminders-intro, .planner-reminders-list li { align-items: flex-start; flex-wrap: wrap; }
+  .planner-calendar-controls { justify-content: flex-start; }.planner-empty { padding: 55px 12px; }
 }
+@media (prefers-reduced-motion: reduce) { .corilo-planner *, .corilo-planner *::before, .corilo-planner *::after { transition: none !important; } }

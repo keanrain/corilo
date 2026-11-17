@@ -1,5 +1,6 @@
 import { uiText } from './i18n.mjs';
-import React from "react";
+import React, { useEffect } from "react";
+import { X } from 'lucide-react';
 import { options, priorities } from "./planner-fields.jsx";
 import { strip } from "./planner-record.mjs";
 import { shiftStart, localInstant, Temporal } from "./planner-dates.mjs";
@@ -15,6 +16,14 @@ export function PlannerEditor({
   reconcile,
   submit,
 }) {
+  useEffect(() => { title.current?.focus({ preventScroll: true }); }, []);
+  function close() {
+    if (s.busy || s.pending) return;
+    if (window.confirm(uiText("关闭编辑并放弃未提交的修改？"))) {
+      set({ editor: null });
+      returnFocus.current?.focus();
+    }
+  }
   const field = (label, k, type = "text") => (
     <label>
       {label}
@@ -39,7 +48,9 @@ export function PlannerEditor({
       onCompositionStart={() => (composing.current = true)}
       onCompositionEnd={() => (composing.current = false)}
     >
-      <h2>{s.editor.kind === "task" ? uiText("任务详情") : uiText("日程详情")}</h2>
+      <div className="planner-editor-heading"><h2>{s.editor.kind === "task" ? uiText("任务详情") : uiText("日程详情")}</h2><button type="button" className="planner-icon-button" aria-label={uiText("关闭详情")} disabled={s.busy || Boolean(s.pending)} onClick={close}><X size={18} aria-hidden="true" /></button></div>
+      {s.error && <p className="planner-alert" role="alert">{uiText(s.error)}</p>}
+      {s.notice && <p className="planner-notice" role="status">{uiText(s.notice)}</p>}
       <label>{uiText("标题")}<input
           ref={title}
           required
@@ -75,7 +86,7 @@ export function PlannerEditor({
         </select>
       </label>
       {s.editor.kind === "task" ? (
-        <>
+        <div className="planner-editor-properties">
           {field(uiText("计划日期"), "plannedDate", "date")}
           {field(uiText("清单"), "list")}
           <label>{uiText("优先级")}<select
@@ -141,9 +152,9 @@ export function PlannerEditor({
               </label>
             </>
           )}
-        </>
+        </div>
       ) : (
-        <>
+        <div className="planner-editor-properties">
           <label>{uiText("全天")}<input
               type="checkbox"
               checked={s.editor.value.allDay}
@@ -230,7 +241,7 @@ export function PlannerEditor({
               >
                 {minutes}{" "}{uiText("分钟")}</button>
             ))}
-        </>
+        </div>
       )}
       {field(uiText("提醒时间（含 UTC 或偏移，留空关闭）"), "reminderAt")}
       {s.editor.latest && (
@@ -271,12 +282,7 @@ export function PlannerEditor({
         <button
           type="button"
           disabled={s.busy || Boolean(s.pending)}
-          onClick={() => {
-            if (window.confirm(uiText("关闭编辑并放弃未提交的修改？"))) {
-              set({ editor: null });
-              returnFocus.current?.focus();
-            }
-          }}
+          onClick={close}
         >{uiText("关闭")}</button>
         {s.editor.item && (
           <button

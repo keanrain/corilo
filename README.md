@@ -14,7 +14,7 @@
 
 Each package has its own lockfile, installation, and distribution. The learning tutor is a plugin for existing DSH users: build it with `npm run build:learn-anything` and package it with `npm run pack:learn-anything`. It is not enabled in the default notes + todos setup. `app/`, `android/`, and `p0/` retain legacy implementations and research; root `npm start/test` commands still serve the legacy application.
 
-Current versions are **notes 0.7.0 and todos 0.6.1**. New instances created from this checkout enable notes + todos planner v2. Existing single-plugin and older dual-plugin configurations keep their original behavior; databases are not migrated automatically.
+Current versions are **notes 0.7.0 and todos 0.6.2**. New instances created from this checkout enable notes + todos planner v2. Existing single-plugin and older dual-plugin configurations keep their original behavior; databases are not migrated automatically.
 
 Notes uses the Files.md workspace, with its file tree, Markdown, checklists, capture, journals, attachments, and split editing. The task plugin provides task dates, lists, priorities, calendars, time blocks, persistent reminders, and browser notifications with explicit permission. Ordinary UI operations do not require a model; Harness manages models, sessions, authentication, and permissions.
 
@@ -36,7 +36,7 @@ The interface retains the native Files.md file tree, creation, search, inline ti
 
 ## Existing instances and tasks
 
-Existing single-plugin and dual-plugin configurations remain supported. In todos 0.6.1, omitting `planner` retains v1 mode. Enabling planner requires a new, empty data directory; it cannot open a v1 database. Files.md still supports Markdown checklists. The following is an optional one-way export, not the default upgrade or retirement path:
+Existing single-plugin and dual-plugin configurations remain supported. In todos 0.6.2, omitting `planner` retains v1 mode. Enabling planner requires a new, empty data directory; it cannot open a v1 database. Files.md still supports Markdown checklists. The following is an optional one-way export, not the default upgrade or retirement path:
 
 ```sh
 # Stop both source and destination services and back up first; preview by default.
