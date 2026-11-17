@@ -216,5 +216,14 @@
   "试试其他关键词，或清空筛选。": "Try another search or clear your filters.",
   "记下一件要做的事，慢慢来。": "Add something to do. Take it one step at a time.",
   "关闭详情": "Close details",
-  "还没有提醒": "No reminders yet"
+  "还没有提醒": "No reminders yet",
+  "确认显示时区": "Confirm your time zone",
+  "日期、日历和提醒将使用这个时区。": "Dates, calendars and reminders use this time zone.",
+  "任务已完成": "Task completed",
+  "任务已恢复": "Task reopened",
+  "恢复：{title}": "Reopen: {title}",
+  "添加任务": "Add task",
+  "拖动任务，或点击安排时间。": "Drag a task or select one to schedule it.",
+  "到期提醒会显示在这里。": "Due reminders will appear here.",
+  "任务已更新，请核对后重试": "The task changed. Review it before trying again."
 }

@@ -4,9 +4,9 @@
 
 2026-11-15 仓库更新：notes／todos 升级固定 DSH rc.3；独立学习导师见 [packages/learn-anything](../packages/learn-anything/README.md)。Python 原型已按用户要求删除，历史实现可从 Git 查阅，本地数据保留。
 
-> 当前补丁版本：todos 0.6.2。提醒、跨日分类、日历任务分页与代码结构修复见 [交接文档](HANDOFF.md)；旧配置和数据库不自动迁移。
+> 当前补丁版本：todos 0.6.3。提醒、跨日分类、日历任务分页与代码结构修复见 [交接文档](HANDOFF.md)；旧配置和数据库不自动迁移。
 
-当前源码实例默认启用 **notes 0.7.0＋todos 0.6.2 planner v2**：Files.md 管笔记、资料与日记；todos 管任务、日历、时间块和提醒。Agent 使用 Harness 原生会话与工具。学习导师仅供已有 DSH 用户独立安装，不加入默认组合。
+当前源码实例默认启用 **notes 0.7.0＋todos 0.6.3 planner v2**：Files.md 管笔记、资料与日记；todos 管任务、日历、时间块和提醒。Agent 使用 Harness 原生会话与工具。学习导师仅供已有 DSH 用户独立安装，不加入默认组合。
 
 | 文档 | 职责 |
 |---|---|

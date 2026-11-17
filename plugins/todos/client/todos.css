@@ -181,3 +181,38 @@
 @media (max-width:700px) { .corilo-todos .corilo-todos-export { min-height:44px; min-width:44px; } }
 
 .corilo-todos .corilo-todos-resolution { border: 1px solid var(--ax-color-border); border-radius: var(--ax-radius-container); padding: var(--ax-spacing-4); }
+
+/* The compatibility list shares the planner's control scale and accent. */
+.corilo-todos {
+  --ax-color-accent: light-dark(#345fe5, #adc2ff);
+  --ax-color-on-accent: light-dark(#ffffff, #1a2d58);
+  --ax-color-background-surface: light-dark(#ffffff, #202227);
+  --ax-color-background-muted: light-dark(#f4f6f9, #2a2e36);
+  --ax-color-border: light-dark(#e9ebef, #343842);
+  --ax-color-border-emphasized: light-dark(#c9cdd5, #5b6270);
+}
+.corilo-todos .corilo-todos-header { min-height: 62px; padding-inline: 24px; padding-inline-start: max(24px, var(--dsh-frame-leading-clearance, 0px)); }
+.corilo-todos .corilo-todos-header h1 { font-size: 17px; }
+.corilo-todos-heading > svg { color: var(--ax-color-accent); }
+.corilo-todos .corilo-todos-grid { max-width: 920px; padding-top: 28px; }
+.corilo-todos .corilo-todos-grid.has-editor { max-width: 1200px; }
+.corilo-todos .corilo-todos-tabs { gap: 4px; }
+.corilo-todos .corilo-todos-tabs button { border-radius: 6px; padding-inline: 12px; }
+.corilo-todos .corilo-todos-tabs button[aria-pressed="true"] { color: var(--ax-color-accent); background: color-mix(in srgb, var(--ax-color-accent) 8%, var(--ax-color-background-surface)); }
+.corilo-todos .corilo-todos-quick { border-radius: 9px; margin-bottom: 18px; }
+.corilo-todos .corilo-todos-items > li { min-height: 60px; }
+.corilo-todos .corilo-todos-items > li:hover { background: var(--ax-color-background-muted); }
+.corilo-todos-items .corilo-todos-item-title > small { font-size: 12px; line-height: 1.6; }
+.corilo-todos .corilo-todos-empty > svg { width: 44px; height: 44px; padding: 10px; border-radius: 12px; background: color-mix(in srgb, var(--ax-color-accent) 8%, var(--ax-color-background-surface)); color: var(--ax-color-accent); }
+.corilo-todos .corilo-todos-editor { gap: 24px; }
+.corilo-todos .corilo-todos-editor-heading { top: 62px; }
+.corilo-todos .corilo-todos-title textarea { font-size: 25px; line-height: 1.45; }
+.corilo-todos .corilo-todos-resolution button { border-radius: 7px; font-size: 12px; }
+@media (max-width: 700px) {
+  .corilo-todos .corilo-todos-header { padding-inline: 16px; }
+  .corilo-todos .corilo-todos-grid { padding: 18px 18px 36px; }
+  .corilo-todos .corilo-todos-tabs button { padding-inline: 10px; }
+  .corilo-todos .corilo-todos-editor-heading { top: 0; }
+}
+
+.corilo-todos .corilo-todos-tabs button[aria-pressed="true"], .corilo-todos .corilo-todos-tabs button[aria-pressed="true"]:hover { border-bottom-color: transparent; }

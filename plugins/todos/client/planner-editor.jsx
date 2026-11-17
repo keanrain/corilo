@@ -1,6 +1,8 @@
 import { uiText } from './i18n.mjs';
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { X } from 'lucide-react';
+import TextareaAutosize from 'react-textarea-autosize';
+import { plannerDraftChanged } from './planner-present.mjs';
 import { options, priorities } from "./planner-fields.jsx";
 import { strip } from "./planner-record.mjs";
 import { shiftStart, localInstant, Temporal } from "./planner-dates.mjs";
@@ -16,10 +18,31 @@ export function PlannerEditor({
   reconcile,
   submit,
 }) {
+  const form = useRef(null);
+  const wasBusy = useRef(false);
+  const dirty = plannerDraftChanged(s.editor);
   useEffect(() => { title.current?.focus({ preventScroll: true }); }, []);
+  useEffect(() => {
+    if (wasBusy.current && !s.busy && document.activeElement === document.body) {
+      form.current?.querySelector('footer button:not(:disabled)')?.focus({ preventScroll: true });
+    }
+    wasBusy.current = s.busy;
+  }, [s.busy]);
+  function onKeyDown(event) {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+    if (event.key === 'Escape' && !event.defaultPrevented && event.target.tagName !== 'SELECT') {
+      event.preventDefault(); event.stopPropagation(); close();
+    }
+    if (event.key !== 'Tab' || getComputedStyle(form.current).position !== 'fixed') return;
+    const controls = [...form.current.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary')].filter(el => el.getClientRects().length);
+    const first = controls[0], last = controls.at(-1);
+    if ((event.shiftKey && event.target === first) || (!event.shiftKey && event.target === last)) {
+      event.preventDefault(); (event.shiftKey ? last : first)?.focus();
+    }
+  }
   function close() {
     if (s.busy || s.pending) return;
-    if (window.confirm(uiText("关闭编辑并放弃未提交的修改？"))) {
+    if (!dirty || window.confirm(uiText("关闭编辑并放弃未提交的修改？"))) {
       set({ editor: null });
       returnFocus.current?.focus();
     }
@@ -29,6 +52,8 @@ export function PlannerEditor({
       {label}
       <input
         type={type}
+        list={k === "timeZone" ? "corilo-planner-zones" : undefined}
+        placeholder={k === "reminderAt" ? "2026-11-20T09:00:00+08:00" : undefined}
         value={s.editor.value[k] ?? ""}
         onChange={(e) =>
           edit(
@@ -42,7 +67,9 @@ export function PlannerEditor({
   );
   return (
     <form
+      ref={form}
       className="planner-editor"
+      onKeyDown={onKeyDown}
       aria-label={uiText("事项详情")}
       onSubmit={save}
       onCompositionStart={() => (composing.current = true)}
@@ -50,16 +77,28 @@ export function PlannerEditor({
     >
       <div className="planner-editor-heading"><h2>{s.editor.kind === "task" ? uiText("任务详情") : uiText("日程详情")}</h2><button type="button" className="planner-icon-button" aria-label={uiText("关闭详情")} disabled={s.busy || Boolean(s.pending)} onClick={close}><X size={18} aria-hidden="true" /></button></div>
       {s.error && <p className="planner-alert" role="alert">{uiText(s.error)}</p>}
-      {s.notice && <p className="planner-notice" role="status">{uiText(s.notice)}</p>}
-      <label>{uiText("标题")}<input
+      <label className="planner-editor-title"><span className="planner-sr-only">{uiText("标题")}</span><TextareaAutosize
           ref={title}
+          aria-label={uiText("标题")}
+          minRows={1}
+          maxRows={5}
+          placeholder={uiText("要做什么？")}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+              event.preventDefault();
+              form.current?.requestSubmit();
+            }
+          }}
           required
           maxLength={200}
           value={s.editor.value.title}
           onChange={(e) => edit("title", e.target.value)}
         />
       </label>
-      <label>{uiText("说明")}<textarea
+      <label className="planner-editor-description">{uiText("说明")}<TextareaAutosize
+          minRows={3}
+          maxRows={8}
+          placeholder={uiText("添加说明…")}
           aria-label={uiText("说明")}
           maxLength={20000}
           value={s.editor.value.body}
@@ -141,6 +180,7 @@ export function PlannerEditor({
                 />
               </label>
               <label>{uiText("截止时区")}<input
+                  list="corilo-planner-zones"
                   value={s.editor.value.due.timeZone}
                   onChange={(e) =>
                     edit("due", {
@@ -247,7 +287,7 @@ export function PlannerEditor({
       {s.editor.latest && (
         <section>
           <h3>{uiText("服务器最新内容")}</h3>
-          <pre>{JSON.stringify(s.editor.latest, null, 2)}</pre>
+          <div className="planner-latest-content"><strong>{s.editor.latest.title}</strong><p>{s.editor.latest.body}</p><small>{uiText("状态")} · {uiText(({ open: "未完成／恢复", done: "完成", active: "有效", cancelled: "取消" })[s.editor.latest.status])}</small></div>
           <button
             type="button"
             onClick={() =>
@@ -276,6 +316,7 @@ export function PlannerEditor({
         </section>
       )}
       <footer>
+        <p className="planner-editor-save-state" role="status">{s.notice ? uiText(s.notice) : ''}</p>
         <button type="submit" disabled={s.busy || Boolean(s.pending)}>
           {s.busy ? uiText("保存中…") : uiText("保存")}
         </button>
@@ -284,7 +325,7 @@ export function PlannerEditor({
           disabled={s.busy || Boolean(s.pending)}
           onClick={close}
         >{uiText("关闭")}</button>
-        {s.editor.item && (
+        {s.editor.item && s.notice === "版本冲突，请查看最新记录" && (
           <button
             type="button"
             disabled={s.busy || Boolean(s.pending)}
