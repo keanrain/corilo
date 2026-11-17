@@ -1,6 +1,6 @@
 {
   "name": "@corilo/dsh-todos",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -40,7 +40,7 @@
     "prepack": "npm run build",
     "pretest": "npm run build",
     "test:browser": "python3 test/core_browser.py && python3 test/visual_browser.py && python3 test/flow_browser.py && python3 test/i18n_browser.py",
-    "test:planner:browser": "python3 test/planner_browser.py"
+    "test:planner:browser": "python3 test/planner_browser.py && python3 test/planner_visual_browser.py"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.2.2-rc.3",

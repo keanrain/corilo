@@ -4,7 +4,12 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
-## Unreleased / 未发布
+## 0.6.2
+
+- 重做 planner 侧栏、任务分组、筛选、日历与详情布局，增加浅深色、窄屏和键盘交互的真实 DSH 浏览器检查。
+  Redesign planner navigation, grouped tasks, filters, calendar, and details; validate light/dark, narrow layouts, and keyboard interactions in real DSH.
+- 保留日期、提醒、保存快照、冲突与回执流程，不迁移既有数据库或配置。
+  Preserve date/reminder behavior, submitted snapshots, conflicts, and operation receipts without migrating databases or configurations.
 
 - planner 与 v1 界面、日历和校验提示支持 DSH 中英文热切换，保留未保存输入及用户原文；增加双语文档。
   Planner/v1 UI, calendars, and validation messages follow live DSH Chinese/English switching, preserving drafts and user text; add bilingual documentation.

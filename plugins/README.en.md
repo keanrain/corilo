@@ -7,7 +7,7 @@ The current source composition is notes + todos planner v2 on pinned DSH 0.2.2-r
 | Directory | Package | Status |
 |---|---|---|
 | [notes/](notes/README.md) | `@corilo/dsh-notes` 0.7.0 | Files.md workspace: notes, Markdown checklists, journals, and native Agent access |
-| [todos/](todos/README.en.md) | `@corilo/dsh-todos` 0.6.1 | SQLite tasks/calendar, time blocks, and reminders; new configurations use planner v2, with v1 compatibility retained |
+| [todos/](todos/README.en.md) | `@corilo/dsh-todos` 0.6.2 | SQLite tasks/calendar, time blocks, and reminders; new configurations use planner v2, with v1 compatibility retained |
 
 The notes package owns its dependencies, build, client, file service, import commands, and licenses. It runs outside the checkout with production dependencies. Pinned native Files.md resources ship in the package; runtime file and Agent adapters do not depend on the legacy app/.
 

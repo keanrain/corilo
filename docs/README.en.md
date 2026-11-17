@@ -4,7 +4,7 @@
 
 The repository pins notes, todos, and the independent [learning tutor](../packages/learn-anything/README.en.md) to DSH 0.2.2-rc.3. The Python prototype was removed at the user's request; its implementation remains in Git history and local data is preserved.
 
-Current source instances default to **notes 0.7.0 + todos 0.6.1 planner v2**. Files.md handles notes, materials, and journals; todos handles tasks, calendars, time blocks, and reminders. Agents use native Harness conversations and tools. The learning tutor is a separate plugin for existing DSH users, outside the default composition.
+Current source instances default to **notes 0.7.0 + todos 0.6.2 planner v2**. Files.md handles notes, materials, and journals; todos handles tasks, calendars, time blocks, and reminders. Agents use native Harness conversations and tools. The learning tutor is a separate plugin for existing DSH users, outside the default composition.
 
 | Document | Purpose |
 |---|---|

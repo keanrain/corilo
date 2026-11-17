@@ -1,3 +1,10 @@
+## 待办 0.6.2 界面更新（2026-11-17）
+
+- 基于 main `d2e8774`，开发分支 `feat/todos-ui-refresh`。按用户选择的简洁风格重做 planner：安静侧栏、按日期分组的任务列表、可收起筛选、统一日历／提醒及独立详情栏。宽屏分列，窄屏使用横向导航和全宽详情，继承 DSH 主题及语言。
+- 包及独立锁升级为 todos **0.6.2**；notes 0.7.0、导师 0.1.0、DSH 0.2.2-rc.3 保持。v1 配置、SQLite、日期／提醒、提交快照、冲突和回执流程不迁移。新建入口仍需先确认有效显示时区。
+- 已执行：todos 35 项 Node 测试（包含真实 DSH 工具启动）；planner 原有操作／冲突／丢响应核对／日历／超过 100 项分页流程；新增真实 DSH 浅深色桌面与 390px 视觉、文字对比度、键盘筛选、详情焦点及保存可达性检查；v1 core／visual／flow 与原生中英热切换；旧 app 的 smoke／review／sync 三套浏览器；tooling 19 项及 launcher 4 项，均通过。
+- `prepare:release -- todos` 重新构建、测试并验证实际 0.6.2 `.tgz`，20 个内容文件，附 SHA256、发布说明与元数据。浏览器使用合成资料和真实固定 DSH，无模型调用；窄屏 Chromium 不代表物理手机验收。本节不表示新包已发布 GitHub 或 npm。
+
 # Corilo 可里交接文档
 
 ## Recovery exclusion and canonical workspaces / 恢复互斥与路径别名（2026-11-16）

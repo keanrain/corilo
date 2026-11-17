@@ -58,15 +58,16 @@ export function PlannerCalendar({ s, set, open, refresh }) {
   }
   return (
     <>
-      <label>{uiText("跳转日期")}<input
+      <div className="planner-calendar-controls"><label>{uiText("跳转日期")}<input
           type="date"
           onChange={(e) =>
             e.target.value && cal.current?.getApi().gotoDate(e.target.value)
           }
         />
-      </label>
+      </label></div>
       <div className="planner-calendar">
-        <aside ref={drags} aria-label={uiText("可安排任务")}>
+        <aside className="planner-calendar-tasks" ref={drags} aria-label={uiText("可安排任务")}>
+          <h2>{uiText("可安排任务")}</h2>
           {s.items.map((t) => (
             <div key={t.id} data-task-id={t.id} data-title={t.title}>
               <button
@@ -155,7 +156,7 @@ export function PlannerCalendar({ s, set, open, refresh }) {
           }}
         />
       </div>
-      <p>{uiText("网格显示所选时区；详情保留事件原时区。拖动后需确认保存。")}</p>
+      <p className="planner-calendar-help">{uiText("网格显示所选时区；详情保留事件原时区。拖动后需确认保存。")}</p>
     </>
   );
 }
