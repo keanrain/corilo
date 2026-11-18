@@ -1,82 +1,91 @@
 import { uiText } from './i18n.mjs';
 import { loadPlannerTasks } from "./planner-queries.mjs";
-import { useState, useEffect, useRef, useMemo } from "react";
-import { createPlannerApi } from "./planner-api.mjs";
+import { useSyncExternalStore, useEffect, useRef, useMemo } from "react";
+import { createPlannerApi, PLANNER_READ_TIMEOUT_MS } from "./planner-api.mjs";
 import { usePlannerEditor } from "./use-planner-editor.mjs";
 import styles from "./planner.css";
 let retained;
-export function usePlanner(identity) {
-  const [s, state] = useState(() =>
-    retained?.identity === identity
-      ? retained
-      : {
-          identity,
-          view: "today",
-          zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          confirmed: false,
-          items: [],
-          events: [],
-          deadlines: [],
-          notifications: [],
-          query: "",
-          list: "",
-          priority: "",
-          total: 0,
-          counts: {},
-          cursor: null,
-          offset: null,
-          range: null,
-          editor: null,
-          pending: null,
-          busy: false,
-          error: "",
-          notice: "",
-        },
-  );
-  const ref = useRef(s);
-  ref.current = s;
-  const set = (change) =>
-    state((old) => {
-      const next = {
-        ...old,
-        ...(typeof change === "function" ? change(old) : change),
-      };
-      ref.current = next;
-      retained = next;
-      return next;
-    });
-  const generation = useRef(0),
-    mounted = useRef(true);
-  const call = useMemo(() => createPlannerApi(identity), [identity]);
+function plannerStore(identity) {
+  if (retained && retained.get().identity === identity) return retained;
+  const listeners = new Set();
+  let snapshot = {
+    identity,
+    view: "today",
+    zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    confirmed: false,
+    items: [],
+    events: [],
+    deadlines: [],
+    notifications: [],
+    query: "",
+    list: "",
+    priority: "",
+    total: 0,
+    counts: {},
+    cursor: null,
+    offset: null,
+    range: null,
+    editor: null,
+    pending: null,
+    busy: false,
+    error: "",
+    notice: "",
+  };
+  const get = () => snapshot;
+  function set(change) {
+    const patch = typeof change === "function" ? change(snapshot) : change;
+    if (!patch) return;
+    snapshot = { ...snapshot, ...patch };
+    for (const listener of listeners) listener();
+  }
+  function subscribe(listener) {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }
+  const call = createPlannerApi(identity);
+  let generation = 0;
   async function refresh(more = false) {
-    const m = ref.current,
-      g = ++generation.current;
+    const m = get();
+    const g = ++generation;
+    // Save completion can wait for this read. Bound the whole refresh, including pagination.
+    const signal = AbortSignal.timeout(PLANNER_READ_TIMEOUT_MS);
+    const read = (method, args) => call(method, args, signal);
     try {
       let change;
       if (m.view === "reminders") {
-        const p = await call("reminders/list", { offset: more ? m.offset : 0 });
+        const p = await read("reminders/list", { offset: more ? m.offset : 0 });
         change = {
           notifications: more ? [...m.notifications, ...p.items] : p.items,
           offset: p.nextOffset,
         };
       } else if (m.view === "calendar") {
         if (!m.range) return;
-        const tasks = await loadPlannerTasks(call, m, more);
+        const tasks = await loadPlannerTasks(read, m, more);
         const events = more
           ? {}
-          : await call("calendar/range", { ...m.range, timeZone: m.zone });
+          : await read("calendar/range", { ...m.range, timeZone: m.zone });
         change = {
           ...tasks,
           ...(!more ? { events: events.items, deadlines: events.tasks } : {}),
         };
       } else {
-        change = await loadPlannerTasks(call, m, more);
+        change = await loadPlannerTasks(read, m, more);
       }
-      if (g === generation.current && mounted.current) set(change);
+      if (g === generation) set(change);
     } catch (e) {
-      if (mounted.current) set({ error: e.message });
+      if (g === generation) set({ error: signal.aborted ? "刷新超时，请重试" : e.message });
     }
   }
+  retained = { get, set, subscribe, call, refresh };
+  return retained;
+}
+
+export function usePlanner(identity) {
+  // The host unmounts this panel on navigation. Outstanding requests and
+  // remounted editors must complete against the same per-library snapshot.
+  const { get, set, subscribe, call, refresh } = useMemo(() => plannerStore(identity), [identity]);
+  const s = useSyncExternalStore(subscribe, get);
+  const mounted = useRef(true);
   async function notify() {
     if (!("Notification" in window) || Notification.permission !== "granted")
       return;
@@ -101,14 +110,14 @@ export function usePlanner(identity) {
     sheet.textContent = styles;
     document.head.append(sheet);
     const guard = (e) => {
-      if (ref.current.editor || ref.current.pending) {
+      if (get().editor || get().pending) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
     window.addEventListener("beforeunload", guard);
     const timer = setInterval(() => {
-      if (ref.current.confirmed && !ref.current.busy) {
+      if (get().confirmed && !get().busy) {
         void refresh();
         void notify();
       }
@@ -119,10 +128,10 @@ export function usePlanner(identity) {
       clearInterval(timer);
       window.removeEventListener("beforeunload", guard);
     };
-  }, []);
+  }, [get, refresh]);
   useEffect(() => {
     if (s.confirmed) void refresh();
-  }, [s.view, s.query, s.list, s.priority, s.zone, s.confirmed, s.range]);
-  const editor = usePlannerEditor({ s, set, ref, call, refresh });
+  }, [refresh, s.view, s.query, s.list, s.priority, s.zone, s.confirmed, s.range]);
+  const editor = usePlannerEditor({ get, set, call, refresh });
   return { s, set, call, refresh, notify, ...editor };
 }

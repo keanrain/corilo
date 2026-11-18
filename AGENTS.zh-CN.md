@@ -4,7 +4,7 @@
 
 2026-11-15 更新：notes／todos 与学习导师固定 DSH 0.2.2-rc.3（npm next 标签，本次验证见 docs/HANDOFF.md 顶部）。学习导师仅供已有 DSH 用户安装，不提供独立启动器、不创建专用 profile、不修改宿主默认预设或日志设置。学习导师位于 packages/learn-anything，独立依赖锁、构建、测试与分发，不加入默认 notes＋todos 启动组合。根旧应用命令与依赖保留，不引入 npm workspaces。用户已要求删除 Python prototype 及其启动脚本和专用 CI；.local 数据保留，requirements-dev.txt 继续供其他浏览器测试使用。
 
-当前代码：notes 0.7.0、todos 0.6.4。源码新实例默认加载双插件及 planner v2，已提供任务日期、日历、时间块、持久提醒与主动授权网页通知；关闭页面不推送。旧配置／v1 保留；无旧库升级工具、重复、来源关联或外部推送。当前范围见 docs/PRODUCT-SPEC.md 的当前交付范围，历史阶段计划不覆盖已实现行为。
+当前代码：notes 0.7.0、todos 0.6.5。源码新实例默认加载双插件及 planner v2，已提供任务日期、日历、时间块、持久提醒与主动授权网页通知；关闭页面不推送。旧配置／v1 保留；无旧库升级工具、重复、来源关联或外部推送。当前范围见 docs/PRODUCT-SPEC.md 的当前交付范围，历史阶段计划不覆盖已实现行为。
 
 产品架构为一个 Harness、notes 笔记插件与 todos 任务／日程插件；保留 Files.md 完整菜单，机器人能力使用 Harness 原生 Agent。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，命令见 docs/DEVELOPMENT.md；原 v0.34 阶段计划归档于 docs/history/v0.34，不作为当前交付承诺。
 

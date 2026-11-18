@@ -4,7 +4,7 @@ import { priorities } from "./planner-fields.jsx";
 
 // Include every editable field, including cleared values and original time zones.
 // User text remains verbatim; only labels and enum values are translated.
-export function PlannerLatest({ kind, value, tasks }) {
+export function PlannerLatest({ kind, value, linkedTaskLabel }) {
   const field = (label, text) => (
     <div>
       <dt>{uiText(label)}</dt>
@@ -29,9 +29,7 @@ export function PlannerLatest({ kind, value, tasks }) {
         {field("结束（全天结束日期不含当天）", value.end)}
         {field("日程原时区", value.timeZone)}
         {field("地点", value.location)}
-        {field("关联任务", value.taskId
-          ? tasks.find((task) => task.id === value.taskId)?.title ?? uiText("关联任务不在当前列表中")
-          : uiText("独立事件"))}
+        {field("关联任务", linkedTaskLabel)}
       </>}
       {field("提醒时间（含 UTC 或偏移，留空关闭）", value.reminderAt)}
     </dl>

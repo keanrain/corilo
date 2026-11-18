@@ -7,7 +7,7 @@
 | 目录 | 包 | 状态 |
 |---|---|---|
 | [notes/](notes/README.md) | `@corilo/dsh-notes` 0.7.0 | 当前 Files.md 工作区，笔记／Markdown 清单／日记＋原生 Agent |
-| [todos/](todos/README.md) | `@corilo/dsh-todos` 0.6.4 | SQLite 任务／日程、时间块与提醒；新配置默认启用 planner v2，保留 v1 兼容模式 |
+| [todos/](todos/README.md) | `@corilo/dsh-todos` 0.6.5 | SQLite 任务／日程、时间块与提醒；新配置默认启用 planner v2，保留 v1 兼容模式 |
 
 工作区包拥有独立依赖、构建、客户端、文件服务、迁移命令与许可，在仓库外安装生产依赖即可运行。Files.md 原生前端固定来源随包分发，运行时适配文件和 Agent，不依赖旧 app/。
 

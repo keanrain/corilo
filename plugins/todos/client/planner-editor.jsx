@@ -4,12 +4,13 @@ import { X } from 'lucide-react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { plannerDraftChanged } from './planner-present.mjs';
 import { PlannerLatest } from './planner-latest.jsx';
-import { options, priorities } from "./planner-fields.jsx";
+import { options, priorities, useLinkedTaskLabel } from "./planner-fields.jsx";
 import { strip } from "./planner-record.mjs";
 import { shiftStart, localInstant, Temporal } from "./planner-dates.mjs";
 export function PlannerEditor({
   s,
   set,
+  call,
   edit,
   save,
   title,
@@ -22,6 +23,15 @@ export function PlannerEditor({
   const form = useRef(null);
   const wasBusy = useRef(false);
   const dirty = plannerDraftChanged(s.editor);
+  const taskId = s.editor.value.taskId;
+  const previewTaskId = s.editor.latest?.taskId;
+  const listedTask = s.items.find((task) => task.id === taskId);
+  const linkedTaskLabel = useLinkedTaskLabel(call, taskId, listedTask?.title);
+  const previewTaskLabel = useLinkedTaskLabel(
+    call,
+    previewTaskId === taskId ? null : previewTaskId,
+    s.items.find((task) => task.id === previewTaskId)?.title,
+  );
   useEffect(() => { title.current?.focus({ preventScroll: true }); }, []);
   useEffect(() => {
     if (wasBusy.current && !s.busy && document.activeElement === document.body) {
@@ -253,7 +263,8 @@ export function PlannerEditor({
             >
               {options([
                 ["", uiText("独立事件")],
-                ...s.items.map((t) => [t.id, t.title]),
+                ...(taskId && !listedTask ? [[taskId, linkedTaskLabel]] : []),
+                ...s.items.map((t) => [t.id, t.id === taskId ? linkedTaskLabel : t.title]),
               ])}
             </select>
           </label>
@@ -288,7 +299,8 @@ export function PlannerEditor({
       {s.editor.latest && (
         <section>
           <h3>{uiText("服务器最新内容")}</h3>
-          <PlannerLatest kind={s.editor.kind} value={s.editor.latest} tasks={s.items} />
+          <PlannerLatest kind={s.editor.kind} value={s.editor.latest}
+            linkedTaskLabel={previewTaskId === taskId ? linkedTaskLabel : previewTaskLabel} />
           <p className="planner-conflict-help">{uiText("保留输入会用当前表单的全部内容替换此版本，请先核对以上字段。")}</p>
           <button
             type="button"

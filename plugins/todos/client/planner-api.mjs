@@ -1,10 +1,13 @@
+export const PLANNER_READ_TIMEOUT_MS = 15_000;
+
 export function createPlannerApi(identity) {
-  async function call(method, args = {}) {
+  async function call(method, args = {}, signal) {
     let result;
     try {
       const r = await fetch(`api/corilo-todos/v2/${method}`, {
         method: "POST",
         credentials: "same-origin",
+        signal,
         headers: {
           "content-type": "application/json",
           "x-corilo-todos-id": identity,
