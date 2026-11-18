@@ -4,6 +4,13 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.6.5
+
+- 待办面板切走再返回时，保存和回执核对仍可完成，草稿保留。列表刷新超时后恢复保存与关闭操作。
+  Finish saves and receipt checks across host panel switches while preserving drafts. Restore save and close controls if a list refresh times out.
+- 冲突预览只采用最近一次请求的结果。日程按记录 ID 显示已完成或尚未分页加载的关联任务，采用服务器版本时保留可见关联。
+  Apply only the latest conflict preview request. Look up event links by task ID so completed and off-page tasks remain visible after adopting the server version.
+
 ## 0.6.4
 
 - 冲突预览完整列出任务与日程可编辑字段，包括已清空的值、截止时区、关联任务与提醒；保留输入前提示核对全部字段。

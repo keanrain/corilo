@@ -229,6 +229,7 @@
   "未设置": "Not set",
   "是": "Yes",
   "否": "No",
-  "关联任务不在当前列表中": "The linked task is not in the current list.",
+  "无法读取关联任务": "Unable to load the linked task.",
+  "刷新超时，请重试": "Refresh timed out. Try again.",
   "保留输入会用当前表单的全部内容替换此版本，请先核对以上字段。": "Keeping your input will replace this version with the entire current form. Review all fields above first."
 }

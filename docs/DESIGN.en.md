@@ -18,7 +18,7 @@ Calendar views include month, week, day, and agenda, supporting independent even
 
 Reminders retain an in-app history. Browser notifications require explicit authorization; closing the page disables delivery. Do not describe a notification claim as guaranteed receipt.
 
-Planner 0.6.4 uses compact top navigation, grouped task rows, collapsible filters, and a consistent calendar. Wide screens place details beside the list; narrow layouts have scrollable view navigation and a full-width editor. Theme and language follow the host. Native controls retain visible keyboard focus, and errors or unknown results appear beside the detail fields.
+Planner 0.6.5 uses compact top navigation, grouped task rows, collapsible filters, and a consistent calendar. Wide screens place details beside the list; narrow layouts have scrollable view navigation and a full-width editor. Theme and language follow the host. Native controls retain visible keyboard focus, and errors or unknown results appear beside the detail fields.
 
 Conflict previews show all editable task/event fields and cleared values, and remain accessible while editing. Review the entire form before keeping local input; adopting the server version clears the conflict. Save and reconciliation controls remain busy through list refresh, preserving any newer input.
 

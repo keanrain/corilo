@@ -4,7 +4,7 @@
 
 Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts.
 
-## 0.6.4 interface and interaction polish
+## 0.6.5 interface and interaction polish
 
 Conflict previews include every editable field and cleared value, and remain accessible while typing. Keeping local input replaces the whole form. Save and receipt controls stay busy until refresh completes before allowing another submission.
 
@@ -34,9 +34,9 @@ Reminder facts persist in SQLite. The service catches up at startup and every 30
 
 ## v1 compatibility mode
 
-The page, storage, and tool descriptions below apply only to **existing instances that omit `planner`**, retaining the original 0.5.2 mode. New instances default to planner v2 above. Install and distribute the current 0.6.4 package; it does not upgrade old databases automatically. The handwritten overlay below deliberately omits `planner` to continue running v1.
+The page, storage, and tool descriptions below apply only to **existing instances that omit `planner`**, retaining the original 0.5.2 mode. New instances default to planner v2 above. Install and distribute the current 0.6.5 package; it does not upgrade old databases automatically. The handwritten overlay below deliberately omits `planner` to continue running v1.
 
-This independent personal-task plugin supports pinned Harness **0.2.2-rc.3** and Node.js **>=24.9.0**. It uses Node's built-in `node:sqlite`, with no separate database service, ORM, or second Agent loop. Node's SQLite API still emits an experimental notice; keep the tested runtime compatible. Package version 0.6.4 has not been published to npm.
+This independent personal-task plugin supports pinned Harness **0.2.2-rc.3** and Node.js **>=24.9.0**. It uses Node's built-in `node:sqlite`, with no separate database service, ORM, or second Agent loop. Node's SQLite API still emits an experimental notice; keep the tested runtime compatible. Package version 0.6.5 has not been published to npm.
 
 The page creates, reads, edits, completes, and reopens tasks without a model key. Agent tools share the same persistence service. Personal tasks are separate from Harness Agent execution plans. v1 has no dates, calendar, reminder scheduling, or notifications; creating a task does not schedule a notification.
 
@@ -125,7 +125,7 @@ cd plugins/todos
 npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-Recipients run `npm init -y` in their installation directory, then `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.6.4.tgz`. Configure from the example and launch using that directory's `./node_modules/.bin/dsh`. The first installation still downloads pinned production dependencies; retain its lockfile. A packaged installation needs neither source nor esbuild.
+Recipients run `npm init -y` in their installation directory, then `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.6.5.tgz`. Configure from the example and launch using that directory's `./node_modules/.bin/dsh`. The first installation still downloads pinned production dependencies; retain its lockfile. A packaged installation needs neither source nor esbuild.
 
 Source validation:
 
@@ -138,4 +138,4 @@ Style coexistence checks also need `plugins/notes` installed and built. Browser 
 
 ## Updating the package in v1 mode
 
-Save current input, stop the service, and back up the entire task directory before upgrading. Install package 0.6.4, retain the v1 configuration that omits `planner`, reuse the existing data directory, and restart Harness; reload the browser client. No database migration or cleanup occurs. Old browser drafts are readable only by the old version; recovery is not promised by the new version. Do not clear site data and then expect to find old drafts. Cancelled records and associations remain in JSON exports.
+Save current input, stop the service, and back up the entire task directory before upgrading. Install package 0.6.5, retain the v1 configuration that omits `planner`, reuse the existing data directory, and restart Harness; reload the browser client. No database migration or cleanup occurs. Old browser drafts are readable only by the old version; recovery is not promised by the new version. Do not clear site data and then expect to find old drafts. Cancelled records and associations remain in JSON exports.
