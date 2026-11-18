@@ -2,11 +2,11 @@
 
 [简体中文](PRODUCT-SPEC.md) | **English**
 
-## Current delivery scope (2026-11-15)
+## Current delivery scope
 
-The 0.6.1 fixes require ordinary content edits to preserve reminders that are already due but not yet processed. Cancellation, completion, and explicit reminder-time changes may invalidate them. Time blocks spanning days appear in every overlapping Today/Future date range, using half-open intervals. Calendar task selection must support loading more than 100 records.
+Ordinary content edits must preserve reminders that are already due but not yet processed. Cancellation, completion, and explicit reminder-time changes may invalidate them. Time blocks spanning days appear in every overlapping Today/Future date range, using half-open intervals. Calendar task selection must support loading more than 100 records.
 
-The todos 0.6.5 planner provides task dates, deadlines, priorities, lists and states; six task views with pagination; overdue/today/previously-planned groups; FullCalendar month/week/day/agenda views with forms and drag-based scheduling; independent/all-day events and task time blocks; persistent in-app reminders and explicitly authorized browser notifications. Reopening tasks schedules future reminders again. Reminders more than 24 hours overdue remain in the in-app history without a burst of browser notifications. Claiming a browser notification means one delivery attempt, with no retry after a crash and no delivery when the page is closed.
+The todos planner provides task dates, deadlines, priorities, lists and states; six task views with pagination; overdue/today/previously-planned groups; FullCalendar month/week/day/agenda views with forms and drag-based scheduling; independent/all-day events and task time blocks; persistent in-app reminders and explicitly authorized browser notifications. Reopening tasks schedules future reminders again. Reminders more than 24 hours overdue remain in the in-app history without a burst of browser notifications. Claiming a browser notification means one delivery attempt, with no retry after a crash and no delivery when the page is closed.
 
 New instances default to notes + todos planner. Existing single-plugin and v1 dual-plugin configurations retain their format. Planner uses a v2 database in a new directory and rejects v1 databases. Upgrade tooling, recurrence, CalDAV/ICS, note-source links, email, and other external notifications are not implemented.
 

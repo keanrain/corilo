@@ -2,10 +2,6 @@
 
 **简体中文** | [English](DEVELOPMENT.en.md)
 
-> 当前补丁版本：todos 0.6.1。提醒、跨日分类、日历任务分页与代码结构修复见 [交接文档](HANDOFF.md)；旧配置和数据库不自动迁移。
-
-> 当前默认组合：notes 0.7.0＋todos 0.6.1 planner v2。学习导师独立分发，仅安装到已有 DSH，不加入默认组合。
-
 此页描述当前运行代码与开发命令。产品规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，架构边界见 [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)。本页只维护目录、命令与分发约定；命令均在仓库根目录执行。
 
 ## 目录职责

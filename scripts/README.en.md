@@ -12,8 +12,7 @@ Current product packages live in [plugins/](../plugins/README.en.md), and the so
 | `corilo.mjs` | Compatibility forwarder to launcher/corilo.mjs using the same instance configuration |
 | `vendor-astryx.mjs` | Extract selected design tokens from a pinned Astryx CSS archive verified by SHA-256, without network or React installation |
 | `p0.py`, `verify_delete_guard.py`, `verify_pinned.py` | Historical Files.md P0 evidence/regression tools kept at their original paths |
-| `publish_github.py` | Historical repository bootstrap using root repository-bootstrap.json; not an npm release tool |
 
-Historical tools stay in place: some compute paths relative to their own location and are referenced by existing CI/evidence. They are not moved or executed as part of this documentation update. See [legacy-app background (Chinese)](../docs/history/LEGACY-APP.md) and the [systemd examples (Chinese)](../deploy/systemd/README.md).
+The P0 tools resolve the repository root relative to their own paths. See the [history index](../docs/history/README.md) for the original repository bootstrap and the [systemd examples (Chinese)](../deploy/systemd/README.md) for service configuration.
 
 Run `npm run check:dsh` and `npm run test:tooling` for development checks. Independent release preparation is described in the [release guide](../docs/RELEASING.en.md).

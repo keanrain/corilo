@@ -4,7 +4,7 @@
 
 Corilo 自有界面跟随 DSH 语言设置（中文／English），切换不改变用户内容或草稿。
 
-**版本 0.7.0** · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · 尚未发布 npm。
+**版本 0.7.1** · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · 尚未发布 npm。
 
 一个插件在 Harness 中提供 Files.md 工作区：文件、Markdown 笔记、清单、收集、日记、分栏编辑和媒体。保留固定上游版本的完整 Web 目录与菜单。Harness 提供认证、原生 Agent 会话、模型配置和权限；不启动 Go 同步服务、Pi loop、Telegram 服务或独立模型界面。
 
@@ -23,7 +23,7 @@ node plugins/notes/cli.mjs start --config /absolute/corilo-instance/notes.patch.
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.7.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.7.1.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
@@ -44,7 +44,7 @@ npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.pat
 
 旧配置继续加载，Files.md 为默认界面。要保留旧 React／CodeMirror 6 笔记页，请在插件配置中明确设置 `interface: classic`。旧 `stateRoot` 可接受但当前插件不使用。旧历史、IndexedDB、SQLite、凭据和会话均不自动迁移或删除；classic 恢复工具仅用于已有资料。
 
-上述包内 CLI 创建单笔记实例。仓库启动器 `npm run init:corilo` 创建 notes＋todos 0.6.1，并启用 planner v2。旧单笔记与双插件配置继续兼容，已有待办数据库不自动迁移。日历、提醒及新目录要求见 [todos 指南](../todos/README.md)。以下仅是用户明确选择 Markdown 管理任务后的可选单向导出；导入前停止源和目标服务并备份目录：
+上述包内 CLI 创建单笔记实例。仓库启动器 `npm run init:corilo` 创建 notes＋todos，并启用 planner v2。旧单笔记与双插件配置继续兼容，已有待办数据库不自动迁移。日历、提醒及新目录要求见 [todos 指南](https://github.com/keanrain/corilo/blob/main/plugins/todos/README.md)。以下仅是用户明确选择 Markdown 管理任务后的可选单向导出；导入前停止源和目标服务并备份目录：
 
 ```sh
 # 只读预览，不创建笔记目录。

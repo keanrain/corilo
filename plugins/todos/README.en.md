@@ -4,39 +4,25 @@
 
 Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts.
 
-## 0.6.5 interface and interaction polish
+## Planner v2
 
-Conflict previews include every editable field and cleared value, and remain accessible while typing. Keeping local input replaces the whole form. Save and receipt controls stay busy until refresh completes before allowing another submission.
+Planner provides six task views with search, filters, and pagination, plus planned dates, lists, and priorities. The month, week, day, and agenda calendar supports independent events, all-day events, and linked task time blocks.
 
-Compact top navigation leaves more space for tasks and calendars. Tasks can be completed or reopened directly; unknown results use the original receipt, while conflicts refresh the record before another attempt. Details have growing title/description fields, clean-close without unnecessary confirmation, guarded dirty-close, Escape support, and contained keyboard focus in narrow drawers. Filters dismiss outside or with Escape. Conflict previews show labeled fields instead of storage JSON.
+New source instances enable planner by default. To enable it in an independent DSH overlay, set `planner: true` and point it at a **new, empty root directory**. Existing v1 instances can keep their configuration and database.
 
-Planner and the v1 compatibility list share consistent colors, typography, spacing, and focus styles. Theme and language still follow the host. Date formatting leaves stored time zones, save snapshots, operation receipts, and data formats intact.
+A date deadline is `{kind:"date",date:"2026-11-20",timeZone:"Asia/Taipei"}`. An exact deadline is `{kind:"instant",at:"2026-11-20T09:00:00+08:00",timeZone:"Asia/Taipei"}`. All-day ends are exclusive. Exact-time fields need an offset. Enter a separate instant for the reminder or leave it empty. Changing the start preserves duration, and the form can set 30 or 60 minutes directly. Dragging or resizing opens a form for confirmation.
 
-## 0.6.1 fixes and cleanup
+Save task details explicitly. Conflict previews list editable server fields. Keeping your input replaces the server version with the current form. Check the receipt when an outcome is unknown, and retry the original request if there is no receipt. Switching panels preserves edits. Save becomes available again when list refresh finishes or times out.
 
-Ordinary edits no longer lose reminders that are already due but not yet scanned: the pending job is retained, with its version and snapshot updated in the transaction. Completing/cancelling a task or changing its reminder time still explicitly invalidates old jobs. Time blocks spanning multiple days enter Today/Future by overlap with the local date range. All-day and timed ends are exclusive, and Temporal handles daylight-saving transitions.
+Reminders live in SQLite and are checked at startup and every 30 seconds. Browser notifications require permission. An atomic claim records one delivery attempt, and closing the page ends browser delivery. Ordinary edits preserve due reminders that are still pending. Cancellation, completion, or changing the reminder can invalidate the old reminder. Reopening reschedules future reminders.
 
-Calendar task selection supports additional pages and polling retains expanded pages. The UI is split into task list, calendar, details, reminders, requests, and editor-state modules. Queries preserve the v2 schema and existing data: ordinary lists filter, count, and use keyset pagination in SQL; date views read necessary metadata, group events once, and fetch only the current page's bodies; calendar queries limit results by range in SQL. SQLite still stores JSON records; no indexes are automatically added, data migrated, or database identity changed.
-
-`node test/query_benchmark.mjs` runs a disposable benchmark with 10,000 tasks and 500 time blocks; results describe that execution environment only. Regression tests are in `test/planner-quality.test.mjs`; real browser coverage includes scheduling tasks beyond the first 100.
-
-## 0.6.0 reconstruction
-
-This version was rebuilt from the user's feature description, not recovered from the original 36ea6e9 code. Planner provides task dates, lists, priorities, six task views and Today groups; FullCalendar month/week/day/agenda views; independent events and task time blocks; persistent reminders and opt-in browser notifications.
-
-To enable it in an independent DSH overlay, set `planner: true` and use a **new, empty root directory**. Omitting planner retains the original v1 tasks and page. Do not enable planner on the old database; there is no automatic migration. From source, `npm run setup:corilo` and `npm run init:corilo -- --directory /absolute/new-instance` create a dual-plugin instance.
-
-A date deadline is `{kind:"date",date:"2026-11-20",timeZone:"Asia/Taipei"}`; an exact deadline is `{kind:"instant",at:"2026-11-20T09:00:00+08:00",timeZone:"Asia/Taipei"}`. All-day ends are exclusive. Exact-time form fields accept ISO timestamps with offsets. Reminders take a separate exact instant; null disables them. A valid start-time change preserves duration; 30/60-minute buttons set it directly. Dragging/resizing first restores the calendar position and opens an unsaved form; confirmation commits it. Unknown results are checked read-only through receipts, with the original request retryable if no receipt is found.
-
-Reminder facts persist in SQLite. The service catches up at startup and every 30 seconds. Browser notifications require permission; atomic claiming prevents duplicate attempts across tabs but records only an attempt, and a crashed tab does not trigger retransmission. In-app records remain. More than 100 items are processed in batches. Closing the page disables browser delivery. Cancelling/completing a task disables reminders for future time blocks; reopening recreates reminders still in the future.
-
-`npm test` checks old/new storage and tools; `npm run test:planner:browser` checks the new real Harness page; `npm run test:browser` protects the legacy page. Recurrence, note-source associations, CalDAV/ICS, old-database upgrades, and external notifications are not implemented.
+Run `npm run test:planner:browser` for the real Harness planner browser suite. See the [changelog](https://github.com/keanrain/corilo/blob/main/plugins/todos/CHANGELOG.md) for previous fixes.
 
 ## v1 compatibility mode
 
-The page, storage, and tool descriptions below apply only to **existing instances that omit `planner`**, retaining the original 0.5.2 mode. New instances default to planner v2 above. Install and distribute the current 0.6.5 package; it does not upgrade old databases automatically. The handwritten overlay below deliberately omits `planner` to continue running v1.
+The page, storage, and tool descriptions below apply only to **existing instances that omit `planner`**, retaining the original 0.5.2 mode. New instances default to planner v2 above. Install and distribute the current 0.6.6 package; it does not upgrade old databases automatically. The handwritten overlay below deliberately omits `planner` to continue running v1.
 
-This independent personal-task plugin supports pinned Harness **0.2.2-rc.3** and Node.js **>=24.9.0**. It uses Node's built-in `node:sqlite`, with no separate database service, ORM, or second Agent loop. Node's SQLite API still emits an experimental notice; keep the tested runtime compatible. Package version 0.6.5 has not been published to npm.
+This independent personal-task plugin supports pinned Harness **0.2.2-rc.3** and Node.js **>=24.9.0**. It uses Node's built-in `node:sqlite`, with no separate database service, ORM, or second Agent loop. Node's SQLite API still emits an experimental notice; keep the tested runtime compatible. Package version 0.6.6 has not been published to npm.
 
 The page creates, reads, edits, completes, and reopens tasks without a model key. Agent tools share the same persistence service. Personal tasks are separate from Harness Agent execution plans. v1 has no dates, calendar, reminder scheduling, or notifications; creating a task does not schedule a notification.
 
@@ -50,7 +36,7 @@ The visual layer uses 62 static tokens from [Astryx Neutral](https://github.com/
 
 ## Installation and startup
 
-To use both plugins from source, prefer the [root quick start](../../README.md#start-in-three-steps): setup/init/start with one instance directory. The independent-plugin route remains below.
+To use both plugins from source, prefer the [root quick start](https://github.com/keanrain/corilo#start-in-three-steps): setup/init/start with one instance directory. The independent-plugin route remains below.
 
 From the Corilo repository root:
 
@@ -125,7 +111,7 @@ cd plugins/todos
 npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-Recipients run `npm init -y` in their installation directory, then `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.6.5.tgz`. Configure from the example and launch using that directory's `./node_modules/.bin/dsh`. The first installation still downloads pinned production dependencies; retain its lockfile. A packaged installation needs neither source nor esbuild.
+Recipients run `npm init -y` in their installation directory, then `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.6.6.tgz`. Configure from the example and launch using that directory's `./node_modules/.bin/dsh`. The first installation still downloads pinned production dependencies; retain its lockfile. A packaged installation needs neither source nor esbuild.
 
 Source validation:
 
@@ -138,4 +124,4 @@ Style coexistence checks also need `plugins/notes` installed and built. Browser 
 
 ## Updating the package in v1 mode
 
-Save current input, stop the service, and back up the entire task directory before upgrading. Install package 0.6.5, retain the v1 configuration that omits `planner`, reuse the existing data directory, and restart Harness; reload the browser client. No database migration or cleanup occurs. Old browser drafts are readable only by the old version; recovery is not promised by the new version. Do not clear site data and then expect to find old drafts. Cancelled records and associations remain in JSON exports.
+Save current input, stop the service, and back up the entire task directory before upgrading. Install package 0.6.6, retain the v1 configuration that omits `planner`, reuse the existing data directory, and restart Harness; reload the browser client. No database migration or cleanup occurs. Old browser drafts are readable only by the old version; recovery is not promised by the new version. Do not clear site data and then expect to find old drafts. Cancelled records and associations remain in JSON exports.

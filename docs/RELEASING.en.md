@@ -6,9 +6,11 @@ The three products have independent versions, lockfiles, and packages. The root 
 
 | Product selector | Package directory | Current version | Current channel |
 |---|---|---|---|
-| `notes` | `plugins/notes` | 0.7.0 | Local tgz, private |
-| `todos` | `plugins/todos` | 0.6.5 | Local tgz, private |
-| `learn-anything` | `packages/learn-anything` | 0.1.0 | Local tgz for existing DSH users; not published to npm |
+| `notes` | `plugins/notes` | 0.7.1 | GitHub prerelease and local archives |
+| `todos` | `plugins/todos` | 0.6.6 | GitHub prerelease and local archives |
+| `learn-anything` | `packages/learn-anything` | 0.1.0 | GitHub prerelease and local archives for existing DSH users |
+
+[Download published archives](https://github.com/keanrain/corilo/releases).
 
 ## Prepare one product
 

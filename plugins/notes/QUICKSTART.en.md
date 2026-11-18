@@ -2,7 +2,7 @@
 
 [简体中文](QUICKSTART.zh-CN.md) | **English**
 
-Version 0.7.0 integrates the complete Files.md frontend with Harness. One plugin handles notes, Markdown checklists, capture, and journals while retaining native menus and features. Files live in an ordinary host directory; Git, a Corilo account, and a model key are not required.
+The notes plugin integrates the complete Files.md frontend with Harness. One plugin handles notes, Markdown checklists, capture, and journals while retaining native menus and features. Files live in an ordinary host directory; Git, a Corilo account, and a model key are not required.
 
 ## Three steps from source
 
@@ -22,7 +22,7 @@ In a new installation directory:
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.7.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.7.1.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```

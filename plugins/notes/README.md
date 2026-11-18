@@ -4,7 +4,7 @@
 
 Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts.
 
-**Version 0.7.0** · [Quick start](QUICKSTART.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
+**Version 0.7.1** · [Quick start](QUICKSTART.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
 
 One plugin supplies the Files.md workspace inside Harness: files, Markdown notes,
 checklists, capture, journals, split editing and media. The complete pinned upstream
@@ -27,7 +27,7 @@ For a received tarball, in a new installation directory:
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.7.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.7.1.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
@@ -79,9 +79,9 @@ IndexedDB, SQLite, credentials and conversations are never automatically migrate
 or deleted. Classic recovery helpers remain for pre-existing data only.
 
 The package CLI above creates a notes-only instance. The repository launcher
-(`npm run init:corilo`) creates notes + todos 0.6.1 with planner v2 enabled.
+(`npm run init:corilo`) creates notes + todos with planner v2 enabled.
 Existing notes-only and legacy two-plugin configs remain supported; existing todo
-databases are not automatically migrated. See the [todos guide](../todos/README.en.md)
+databases are not automatically migrated. See the [todos guide](https://github.com/keanrain/corilo/blob/main/plugins/todos/README.en.md)
 for calendar, reminders and the new-directory requirement. The following is an optional one-way
 export for users who explicitly choose Markdown task management. Stop both source
 and destination services and back up their directories before importing:

@@ -6,9 +6,11 @@
 
 | 产品选择 | 包目录 | 当前版本 | 当前渠道 |
 |---|---|---|---|
-| `notes` | `plugins/notes` | 0.7.0 | 本地 tgz，private |
-| `todos` | `plugins/todos` | 0.6.5 | 本地 tgz，private |
-| `learn-anything` | `packages/learn-anything` | 0.1.0 | 本地 tgz，供已有 DSH 用户；未发布 npm |
+| `notes` | `plugins/notes` | 0.7.1 | GitHub 预发布及本地包 |
+| `todos` | `plugins/todos` | 0.6.6 | GitHub 预发布及本地包 |
+| `learn-anything` | `packages/learn-anything` | 0.1.0 | GitHub 预发布及本地包，供已有 DSH 用户 |
+
+[下载已发布的压缩包](https://github.com/keanrain/corilo/releases)。
 
 ## 准备一个产品
 

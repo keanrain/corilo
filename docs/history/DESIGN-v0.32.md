@@ -1,6 +1,6 @@
 # Corilo 可里交互设计
 
-v0.32 · 2026-11-10。当前业务规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，模块与实际验收见 [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md)。本轮解决整体像表单、操作零碎的问题；不能用控件存在或测试总数替代完整流程与实际画面的检查。
+v0.32 · 2026-11-10。当前业务规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC-v0.32.md)，模块与实际验收见 [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN-v0.32.md)。本轮解决整体像表单、操作零碎的问题；不能用控件存在或测试总数替代完整流程与实际画面的检查。
 
 保留 Harness 的对话、会话、模型设置和默认工具。Corilo 增加笔记与待办入口，继续使用宿主 React 18 和 Astryx Neutral 0.7.11 静态 token，不嵌套旧应用或引入第二个 Agent／模型配置系统。参考 [Obsidian 笔记管理](https://obsidian.md/help/manage-notes)、[文件列表](https://obsidian.md/help/plugins/file-explorer)及滴答清单的[快速添加](https://help.ticktick.com/articles/7055782422935240704)、[任务详情](https://help.ticktick.com/articles/7055782408586526720)，采用常见操作结构。
 
@@ -12,7 +12,7 @@ v0.32 · 2026-11-10。当前业务规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)�
 
 自动保存是唯一模式；Ctrl／⌘S 可立即保存。切换或新建先等当前内容保存成功，失败停留；文件冲突或未知结果直接提示，保留当前输入，可核对文件或明确保存副本。未知结果不自动重发。独立的编辑会话隔离撤销，改名和首次创建确认不重置光标／撤销。
 
-移除笔记草稿库、恢复界面、历史、回收站、删除入口、手动模式开关和单独的原话捕获流程。输入在当前会话中保留，未保存关闭页面时提醒；不承诺刷新／崩溃恢复。旧数据保留，当前插件不读写旧 IndexedDB 或历史目录。旧版说明见 [v0.30 归档](history/PRODUCT-SPEC-v0.30.md)。
+移除笔记草稿库、恢复界面、历史、回收站、删除入口、手动模式开关和单独的原话捕获流程。输入在当前会话中保留，未保存关闭页面时提醒；不承诺刷新／崩溃恢复。旧数据保留，当前插件不读写旧 IndexedDB 或历史目录。旧版说明见 [v0.30 归档](PRODUCT-SPEC-v0.30.md)。
 
 ## 待办：记下一件事，做完就勾
 

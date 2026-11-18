@@ -1,6 +1,6 @@
 # Linux 用户服务示例
 
-[corilo.service.example](corilo.service.example) 用于源码中的统一笔记/待办入口。先按[根目录上手](../../README.md#一起使用笔记和待办)完成前台验收，再审阅模板中的 Node、源码和实例绝对路径，按 [Linux 运行指南](../../plugins/notes/LINUX.zh-CN.md)管理用户服务。
+[corilo.service.example](corilo.service.example) 用于源码中的统一笔记/待办入口。先按[根目录上手](../../README.zh-CN.md#三步启动)完成前台验收，再审阅模板中的 Node、源码和实例绝对路径，按 [Linux 运行指南](../../plugins/notes/LINUX.zh-CN.md)管理用户服务。
 
 模板仅为示例，仓库安装、构建和检查命令不会自动复制、启用或部署它。当前回环监听、原生鉴权、日志敏感值、自启及休眠恢复的边界继续适用；语法校验不等于目标设备部署通过。
 

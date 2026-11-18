@@ -2,20 +2,16 @@
 
 [简体中文](DEVELOPMENT.md) | **English**
 
-> Current patch version: todos 0.6.1. Reminder, cross-day classification, calendar-task pagination, and code-organization fixes are recorded in [handoff notes](HANDOFF.md). Existing configurations and databases are not migrated automatically.
-
-> Default combination: notes 0.7.0 + todos 0.6.1 planner v2. The learning tutor is distributed independently and installed only into existing DSH, outside the default combination.
-
-This page describes current code and development commands. Product rules are in [PRODUCT-SPEC.md](PRODUCT-SPEC.md); architecture boundaries are in [TECHNICAL_DESIGN.md](TECHNICAL_DESIGN.md). This guide maintains directories, commands, and distribution conventions. Commands run from the repository root unless stated otherwise.
+This page describes current code and development commands. Product rules are in [Product specification](PRODUCT-SPEC.en.md); architecture boundaries are in [Architecture](TECHNICAL_DESIGN.en.md). This guide maintains directories, commands, and distribution conventions. Commands run from the repository root unless stated otherwise.
 
 ## Directory responsibilities
 
 | Location | Current purpose |
 |---|---|
-| [plugins/](../plugins/README.md) | Notes and task/calendar packages, each with host services, client, build, and tests; notes also has a standalone CLI |
+| [plugins/](../plugins/README.en.md) | Notes and task/calendar packages, each with host services, client, build, and tests; notes also has a standalone CLI |
 | [launcher/corilo.mjs](../launcher/corilo.mjs), `launcher/test/` | Default dual-plugin planner startup from source and existing single-plugin/v1 compatibility checks |
 | [deploy/systemd/](../deploy/systemd/corilo.service.example) | Manual deployment reference, not automatically installed by initialization |
-| [scripts/](../scripts/README.md) | Design-asset generation and historical development tools; `scripts/corilo.mjs` only forwards to the canonical launcher |
+| [scripts/](../scripts/README.en.md) | Design-asset generation and historical development tools; `scripts/corilo.mjs` only forwards to the canonical launcher |
 | `docs/`, `docs/history/` | Current design/development documents and separately identified historical records |
 | `app/host/`, `app/cloud/`, `app/vendor/` | Retained local Pi/cloud services and pinned vendor code; root npm dependencies serve this application |
 | `android/`, `p0/` | Paused projects and historical validation evidence |

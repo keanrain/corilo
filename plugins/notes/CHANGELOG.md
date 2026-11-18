@@ -4,12 +4,17 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
-## Unreleased / 未发布
+## 0.7.1
+
+- 将 CodeMirror、Lezer、DOMPurify 与 markdown-it 移为构建依赖，移除未使用的 `uuid`。生产安装继续使用已构建的客户端。
+  Move CodeMirror, Lezer, DOMPurify and markdown-it to build dependencies and remove the unused `uuid` dependency. Production installs use the bundled client.
+- 整理中英文安装指引，保留 DSH 版本、Files.md 与 classic 兼容性。
+  Refresh both installation guides with the same DSH pin and Files.md/classic compatibility.
+
+## 0.7.0
 
 - 自有工作区与 classic 界面跟随 DSH 中英文设置，语言切换保留草稿及编辑器状态；补齐双语安装文档与英文 CLI。
   Owned workspace/classic UI follows DSH Chinese/English settings while preserving drafts and editor state; add bilingual installation docs and English CLI output.
-
-## 0.7.0
 
 - 提供固定 Files.md 工作区、宿主文件适配、版本冲突保护及原生 Agent 接入。
   Provides the pinned Files.md workspace, host file adaptation, version-conflict protection, and native Agent integration.
