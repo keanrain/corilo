@@ -1,6 +1,6 @@
 # Corilo 可里技术设计
 
-v0.31 · 2026-11-10。当前业务规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC.md)，交互见 [DESIGN.md](DESIGN.md)，旧路线与此前笔记实现见 [v0.30 技术归档](history/TECHNICAL_DESIGN-v0.30.md)。
+v0.31 · 2026-11-10。当前业务规则见 [PRODUCT-SPEC.md](PRODUCT-SPEC-v0.31.md)，交互见 [DESIGN.md](https://github.com/keanrain/corilo/blob/129a3d31b767ab26cf8f373b493170d6c35d26d9/docs/DESIGN.md)，旧路线与此前笔记实现见 [v0.30 技术归档](TECHNICAL_DESIGN-v0.30.md)。
 
 ## 当前架构
 

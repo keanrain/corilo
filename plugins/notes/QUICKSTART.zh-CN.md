@@ -2,7 +2,7 @@
 
 **简体中文** | [English](QUICKSTART.en.md)
 
-0.7.0 将 Files.md 完整前端接入 Harness，一个插件处理笔记、Markdown 待办、收集与日记。先保留原生菜单和功能。资料保存在主机普通目录，不需要 Git、Corilo 账号或模型密钥。
+笔记插件将 Files.md 完整前端接入 Harness，一个插件处理笔记、Markdown 待办、收集与日记。先保留原生菜单和功能。资料保存在主机普通目录，不需要 Git、Corilo 账号或模型密钥。
 
 ## 源码三步
 
@@ -22,7 +22,7 @@ npm run start:corilo -- --directory /absolute/corilo-instance
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.7.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.7.1.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```

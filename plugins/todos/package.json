@@ -1,6 +1,6 @@
 {
   "name": "@corilo/dsh-todos",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -46,6 +46,11 @@
     "@deepseek-ai/dsh": "0.2.2-rc.3",
     "@deepseek-ai/dsh-tools": "0.2.2-rc.3",
     "@deepseek-ai/schemastery": "3.19.0",
+    "@js-temporal/polyfill": "0.5.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.3",
     "@fullcalendar/core": "6.1.19",
     "@fullcalendar/daygrid": "6.1.19",
     "@fullcalendar/interaction": "6.1.19",
@@ -53,14 +58,9 @@
     "@fullcalendar/luxon3": "6.1.19",
     "@fullcalendar/react": "6.1.19",
     "@fullcalendar/timegrid": "6.1.19",
-    "@js-temporal/polyfill": "0.5.1",
-    "luxon": "3.7.2"
-  },
-  "devDependencies": {
-    "@deepseek-ai/cordis": "4.1.0",
-    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.3",
     "esbuild": "0.25.12",
     "lucide-react": "1.70.0",
+    "luxon": "3.7.2",
     "react-textarea-autosize": "8.5.9",
     "uuid": "11.1.0"
   },

@@ -4,6 +4,13 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.6.6
+
+- 将 FullCalendar 和 Luxon 移为构建依赖，生产安装继续使用已构建的客户端。Temporal 仍供宿主处理日期。
+  Move FullCalendar and Luxon to build dependencies. Production installs use the bundled client, and the host continues to use Temporal for dates.
+- 文档按 planner v2 和 v1 兼容模式组织，更新安装包示例。
+  Organize documentation around planner v2 and v1 compatibility, and update the install examples.
+
 ## 0.6.5
 
 - 待办面板切走再返回时，保存和回执核对仍可完成，草稿保留。列表刷新超时后恢复保存与关闭操作。
