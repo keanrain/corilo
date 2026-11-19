@@ -6,6 +6,24 @@ This records currently distributable code, not an npm publication. Maintain chan
 
 ## Unreleased / 未发布
 
+- 更快入门：目标接入只问学什么、为什么学；大纲先出骨架（章节加前两个知识点），确认一次即开始；联网调研改为可选；第一个知识点用一张理解练习题卡摸底，不计掌握度。写规律首选在「我的理解」卡里点「编辑我的理解」直接写，不再因逐字不符被拒；不代写规则不变。
+  Faster start: intake asks only what to learn and why; the outline starts as a skeleton (chapters plus the first two knowledge points) confirmed once; web research is optional; the first knowledge point opens with one ungraded understanding-practice probe card. Writing the rule is editor-first via "Edit my understanding" on the My understanding card, so near-miss wording is no longer rejected; the no-ghostwriting rule is unchanged.
+
+- 更短等待：判题卡片在 `verification_record` 返回后立即显示；`examiner` 与 `verification_record` 可同一步并行，导师在判题的同时预出下一题，答错或难度变化时丢弃。判分证据链不变。
+  Shorter waits: the grading card shows as soon as `verification_record` returns; `examiner` and `verification_record` can run in the same step so the next question is pre-generated during grading and discarded after a wrong answer or difficulty change. The grading evidence chain is unchanged.
+
+- 答错更温和：验证中答错先留在验证阶段，用一个反例或追问后降一级继续；同一归因（都没有归因也算）连续两次答错、「稳」却答错，或在验证练习之外答错才回到评估学况。熟练门槛不变。
+  Gentler wrong answers: a wrong answer in verification stays there with one counterexample or follow-up at a lower difficulty; only two consecutive wrong answers with the same attribution (including none), a confident wrong answer, or one outside a verification run return to assess. The mastery gate is unchanged.
+
+- 学习概览：右侧「学习」工作区常驻概览（目标与进度、当前知识点与步骤、离下一级还差什么、今日复习一键开始），练习时在题卡上方显示可展开的一行。统计投影新增可选字段，旧会话无需迁移。
+  Learning overview: the Learning workspace keeps an overview (goal and progress, current knowledge point and step, what is left, today's reviews with one-click start), shown as an expandable line above exercises. The stats projection gains optional fields; older sessions need no migration.
+
+- 界面改用日常说法：「靶图」改为「我的理解」，「上层/下层」改为「规律/例子」，阶段、错因、题型和难度（「难度 N/5」）同步改写；判题反馈卡补全英文。导师提示词与内部数据不变。客户端体积上限由 200k 调整为 220k 字符。
+  Plain-language interface: "target map" becomes "My understanding", upper/lower layer becomes Rule/Example, and phase, cause, question-type and difficulty ("Difficulty N/5") wording is simplified; the grading card is fully localized in English. Tutor prompts and internal data are unchanged. The client bundle size guard rises from 200k to 220k characters.
+
+- 评测脚本：`eval/run.mjs --help` 不再崩溃；`question-latency --prompt baseline` 缺少基线文件时提前给出说明。
+  Eval scripts: `eval/run.mjs --help` no longer crashes; `question-latency --prompt baseline` explains early when the baseline file is missing.
+
 - 恢复应用增加跨进程互斥与取得锁后的重验，进程中断后可重试；提醒按工作区真实路径去重，覆盖软链接别名。
   Recovery apply gains cross-process exclusion and locked revalidation with retry after process exit; reminders deduplicate by physical workspace path, including symlink aliases.
 
