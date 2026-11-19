@@ -11,7 +11,7 @@ async function fixture(t, limits) {
 }
 const status = code => error => error.status === code;
 
-test('portable notes persist exact text, versioned edits reject stale writes and captures never collide', async t => {
+test('portable notes persist exact text, versioned edits reject stale writes and created notes never collide', async t => {
   const { root, store } = await fixture(t);
   const text = '\uFEFF中文原话\r\n  保留空白\n';
   const original = await store.save({ path: '资料/第一篇.md', text, expected: null });
@@ -25,7 +25,7 @@ test('portable notes persist exact text, versioned edits reject stale writes and
   assert.equal((await store.read(original.path)).text, '新版本');
   const reopened = await NotesStore.open(root);
   assert.equal((await reopened.read(original.path)).version, update.version);
-  const captures = await Promise.all(Array.from({ length: 4 }, () => store.capture(text)));
+  const captures = await Promise.all(Array.from({ length: 4 }, () => store.create({ text })));
   assert.equal(new Set(captures.map(x => x.path)).size, 4);
   for (const capture of captures) assert.equal((await store.read(capture.path)).text, text);
   const list = await store.list();
@@ -33,7 +33,7 @@ test('portable notes persist exact text, versioned edits reject stale writes and
   assert.ok(list.items.every(x => x.size > 0 && /^[a-f0-9]{64}$/.test(x.version)));
   await fs.writeFile(path.join(root, original.path), 'external editor');
   await assert.rejects(store.save({ path: original.path, text: 'overwrite external', expected: update.version }), status(409));
-  await assert.rejects(store.capture('\ud800'), status(400));
+  await assert.rejects(store.create({ text: '\ud800' }), status(400));
 });
 
 test('notes reject traversal, hidden paths, links and unsafe files without disclosing host paths', async t => {

@@ -251,6 +251,26 @@ export function queryTasks(store, args = {}) {
     };
   });
 }
+// Sidebar counts: open tasks per smart view (same rules as the views) and per
+// named list. Read-only; computed from the same queries the views use.
+export function queryTaskSummary(store, args = {}) {
+  fields(args, ["timeZone", "now"]);
+  const timeZone = args.timeZone ?? "UTC";
+  zone(timeZone);
+  const base = { timeZone, ...(args.now ? { now: args.now } : {}) };
+  const views = {};
+  for (const view of ["inbox", "today", "future", "all"])
+    views[view] = queryTasks(store, { ...base, view }).total;
+  const lists = store.db
+    .prepare(
+      `SELECT json_extract(data,'$.list') name, count(*) count FROM records
+ WHERE kind='task' AND json_extract(data,'$.status')='open' AND json_extract(data,'$.list')<>''
+ GROUP BY name ORDER BY name`,
+    )
+    .all()
+    .map((r) => ({ name: r.name, count: r.count }));
+  return { views, lists };
+}
 export function queryCalendar(store, args) {
   fields(args, ["start", "end", "timeZone"]);
   zone(args.timeZone);

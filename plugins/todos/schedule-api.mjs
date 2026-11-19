@@ -11,6 +11,7 @@ export function scheduleMethods(store) {
       ["view", "query", "list", "priority", "cursor", "timeZone"],
       (a) => store.tasks(a),
     ],
+    "tasks/summary": [["timeZone"], (a) => store.taskSummary(a)],
     "tasks/read": [["id"], (a) => store.read("task", a.id)],
     "tasks/create": [["requestId", "value"], (a) => store.mutate("task", a)],
     "tasks/update": [

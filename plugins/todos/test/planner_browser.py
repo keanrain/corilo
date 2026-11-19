@@ -51,6 +51,53 @@ def main():
      agenda=page.get_by_role('region',name='今日日程')
      expect(agenda).to_contain_text('今天的全天日程')
      expect(agenda).to_contain_text('全天')
+     # Sidebar lists: a named list is a place with a live count; Enter in the
+     # inline field adds straight into it.
+     page.evaluate("""async () => {
+       const send=async(m,a,id)=>(await(await fetch('api/corilo-todos/v2/'+m,{method:'POST',headers:{'content-type':'application/json',...(id?{'x-corilo-todos-id':id}:{})},body:JSON.stringify(a)})).json()).value;
+       const identity=await send('identity',{});
+       await send('tasks/create',{requestId:crypto.randomUUID(),value:{title:'撑墙转体',body:'双手撑墙，掌心向外拿住弹力带',list:'康复'}},identity.id);
+     }""")
+     page.get_by_role('button',name='刷新',exact=True).click()
+     side=page.get_by_role('complementary',name='任务视图')
+     rehab=side.get_by_role('button',name='康复',exact=True)
+     expect(rehab).to_contain_text('1')
+     rehab.click()
+     expect(rehab).to_have_attribute('aria-pressed','true')
+     expect(page.get_by_role('heading',name='康复',exact=True)).to_be_visible()
+     expect(page.get_by_text('双手撑墙，掌心向外拿住弹力带')).to_be_visible()
+     quick=page.get_by_role('textbox',name='快速添加任务',exact=True)
+     quick.fill('侧卧转体')
+     quick.press('Enter')
+     expect(page.get_by_role('button',name='侧卧转体',exact=True)).to_be_visible()
+     expect(quick).to_have_value('')
+     expect(rehab).to_contain_text('2')
+     # The real write succeeds but its response is lost. Receipt acceptance
+     # must clear its quick-add title so Enter cannot create a duplicate.
+     def lose_quick_response(route):
+      assert route.fetch().json()['ok']
+      route.abort()
+     page.route('**/api/corilo-todos/v2/tasks/create',lose_quick_response,times=1)
+     received='已收回执的快速任务'
+     quick.fill(received)
+     quick.press('Enter')
+     expect(quick).to_have_value(received)
+     page.get_by_role('button',name='核对操作',exact=True).click()
+     expect(quick).to_have_value('')
+     expect(page.get_by_role('button',name=received,exact=True)).to_have_count(1)
+     # Input entered before the response belongs to the next task.
+     held=[]
+     page.route('**/api/corilo-todos/v2/tasks/create',lambda route:held.append(route),times=1)
+     quick.fill('先提交的快速任务')
+     quick.press('Enter')
+     expect(page.get_by_role('button',name='新建任务',exact=True)).to_be_disabled()
+     quick.fill('下一项尚未保存')
+     assert len(held)==1
+     held[0].continue_()
+     expect(page.get_by_role('button',name='先提交的快速任务',exact=True)).to_be_visible()
+     expect(quick).to_have_value('下一项尚未保存')
+     quick.press('Escape')
+     side.get_by_role('button',name='今天',exact=True).click()
      # A reload must not bring the confirmation gate back.
      page.reload()
      page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).or_(page.get_by_role('button',name=re.compile(r'^(Close|关闭)$'),exact=True)).first.wait_for()

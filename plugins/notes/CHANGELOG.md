@@ -4,6 +4,17 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.9.0
+
+- 笔记面板只用于查看和编辑笔记：不再显示收集页和侧栏「收集」入口，去掉工作区顶部的 Agent 按钮。上游打开收集页的各条路径（启动、空闲计时、快捷键、删除当前笔记）改为保持或打开笔记。磁盘上已有的 `Chat.md` 不删除、不改动。
+  The notes panel is for reading and editing only: no capture page or capture tree entry, and no Agent button in the workspace. Upstream paths that opened the capture page keep or open a note instead. An existing `Chat.md` is left untouched on disk.
+- 移除 Agent 的 `corilo_notes_capture`（收集）工具、`capture` 接口和存储方法，工具由八个减为七个；磁盘上的 `Chat.md` 与已有收集内容不受影响。
+  Removed the Agent `corilo_notes_capture` tool, the `capture` route and store method (eight tools become seven); an existing `Chat.md` and its contents are untouched.
+- 工作区打开上次查看的笔记，没有则打开最近修改的笔记；资料为空时显示「新建笔记」。
+  The workspace opens the last note read, else the most recently changed one; an empty library offers "New note".
+- 配色与待办统一：暖灰侧栏、白色正文、单一蓝色强调，替换原主题的高对比蓝／橙／荧光绿；浅深色均适配。
+  Colours match the task planner (warm grey sidebar, white page, one blue accent), replacing the high-contrast blue/orange/lime accents, in light and dark.
+
 ## 0.8.0
 
 - 修复 Files.md 图片资源被当作文本转码、浏览器无法解码的问题（如收集页空状态图标）。图片、字体等二进制资源现在原样返回。

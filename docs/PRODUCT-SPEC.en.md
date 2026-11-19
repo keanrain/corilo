@@ -12,9 +12,9 @@ New instances default to notes + todos planner. Existing single-plugin and v1 du
 
 ## Data and interaction constraints
 
-Disk files are authoritative for notes and attachments; todos SQLite is authoritative for tasks and calendars. Markdown checklists are not copied automatically into tasks, and Agent execution plans are not personal todos. Ordinary editing, capture, and scheduling do not require a model.
+Disk files are authoritative for notes and attachments; todos SQLite is authoritative for tasks and calendars. Markdown checklists are not copied automatically into tasks, and Agent execution plans are not personal todos. Ordinary editing and scheduling do not require a model.
 
-Retain Files.md file trees, editing, search, renaming, moving, archiving, random opening, split panes, links, capture, journals, and checklists. Preserve the roles of `Chat.md`, `Later.md`, `journal/`, `media/`, and `config.json`; classic mode remains compatible.
+The notes panel is for reading and editing notes: retain Files.md file trees, editing, search, renaming, moving, archiving, random opening, split panes, links, journals, and checklists. There is no capture page and no Agent button inside the workspace (Agent is reached from the host sidebar). Existing files such as `Chat.md` stay on disk untouched; the roles of `Later.md`, `journal/`, `media/`, and `config.json` are preserved; classic mode remains compatible.
 
 Existing file limits remain: 1 MiB for text/settings, 16 MiB per attachment, 64 MiB cumulative reads per directory, and scans bounded by 20,000 entries, 20 levels, and 10 seconds. Reject traversal, hidden paths, symbolic/hard links, and special files. Updates check the SHA-256 of the content actually read. Moves/deletes check versions and never overwrite an existing destination. Do not integrate Go sync, Telegram, or automatic external media requests, or relax host-wide CSP.
 

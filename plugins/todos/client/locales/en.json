@@ -242,5 +242,11 @@
   "开始前 15 分钟": "15 minutes before",
   "开始前 1 小时": "1 hour before",
   "今日日程": "Today’s schedule",
-  "任务时间块": "Task time block"
+  "任务时间块": "Task time block",
+  "关闭清单栏": "Close lists",
+  "打开清单栏": "Open lists",
+  "快速添加任务": "Quick add task",
+  "添加任务，回车保存": "Add a task, press Enter to save",
+  "打开详情填写更多": "Open details to add more",
+  "已添加": "Added"
 }

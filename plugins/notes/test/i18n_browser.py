@@ -57,10 +57,7 @@ def run():
                                 expect(frame.locator('#corilo-status')).to_have_text('Saved to host' if english else '已保存到主机')
                                 expect(frame.locator('#corilo-copy')).to_have_text('Save a copy' if english else '保存副本')
                                 # Files.md interface strings follow the language too; note names never do.
-                                capture = 'Dump your thoughts...' if english else '想到什么，先记下来…'
-                                expect(frame.locator('#chat-input')).to_have_attribute('placeholder', capture)
                                 expect(frame.locator('#new-file')).to_have_attribute('aria-label', 'New File (⌘N)' if english else '新建笔记（⌘N）')
-                                expect(frame.locator('#sidebar .sidebar-chat')).to_have_text('chat' if english else '收集')
                                 expect(frame.locator('#sidebar')).to_contain_text('Language')
                                 # Change only the display language while the iframe holds unsaved text.
                                 actual = page.frames[-1]
@@ -78,7 +75,6 @@ def run():
                                 switch_language()
                                 expect(frame.locator('#corilo-copy')).to_have_text('保存副本' if english else 'Save a copy')
                                 expect(frame.locator('#new-file')).to_have_attribute('aria-label', '新建笔记（⌘N）' if english else 'New File (⌘N)')
-                                expect(frame.locator('#sidebar .sidebar-chat')).to_have_text('收集' if english else 'chat')
                                 assert actual.evaluate('()=>editor.getValue()') == before
                                 actual.evaluate('async()=>{await syncCurrentFile();}')
                             else:

@@ -60,7 +60,7 @@ export function noteTools(store) {
       async execute(args, exec) { check(exec.signal); return store.create({ ...args, signal: exec.signal }); },
     }),
     defineTool({
-      name: 'corilo_notes_save', description: 'Create or save a Markdown note. Pass the version returned by read; null creates only when the path is absent. A stale version is a conflict: read again rather than blindly overwrite. In the Files.md workspace, personal tasks are Markdown checklist items (- [ ] / - [x]) in Later.md; capture uses Chat.md and journals use journal/YYYY.MM Month.md. Read first and preserve unrelated text, timestamps and completion states. These are personal records, not Agent execution plans.',
+      name: 'corilo_notes_save', description: 'Create or save a Markdown note. Pass the version returned by read; null creates only when the path is absent. A stale version is a conflict: read again rather than blindly overwrite. In the Files.md workspace, personal tasks are Markdown checklist items (- [ ] / - [x]) in Later.md; journals use journal/YYYY.MM Month.md. Read first and preserve unrelated text, timestamps and completion states. These are personal records, not Agent execution plans.',
       parameters: {
         path: string, text: string,
         expected: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
@@ -73,11 +73,6 @@ export function noteTools(store) {
       parameters: { path: string, to: string, expected: string },
       output: output({ type: 'object', additionalProperties: true }),
       async execute(args, exec) { check(exec.signal); return store.rename({ ...args, signal: exec.signal }); },
-    }),
-    defineTool({
-      name: 'corilo_notes_capture', description: 'Save the exact supplied text as a new Markdown note without rewriting or classification. Use only when the user asks to keep these words.',
-      parameters: { text: string }, output: output(versioned),
-      async execute({ text }, exec) { check(exec.signal); return store.capture(text, { signal: exec.signal }); },
     }),
   ];
 }

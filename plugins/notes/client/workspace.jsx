@@ -12,7 +12,6 @@ export function createWorkspace(ctx) {
   const message=event=>{
     if(event.source!==frame.contentWindow||event.origin!==location.origin)return;
     if(event.data?.type==='corilo-workspace-state')dirty=Boolean(event.data.dirty);
-    if(event.data?.type==='corilo-workspace-agent')ctx.layout.selectPanel(null);
   };
   const guard=event=>{if(dirty){event.preventDefault();event.returnValue='';}};
   const syncLocale = () => { frame.title=t('Corilo Files.md 工作区');frame.contentWindow?.postMessage({type:'corilo-workspace-locale',locale:ui.getSnapshot()},location.origin); };

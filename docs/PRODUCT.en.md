@@ -6,7 +6,7 @@ Corilo consists of three DSH plugins with independent maintenance, installation,
 
 | Product | Purpose |
 |---|---|
-| notes | Files.md notes, files, capture, journals, and Markdown checklists |
+| notes | Files.md notes, files, journals, and Markdown checklists |
 | todos | Tasks, dates and deadlines, calendars, task time blocks, and persistent in-app reminders |
 | Learning tutor | Learning routes, diagnosis, interactive practice, examiner verification, and spaced review |
 

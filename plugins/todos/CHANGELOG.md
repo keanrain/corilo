@@ -4,6 +4,17 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.8.0
+
+- 改为侧边栏布局：左侧列出今天、未来、收集箱、全部（带未完成计数）、日历、提醒、各个清单（带计数）和已完成／已取消；刷新、导出和显示时区也在侧栏。窄屏时侧栏收为抽屉，标题左侧的菜单按钮打开。
+  Sidebar layout: Today, Future, Inbox and All with open-task counts, Calendar, Reminders, every named list with its count, and Done/Cancelled; refresh, export and the display zone live there too. On narrow screens the sidebar is a drawer opened from the menu button.
+- 从侧栏选中的清单作为一个独立位置显示（清单名作标题），不再显示为“已筛选”。
+  A list picked in the sidebar is shown as its own place, not as an active filter.
+- 每个任务视图顶部新增快速添加：输入标题回车即创建，沿用当前视图的日期／清单预填和回执处理；「添加任务」按钮打开完整详情并带上已输入的标题。
+  Inline quick add at the top of each task view; Enter creates the task with the view's defaults and the usual receipt handling. "添加任务" opens the full editor prefilled with the typed title.
+- 新增只读接口 `tasks/summary`，按与各视图相同的规则返回侧栏计数。
+  New read-only `tasks/summary` API returning sidebar counts computed with the same rules as the views.
+
 ## 0.7.0
 
 - 显示时区直接采用本机时区并按浏览器记住，不再每次打开都要先点「确认时区」。在时区弹层中可以明确改用其他时区。

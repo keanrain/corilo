@@ -6,11 +6,11 @@
 
 源码新实例默认加载双插件及 planner v2，已提供任务日期、日历、时间块、持久提醒与主动授权网页通知；关闭页面不推送。旧配置／v1 保留；无旧库升级工具、重复、来源关联或外部推送。当前范围见 docs/PRODUCT-SPEC.md 的当前交付范围，历史阶段计划不覆盖已实现行为。
 
-产品架构为一个 Harness、notes 笔记插件与 todos 任务／日程插件；保留 Files.md 完整菜单，机器人能力使用 Harness 原生 Agent。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，命令见 docs/DEVELOPMENT.md；原 v0.34 阶段计划归档于 docs/history/v0.34，不作为当前交付承诺。
+产品架构为一个 Harness、notes 笔记插件与 todos 任务／日程插件；保留 Files.md 编辑菜单，Agent 通过 Harness 原生会话使用。先读 docs/README.md、PRODUCT.md、PRODUCT-SPEC.md、TECHNICAL_DESIGN.md、DESIGN.md，命令见 docs/DEVELOPMENT.md；原 v0.34 阶段计划归档于 docs/history/v0.34，不作为当前交付承诺。
 
 当前默认前端是 plugins/notes/vendor/filesmd 固定版本的原生 HTML／JS／CSS 与 CodeMirror 5／HyperMD，在独立 iframe 文档中运行，通过 Harness 鉴权路由和 workspace/ 适配主机文件。保留 vendor 原文，安全、宿主生命周期和存储差异通过 workspace-api.mjs 的校验式运行时转换与适配层实现，保留来源和全部第三方许可。不直接接入 Go 同步、Telegram 或旧 Pi，不外联上传资料，不放宽整个宿主的 CSP。
 
-旧 CodeMirror 6／Astryx 笔记页通过 interface: classic 保留兼容；其测试不是当前 Files.md 工作区的验收。之前的极简界面和删减规则已由用户最新决定替代，不再据此裁掉 Files.md 菜单。当前界面和 Agent Markdown 工具共用 NotesStore 及其队列；WorkspaceStore 扩展目录、附件和设置文件操作，浏览器不直接访问磁盘，不建设第二个 Agent loop。
+旧 CodeMirror 6／Astryx 笔记页通过 interface: classic 保留兼容；其测试不是当前 Files.md 工作区的验收。默认笔记面板用于阅读和编辑，Agent 从宿主进入。保留磁盘上现有的 Chat.md 和收集资料。当前界面和 Agent Markdown 工具共用 NotesStore 及其队列；WorkspaceStore 扩展目录、附件和设置文件操作，浏览器不直接访问磁盘，不建设第二个 Agent loop。
 
 源码新实例默认加载 notes＋todos planner；已有单插件、旧双插件配置继续按原模式启动，不自动重写配置、迁移或删除数据。corilo-import-todos 默认只预览，--apply 显式导入 Later.md；运行前停止旧服务并备份。原 SQLite 只读，已取消记录、关联及原字段保存在迁移记录里；可恢复的迁移日志防重复追加，原数据库和旧浏览器资料保持。不得自动重放旧任务或通知。
 

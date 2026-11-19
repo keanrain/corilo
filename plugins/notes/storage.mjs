@@ -257,14 +257,6 @@ export class NotesStore {
       throw error;
     } finally { await handle?.close(); await fs.rm(temp, { force: true }); }
   }
-  capture(text, { signal } = {}) {
-    return this.serial(async () => {
-      checkSignal(signal);
-      if (typeof text !== 'string' || !text.trim()) throw fail(400, '原话不能为空');
-      const filename = `收集/${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}.md`;
-      return this.write(filename, text, null, signal);
-    });
-  }
   requireRecovery() {
     if (!this.recovery) throw fail(400, '历史与回收站尚未配置');
     return this.recovery;

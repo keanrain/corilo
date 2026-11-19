@@ -202,7 +202,7 @@ test('npm tarball installs outside the checkout with production dependencies and
     import {pathToFileURL} from 'node:url';
     const {NotesStore}=await import(pathToFileURL(process.argv[1]));
     const store=await NotesStore.open(process.argv[2],{}, {stateRoot:process.argv[3]});
-    await store.capture('独立安装的蓝鲸正文');
+    await store.create({ text: '独立安装的蓝鲸正文' });
     console.log(JSON.stringify(await store.search({query:'蓝鲸'})));
   `, path.join(installRoot, 'node_modules/@corilo/dsh-notes/storage.mjs'), root, state], { cwd: installRoot, env });
   assert.ok(JSON.parse(proof.stdout).items.some(item => item.kind === 'content' && item.text.includes('蓝鲸')));

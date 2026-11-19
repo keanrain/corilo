@@ -2,7 +2,7 @@
 
 **简体中文** | [English](QUICKSTART.en.md)
 
-笔记插件将 Files.md 完整前端接入 Harness，一个插件处理笔记、Markdown 待办、收集与日记。先保留原生菜单和功能。资料保存在主机普通目录，不需要 Git、Corilo 账号或模型密钥。
+笔记插件将 Files.md 完整前端接入 Harness，一个插件处理笔记、Markdown 待办与日记，只用于查看和编辑笔记。先保留原生菜单和功能。资料保存在主机普通目录，不需要 Git、Corilo 账号或模型密钥。
 
 ## 源码三步
 
@@ -22,7 +22,7 @@ npm run start:corilo -- --directory /absolute/corilo-instance
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.8.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.9.0.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
@@ -33,7 +33,7 @@ npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.pat
 
 ## 使用与升级
 
-原生文件树、新建、查找、标题改名、分栏和清单按 Files.md 方式操作。顶部保存状态只有主机确认后才显示已保存。Chat 是直接写入 Chat.md 的收集界面；Agent 按钮切到 Harness 原生会话，返回保留工作区。普通记录不调用模型。
+原生文件树、新建、查找、标题改名、分栏和清单按 Files.md 方式操作。顶部保存状态只有主机确认后才显示已保存。工作区打开上次查看的笔记；不提供收集页和 Agent 按钮，Agent 从宿主侧栏进入，返回保留工作区。普通记录不调用模型。
 
 冲突和未知保存结果保留输入，先核对文件或明确保存副本，不自动重发。关闭未保存页面时提醒；刷新／崩溃恢复不作承诺。
 

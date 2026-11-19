@@ -18,11 +18,14 @@ function plannerStore(identity) {
     items: [],
     events: [],
     agenda: [],
+    summary: null,
+    drawer: false,
     deadlines: [],
     notifications: [],
     query: "",
     list: "",
     priority: "",
+    quickDraft: "",
     total: 0,
     counts: {},
     cursor: null,
@@ -85,6 +88,10 @@ function plannerStore(identity) {
           change = { ...change, agenda: agenda.items };
         }
       }
+      if (!more && m.view !== "reminders") {
+        // Sidebar counts; a failed read keeps the previous counts.
+        try { change = { ...change, summary: await read("tasks/summary", { timeZone: m.zone }) }; } catch {}
+      }
       if (g === generation) set(change);
     } catch (e) {
       if (g === generation) set({ error: signal.aborted ? "刷新超时，请重试" : e.message });
@@ -124,7 +131,7 @@ export function usePlanner(identity) {
     sheet.textContent = styles;
     document.head.append(sheet);
     const guard = (e) => {
-      if (get().editor || get().pending) {
+      if (get().editor || get().pending || get().quickDraft) {
         e.preventDefault();
         e.returnValue = "";
       }

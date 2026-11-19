@@ -7,7 +7,7 @@ export function registerNotesApi(ctx, store, options = {}) {
   const handle = async (method, args, signal) => {
     const failure = (status, message) => ({ ok: false, error: { code: `notes/${status}`, message, details: {} } });
     const fields = {
-      identity: [], list: [], browse: [], search: ['query'], read: ['path'], create: [], save: ['path', 'text', 'expected'], capture: ['text'], rename: ['path', 'to', 'expected'],
+      identity: [], list: [], browse: [], search: ['query'], read: ['path'], create: [], save: ['path', 'text', 'expected'], rename: ['path', 'to', 'expected'],
     };
     const optional = method === 'browse' ? ['cursor', 'query'] : method === 'create' ? ['text'] : [];
     if (!Object.hasOwn(fields, method)) return failure(404, '笔记操作不存在');
@@ -28,8 +28,7 @@ export function registerNotesApi(ctx, store, options = {}) {
         : method === 'read' ? await store.read(args.path)
         : method === 'create' ? await store.create({ ...args, signal })
         : method === 'save' ? await store.save({ ...args, signal })
-        : method === 'rename' ? await store.rename({ ...args, signal })
-        : await store.capture(args.text, { signal });
+        : await store.rename({ ...args, signal });
       return { ok: true, value };
     } catch (error) {
       const status = [400, 404, 409, 413].includes(error.status) ? error.status : 503;
@@ -38,7 +37,7 @@ export function registerNotesApi(ctx, store, options = {}) {
       return failure(status, status === 503 ? '笔记暂不可用，当前输入仍在页面中，请核对文件后重试' : error.message);
     }
   };
-  for (const method of ['identity', 'list', 'browse', 'search', 'read', 'create', 'save', 'capture', 'rename']) {
+  for (const method of ['identity', 'list', 'browse', 'search', 'read', 'create', 'save', 'rename']) {
     ctx.effect(() => ctx.connection.fetch.register({
       path: `/api/corilo-notes/${method}`, methods: ['POST'], requestBody: 'buffered',
       async fetch(request) {
