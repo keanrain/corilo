@@ -68,6 +68,7 @@ test('no course keeps the empty state; old-shape stats and finished or empty rou
   const old = html({ goal: '理解闭包', due: 0, total: 4, mastered: 1, percent: 25 })
   assert.ok(old.includes('理解闭包') && old.includes('已掌握 1/4 个知识点 · 25%'))
   assert.ok(!old.includes('当前知识点') && !old.includes('🔥'))
+  assert.ok(!old.includes('都已达标'), 'old projections do not report route completion')
   assert.ok(html({ ...base, current: null, mastered: 4, percent: 100 }).includes('路线里的知识点都已达标或跳过'))
   const noPoints = html({ goal: '空路线', due: 0, total: 0, mastered: 0, percent: 0, current: null })
   assert.ok(noPoints.includes('路线里还没有知识点') && !noPoints.includes('都已达标'))

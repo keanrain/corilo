@@ -72,7 +72,7 @@ export function Overview({ stats, empty, canStart, onStart, inStrip = false }) {
         h('p', { className: 'la-ov-step' }, h('span', { className: 'la-ov-phase', 'data-phase': current.phase }, Object.hasOwn(STEP_LABEL, current.phase) ? STEP_LABEL[current.phase] : current.phase),
           step ? h('span', { className: 'la-muted' }, t('第 {n}/{total} 步', step)) : null),
         need ? h('p', { className: 'la-ov-need' }, need) : null)
-      : total ? h('p', { className: 'la-ov-done' }, t('路线里的知识点都已达标或跳过')) : null,
+      : current === null && total ? h('p', { className: 'la-ov-done' }, t('路线里的知识点都已达标或跳过')) : null,
     h(ReviewPanel, { due: Number(stats.due) || 0, canStart, onStart }))
 }
 
