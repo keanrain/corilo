@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Direct examiner benchmark; no learner session, local credential discovery or semantic judge.
 import { readFile, mkdir, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { resolve, join } from 'node:path'
 import assert from 'node:assert/strict'
@@ -82,6 +83,14 @@ if (options.selfCheck) {
   await assert.rejects(request(async () => new Response('', { status: 429 }), {}), /HTTP 429/)
   console.log('Offline self-check passed; no API calls made.')
   process.exit(0)
+}
+
+if (options.prompt === 'baseline' && !options.systemFile) {
+  const baselineFile = join(root, 'eval/results/question-latency-baseline.txt')
+  if (!existsSync(baselineFile)) {
+    console.error(`--prompt baseline needs ${baselineFile}, which is not in the repo (eval/results is gitignored).\nCreate it by saving the full examiner system prompt you want to compare against (e.g. \`git show <old-commit>:packages/learn-anything/prompts/examiner.md\` plus its quiz language section) to that file, or pass --system-file FILE, or use --prompt current.`)
+    process.exit(2)
+  }
 }
 
 const key = process.env.DEEPSEEK_API_KEY

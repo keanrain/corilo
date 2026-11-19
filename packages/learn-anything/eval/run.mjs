@@ -79,8 +79,27 @@ const { values: opt } = parseArgs({
     'local-auth': { type: 'boolean', default: false },
     inspect: { type: 'boolean', default: false },
     'inspect-port': { type: 'string', default: '9229' },
+    help: { type: 'boolean', short: 'h', default: false },
   },
 })
+if (opt.help) {
+  console.log(`Usage: node eval/run.mjs [options]
+  --only NAME            run one scenario (e.g. function, function/memorized, materials, repair)
+  --turns N              maximum tutor turns per scenario
+  --until diagnosed|verified   stop after the first finding (default) or the first verification
+  --verifications N      with --until verified, run on until N questions are recorded (default 1)
+  --mock                 plumbing check against test/boot/mock-llm.mjs
+  --quality              run the eight fixed examiner regressions
+  --anthropic            use $ANTHROPIC_BASE_URL, $ANTHROPIC_AUTH_TOKEN and $ANTHROPIC_MODEL
+  --local-auth           reuse DSH's stored API credential
+  --no-judge             score prescriptions by keyword match instead of an LLM judge
+  --keep                 keep scenario workspaces
+  --inspect              start each dsh process paused under the Node inspector (needs LEARN_ANYTHING_DSH)
+  --inspect-port PORT    inspector port (default 9229)
+  -h, --help             show this help
+See the header comment of eval/run.mjs for environment variables and details.`)
+  process.exit(0)
+}
 if (!['diagnosed', 'verified'].includes(opt.until)) {
   console.error('eval: --until must be diagnosed or verified')
   process.exit(2)

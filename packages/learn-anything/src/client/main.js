@@ -21,20 +21,20 @@ const h = react.createElement
 const VIEW_MARKER = 'learn-anything:view'
 const LEVEL_LABEL = labels({ none: '未入门', novice: '入门', proficient: '熟练', expert: '精通' })
 const PHASE_LABEL = labels({
-  describe: '描述知识', assess: '评估学况', prescribe: '制定材料', build: '继承模型',
-  verify: '验证模型', memorize: '记忆', mastered: '已掌握',
+  describe: '认识要点', assess: '找出卡点', prescribe: '准备材料', build: '用自己的话总结',
+  verify: '新情境检验', memorize: '记忆', mastered: '已掌握',
 })
-const TAG_LABEL = labels({ d: '规述', e: '例述', t: '迁移', v: '验证' })
+const TAG_LABEL = labels({ d: '规律', e: '例子', t: '迁移', v: '验证' })
 const VERDICT_LABEL = { correct: '✓', partial: '△', wrong: '✗' }
 // Example origins and wrong-answer causes as named in src/host/tools.js.
 const ORIGIN_LABEL = labels({ user: '你', material: '材料', ai: 'AI', verification: '验证题' })
 const ATTRIBUTION_LABEL = labels({
-  'memorized-wording': '记言代学', 'lower-layer-loss': '下层丢失', 'upper-layer-loss': '上层丢失', mismatch: '下上错配',
-  'concept-confusion': '概念混淆', 'missing-prereq': '缺前置知识', careless: '粗心',
+  'memorized-wording': '换个说法就不会', 'lower-layer-loss': '会背规律但用不上', 'upper-layer-loss': '只记住了例子', mismatch: '例子归错了规律',
+  'concept-confusion': '两个概念混在一起', 'missing-prereq': '缺少基础知识', careless: '粗心',
 })
 const TOOL_LABEL = labels({
-  course_get: '学习路线', course_save: '保存学习路线', kp_get: '靶图',
-  target_map_update: '更新靶图', progress_get: '学习进度', quiz_show: '互动题', verification_record: '判题', flashcard_show: '翻面闪卡',
+  course_get: '学习路线', course_save: '保存学习路线', kp_get: '我的理解',
+  target_map_update: '更新我的理解', progress_get: '学习进度', quiz_show: '互动题', verification_record: '判题', flashcard_show: '翻面闪卡',
 })
 
 const css = NOTE_EDITOR_CSS + CARD_CSS + QUIZ_CSS + FLASHCARD_CSS + PRESENTATION_CSS
@@ -172,8 +172,8 @@ function TargetMapCard({ view: initialView, useSession }) {
   const view = saved?.sessionId === sessionId && saved?.source === initialView ? saved.view : initialView
   const saveEdited = (view) => setSaved({ sessionId, source: initialView, view })
   const kp = view.kp
-  return h('section', { className: 'la-card la-target', 'aria-label': t('知识靶图') },
-    h(CardHeader, { icon: 'target', label: t('知识靶图'), title: kp.title, subtitle: '把你理解的规律，连接到具体的例子。', status: PHASE_LABEL[kp.phase] ?? kp.phase }),
+  return h('section', { className: 'la-card la-target', 'aria-label': t('我的理解') },
+    h(CardHeader, { icon: 'target', label: t('我的理解'), title: kp.title, subtitle: '把你理解的规律，连接到具体的例子。', status: PHASE_LABEL[kp.phase] ?? kp.phase }),
     h(Sources, { sources: view.sources, label: t('参考资料') }),
     kp.kind !== 'information' && view.models.length ? h(TargetEditor, { view, sessionId, onSaved: saveEdited }) : null,
     kp.kind === 'information'
@@ -214,12 +214,12 @@ const LEVELS = Object.keys(LEVEL_LABEL)
 const VERDICT_TEXT = labels({ correct: '✓ 答对了', partial: '△ 对了一部分', wrong: '✗ 还没答对' })
 /** Which part of the model a wrong answer points at, and how that reads to the learner. */
 const ATTRIBUTION_PART = {
-  'memorized-wording': ['upper', '上层只有书上的原话，还没变成你自己的理解'],
+  'memorized-wording': ['upper', '规律只有书上的原话，还没变成你自己的理解'],
   'upper-layer-loss': ['upper', '例子会做，但背后的规律还说不清'],
   'lower-layer-loss': ['lower', '规律说得出，遇到具体例子却用不上'],
   mismatch: ['link', '规律和例子对不上：你说的规律解释不了你做的判断'],
   'concept-confusion': ['upper', '和一个相近的概念混在了一起，边界还没分清'],
-  'missing-prereq': ['base', '地基缺了一块：先补上一个前置知识'],
+  'missing-prereq': ['base', '基础缺了一块：先补上一个基础知识'],
   careless: [null, '模型没问题，这次是粗心'],
 }
 
@@ -231,17 +231,17 @@ function LayerDiagram({ part }) {
     h('span', { key, className: 'la-layer', 'data-broken': part === key }, text),
   ]
   return h('div', { className: 'la-layers' },
-    layer('upper', t('上层'), '规律：用你自己的话说出的内涵'),
+    layer('upper', t('规律'), '规律：用你自己的话说出的内涵'),
     h('span', { key: 'link-n' }),
     h('span', { key: 'link', className: 'la-layer-link', 'data-broken': part === 'link' }, part === 'link' ? t('↕ 对不上') : '↕'),
-    layer('lower', t('下层'), '例子：具体情境里的判断和预测'),
-    layer('base', t('地基'), t('前置知识')))
+    layer('lower', t('例子'), '例子：具体情境里的判断和预测'),
+    layer('base', t('基础'), t('基础知识')))
 }
 
-const ZONE_TEXT = labels({ easy: '可以再挑战一点', flow: '难度刚刚好', hard: '放慢一点，先站稳' })
+const ZONE_TEXT = labels({ easy: '可以再难一点', flow: '难度刚刚好', hard: '放慢一点，先站稳' })
 /** What is still needed for the next level, as the learner would read it. */
 const NEED_TEXT = labels({
-  'discriminate-neg': '一道反例判别题', rephrase: '一道换说法题', transfer: '一道迁移题',
+  'discriminate-neg': '一道判断反例的题', rephrase: '一道换个问法的题', transfer: '一道换个场景用的题',
   'own-pos': '自己举一个正例', 'own-neg': '自己举一个反例',
 })
 
@@ -257,14 +257,14 @@ function FlowChannel({ asked, next, zone }) {
   const x = (s) => 18 + ((s - 0.5) / 5) * 126
   const y = (c) => 94 - ((c - 0.5) / 5) * 88
   const band = [[0.5, 1.4], [4.6, 5.5], [5.5, 5.5], [5.5, 4.6], [1.4, 0.5], [0.5, 0.5]].map(([s, c]) => `${x(s)},${y(c)}`).join(' ')
-  return h('svg', { viewBox: '0 0 150 110', role: 'img', 'aria-label': t('挑战 {asked} 级，技能约 {next} 级', { asked, next }) },
+  return h('svg', { viewBox: '0 0 150 110', role: 'img', 'aria-label': t('这题难度 {asked}/5，下一题难度 {next}/5', { asked, next }) },
     h('polygon', { className: 'la-flow-band', points: band }),
     h('polyline', { className: 'la-flow-axis', points: `${x(0.5)},${y(5.5)} ${x(0.5)},${y(0.5)} ${x(5.5)},${y(0.5)}` }),
-    h('text', { className: 'la-flow-text', x: 2, y: 10 }, t('挑战')),
-    h('text', { className: 'la-flow-text', x: 122, y: 107 }, t('技能')),
-    h('text', { className: 'la-flow-text', x: 24, y: 20 }, t('有点难')),
-    h('text', { className: 'la-flow-text', x: 108, y: 88 }, t('太轻松')),
-    h('text', { className: 'la-flow-text', x: x(3.3), y: y(3.8), transform: `rotate(-35 ${x(3.3)} ${y(3.8)})` }, t('心流')),
+    h('text', { className: 'la-flow-text', x: 2, y: 10 }, t('难度')),
+    h('text', { className: 'la-flow-text', x: 122, y: 107 }, t('我的水平')),
+    h('text', { className: 'la-flow-text', x: 24, y: 20 }, t('太难')),
+    h('text', { className: 'la-flow-text', x: 108, y: 88 }, t('太简单')),
+    h('text', { className: 'la-flow-text', x: x(3.3), y: y(3.8), transform: `rotate(-35 ${x(3.3)} ${y(3.8)})` }, t('刚刚好')),
     skill !== next || asked !== next ? h('line', { className: 'la-flow-arrow', x1: x(skill), y1: y(asked), x2: x(next), y2: y(next) }) : null,
     h('circle', { className: 'la-flow-next', cx: x(next), cy: y(next), r: 6 }),
     h('circle', { className: 'la-flow-dot', cx: x(skill), cy: y(asked), r: 4 }))
@@ -296,7 +296,7 @@ function FeedbackCard({ view }) {
       h('div', { className: 'la-grow' }, h('p', { className: 'la-eyebrow' }, t('练习反馈')),
         h('h3', { className: 'la-fb-verdict' }, ({ correct: '这一步，答对了', partial: '接近了，再补一块', wrong: '发现了一个突破口' })[view.verdict] ?? view.verdict),
         h('p', { className: 'la-sub' }, `${VERDICT_TEXT[view.verdict]} · ${view.kp.title}${view.model ? ` · ${view.model}` : ''}`)),
-      view.difficulty ? h('span', { className: 'la-fb-level' }, t('挑战 {level}/5', { level: view.difficulty })) : null),
+      view.difficulty ? h('span', { className: 'la-fb-level' }, t('难度 {level}/5', { level: view.difficulty })) : null),
     view.calibration ? h('p', { className: 'la-calib', 'data-kind': view.calibration.kind }, view.calibration.text) : null,
     up ? h('div', { className: 'la-levelup' }, h(Icon, { name: 'spark' }), h('div', null,
       h('small', null, view.passed ? '模型达标 · 新里程碑' : '这次练习，理解更深一层'),

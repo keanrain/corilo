@@ -40,7 +40,7 @@ function TargetEditorState({ view, sessionId, onSaved }) {
   }
   if (!sessionId) return null
   return h('div', { className: 'la-note-editor' },
-    !draft ? h('button', { type: 'button', className: 'la-action', disabled: busy, onClick: open }, t('编辑靶图')) : h('div', null,
+    !draft ? h('button', { type: 'button', className: 'la-action', disabled: busy, onClick: open }, t('编辑我的理解')) : h('div', null,
       h('p', null, t('直接写下你的理解。已验证的例子和成绩会保留。')),
       draft.map((m) => h('fieldset', { key: m.id, disabled: busy }, h('legend', null, modelTitle(m.id)),
         h('label', null, t('你的解释'), h('textarea', { value: m.statement, maxLength: 10000, onChange: (e) => change(m.id, { statement: e.target.value }) })),

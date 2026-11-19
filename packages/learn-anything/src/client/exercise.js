@@ -18,8 +18,8 @@ const h = react.createElement
 
 const CONFIDENCE = [['sure', '稳'], ['unsure', '有点把握'], ['guess', '蒙的']]
 const TYPE_LABEL = labels({
-  scenario: '情境题', predict: '预测题', 'discriminate-pos': '判别题', 'discriminate-neg': '判别题',
-  contrast: '对比辨析', rephrase: '换个说法', 'own-examples': '举例题', transfer: '迁移题', recall: '记忆题',
+  scenario: '情境题', predict: '预测结果', 'discriminate-pos': '是不是', 'discriminate-neg': '是不是',
+  contrast: '比一比', rephrase: '换个问法', 'own-examples': '自己举例', transfer: '换个场景用', recall: '回想',
 })
 const LETTERS = 'ABCDEFGHIJ'
 
@@ -72,7 +72,7 @@ function QuizRoot({ props, renderNode }) {
         h('p', { className: 'la-eyebrow' }, quiz?.purpose === 'practice' ? t('理解练习') : quiz?.retry ? t('错题重赛') : TYPE_LABEL[props.type] ?? props.type ?? t('互动练习')),
         h('h3', { className: 'la-quiz-title' }, props.title)),
       props.level ? h(Level, { level: props.level }) : null),
-    quiz?.retry ? h('p', { className: 'la-retry-note' }, '换个情境，再试一次。用这次的思路完成挑战。') : null,
+    quiz?.retry ? h('p', { className: 'la-retry-note' }, '换个情境，再试一次。用这次的思路再做一遍。') : null,
     h('div', { className: 'la-quiz-body' }, renderNode(props.body)),
     quiz ? h(QuizFooter, { quiz, title: props.title }) : null)
 }
