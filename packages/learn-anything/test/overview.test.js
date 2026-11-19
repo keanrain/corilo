@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import * as react from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { Overview, gateText } from '../src/client/overview.js'
+import { Overview, OverviewStrip, gateText } from '../src/client/overview.js'
 import { installLocale } from '../src/client/locale.js'
 
 const h = react.createElement
@@ -31,7 +31,7 @@ test('overview shows goal, progress, current point, step, what is left and due r
 
 test('overview is localised (en) with the agreed step names', () => {
   const out = inEnglish(() => html({ ...base, current }))
-  for (const text of ['理解闭包', '1 of 4 knowledge points mastered · 25%', 'Try new situations', 'Step 5 of 5', 'Still needed for Proficient: 2 more correct in a row (no hints, no guesses), a spot-the-counterexample question, a reworded question', '2 reviews due today', 'Start review', '🔥 3 days']) {
+  for (const text of ['理解闭包', '1 of 4 knowledge points mastered · 25%', 'Try new situations', 'Step 5 of 5', 'Still needed for Proficient: 2 more correct in a row (no hints, no guesses), a spot-the-counterexample question, a reworded question', 'Reviews due today: 2', 'Start review', '🔥 3 days']) {
     assert.ok(out.includes(text), text)
   }
   const names = ['describe', 'assess', 'prescribe', 'build', 'verify', 'memorize', 'mastered']
@@ -71,4 +71,13 @@ test('no course keeps the empty state; old-shape stats and finished or empty rou
   assert.ok(html({ ...base, current: null, mastered: 4, percent: 100 }).includes('路线里的知识点都已达标或跳过'))
   const noPoints = html({ goal: '空路线', due: 0, total: 0, mastered: 0, percent: 0, current: null })
   assert.ok(noPoints.includes('路线里还没有知识点') && !noPoints.includes('都已达标'))
+})
+
+test('the overview strip keeps progress visible above an exercise and expands to the full overview', () => {
+  const out = renderToStaticMarkup(h(OverviewStrip, { stats: { ...base, current }, canStart: true, onStart() {} }))
+  assert.ok(out.startsWith('<details class="la-ov-strip">'))
+  for (const text of ['学习概览', '闭包 · 新情境检验 · 已掌握 1/4 个知识点 · 今日复习 2 项', '离「熟练」还差']) assert.ok(out.includes(text), text)
+  assert.equal(renderToStaticMarkup(h(OverviewStrip, { stats: null })), '')
+  const en = inEnglish(() => renderToStaticMarkup(h(OverviewStrip, { stats: { ...base, due: 0, current: null } })))
+  assert.ok(en.includes('Learning overview') && en.includes('理解闭包 · 1 of 4 knowledge points mastered'), en)
 })

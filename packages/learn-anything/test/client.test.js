@@ -741,7 +741,7 @@ test('feedback shows previous and current reasoning side by side for a retry', (
   for (const text of ['上次情境', '上次错误推理', '这次新情境', '这次完整推理']) assert.ok(nodes.some((node) => node.props.children === text), text)
 })
 
-test('the learning tab shows the overview until an exercise exists, then keeps the exercise', () => {
+test('the learning tab shows the overview until an exercise exists, then a collapsed strip above the exercise', () => {
   const app = client()
   const stats = { goal: 'Java', due: 1, total: 3, mastered: 1, percent: 33, current: { id: 'k', title: '继承', phase: 'build' } }
   const markup = (element) => renderToStaticMarkup(element)
@@ -761,5 +761,7 @@ test('the learning tab shows the overview until an exercise exists, then keeps t
   assert.equal(app.workspace(undefined, { useProjection: () => stats }).props.canStart, false)
   assert.match(markup(app.workspace(undefined, { useProjection: () => ({ goal: 'Java', due: 0, total: 3, mastered: 1, percent: 33 }) })), /今天没有到期的复习/, 'old-shape stats')
   app.result('quiz_show', { view: 'quiz', id: 'q1', kp: { id: 'k', title: '继承' }, question: '题目？', options: [] })()
-  assert.doesNotMatch(markup(app.workspace('q1', { useProjection: () => stats })), /la-overview/, 'an active exercise keeps today\'s behaviour')
+  const withTask = markup(app.workspace('q1', { useProjection: () => stats }))
+  assert.match(withTask, /^<div class="la-learning"[^>]*><details class="la-ov-strip">/, 'a collapsed overview strip sits above the exercise')
+  assert.doesNotMatch(withTask, /<details class="la-ov-strip" open/, 'the strip starts collapsed')
 })

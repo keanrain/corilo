@@ -14,7 +14,7 @@ import { Sources } from './sources.js'
 import { TargetEditor } from './target-editor.js'
 import { OutlineEditor } from './outline.js'
 import { ConceptCompareCard } from './concept-compare.js'
-import { Overview, startReview, STATS_KEY as OVERVIEW_STATS_KEY } from './overview.js'
+import { Overview, OverviewStrip, startReview, STATS_KEY as OVERVIEW_STATS_KEY } from './overview.js'
 import { quizHistory } from '../quiz/answer.js'
 import { flashcardHistory } from '../quiz/flashcard.js'
 
@@ -276,14 +276,14 @@ function GoalProgress({ progress }) {
   useUiLocale()
   const parts = []
   const { streak } = progress
-  if (streak) parts.push(h('span', { key: 's', className: 'la-goal-dots', title: '连续答对（无提示、不是蒙的）' }, '●'.repeat(streak.have), h('span', null, '●'.repeat(Math.max(0, streak.need - streak.have)))))
+  if (streak) parts.push(h('span', { key: 's', className: 'la-goal-dots', title: t('连续答对（无提示、不是蒙的）') }, '●'.repeat(streak.have), h('span', null, '●'.repeat(Math.max(0, streak.need - streak.have)))))
   const needs = [
-    streak && streak.have < streak.need ? `再连对 ${streak.need - streak.have} 题` : null,
+    streak && streak.have < streak.need ? t('再连对 {count} 题', { count: streak.need - streak.have }) : null,
     ...progress.missing.map((t) => NEED_TEXT[t] ?? t),
   ].filter(Boolean)
   return h('p', { className: 'la-goal' },
-    h('span', { className: 'la-muted' }, `离「${LEVEL_LABEL[progress.target]}」`), ...parts,
-    h('span', null, needs.length ? `还差：${needs.join('、')}` : '就差这一步'))
+    h('span', { className: 'la-muted' }, t('离「{level}」', { level: LEVEL_LABEL[progress.target] })), ...parts,
+    h('span', null, needs.length ? t('还差：{items}', { items: needs.join(t('、')) }) : t('就差这一步')))
 }
 
 function FeedbackCard({ view }) {
@@ -296,33 +296,33 @@ function FeedbackCard({ view }) {
     h('div', { className: 'la-fb-head' },
       h('span', { className: 'la-result-seal', 'aria-hidden': true }, view.verdict === 'correct' ? h(Icon, { name: 'check' }) : view.verdict === 'partial' ? '≈' : '↗'),
       h('div', { className: 'la-grow' }, h('p', { className: 'la-eyebrow' }, t('练习反馈')),
-        h('h3', { className: 'la-fb-verdict' }, ({ correct: '这一步，答对了', partial: '接近了，再补一块', wrong: '发现了一个突破口' })[view.verdict] ?? view.verdict),
+        h('h3', { className: 'la-fb-verdict' }, ({ correct: t('这一步，答对了'), partial: t('接近了，再补一块'), wrong: t('发现了一个突破口') })[view.verdict] ?? view.verdict),
         h('p', { className: 'la-sub' }, `${VERDICT_TEXT[view.verdict]} · ${view.kp.title}${view.model ? ` · ${view.model}` : ''}`)),
       view.difficulty ? h('span', { className: 'la-fb-level' }, t('难度 {level}/5', { level: view.difficulty })) : null),
-    view.calibration ? h('p', { className: 'la-calib', 'data-kind': view.calibration.kind }, view.calibration.text) : null,
+    view.calibration ? h('p', { className: 'la-calib', 'data-kind': view.calibration.kind }, t(view.calibration.text)) : null,
     up ? h('div', { className: 'la-levelup' }, h(Icon, { name: 'spark' }), h('div', null,
-      h('small', null, view.passed ? '模型达标 · 新里程碑' : '这次练习，理解更深一层'),
+      h('small', null, view.passed ? t('模型达标 · 新里程碑') : t('这次练习，理解更深一层')),
       h('strong', null, LEVEL_LABEL[view.level.from], h(Icon, { name: 'arrow', className: 'la-up-arrow' }), LEVEL_LABEL[view.level.to]))) : null,
-    kpDone ? h('div', { className: 'la-levelup' }, h(Icon, { name: 'check' }), h('strong', null, `「${view.kp.title}」达到${LEVEL_LABEL[view.kpLevel.to]}`)) : null,
+    kpDone ? h('div', { className: 'la-levelup' }, h(Icon, { name: 'check' }), h('strong', null, t('「{title}」达到{level}', { title: view.kp.title, level: LEVEL_LABEL[view.kpLevel.to] }))) : null,
     flow?.last && !view.passed ? h('div', { className: 'la-flow' },
       h(FlowChannel, { asked: flow.last.difficulty, next: flow.next, zone: flow.last.zone }),
       h('div', { className: 'la-flow-info' },
         h('span', { className: 'la-flow-zone' }, ZONE_TEXT[flow.last.zone]),
-        h('span', null, `下一题：难度 ${flow.next} 级${flow.last.change > 0 ? ' ↑' : flow.last.change < 0 ? ' ↓' : ''}`),
-        h('span', { className: 'la-muted' }, flow.reason))) : null,
+        h('span', null, t('下一题难度 {level}/5', { level: flow.next }) + (flow.last.change > 0 ? ' ↑' : flow.last.change < 0 ? ' ↓' : '')),
+        h('span', { className: 'la-muted' }, t(flow.reason)))) : null,
     flow?.progress && !view.passed ? h(GoalProgress, { progress: flow.progress }) : null,
     cause ? h('details', { className: 'la-feedback-detail', open: view.verdict !== 'correct' },
-      h('summary', null, '找到卡住的那一层', h(Icon, { name: 'chevron', className: 'la-chevron' })),
-      h('p', { className: 'la-fb-cause' }, h('span', { className: 'la-badge' }, ATTRIBUTION_LABEL[view.attribution]), ' ', cause),
+      h('summary', null, t('找到卡住的那一层'), h(Icon, { name: 'chevron', className: 'la-chevron' })),
+      h('p', { className: 'la-fb-cause' }, h('span', { className: 'la-badge' }, ATTRIBUTION_LABEL[view.attribution]), ' ', t(cause)),
       part !== null ? h(LayerDiagram, { part }) : null) : null,
     h('p', { className: 'la-sub', style: { margin: 0 } }, [
-      view.explainedRule ? '能说清背后的规律 ✓' : view.verdict === 'correct' ? '下次试着说出背后的规律' : null,
+      view.explainedRule ? t('能说清背后的规律 ✓') : view.verdict === 'correct' ? t('下次试着说出背后的规律') : null,
       view.hintsUsed ? t('用了 {count} 次提示', { count: view.hintsUsed }) : null,
       t('当前掌握度：{level}', { level: LEVEL_LABEL[view.level?.to] ?? view.level?.to }),
     ].filter(Boolean).join(' · ')),
     view.retry ? h('section', { className: 'la-retry-compare', 'aria-label': t('重赛前后对照') },
       h('div', { className: 'la-retry-heading' }, h(Icon, { name: 'route' }),
-        h('strong', null, view.verdict === 'correct' ? '这次，你走通了' : '再看一次思路的变化')),
+        h('strong', null, view.verdict === 'correct' ? t('这次，你走通了') : t('再看一次思路的变化'))),
       h('div', { className: 'la-retry-columns' },
         h('div', null, h('span', { className: 'la-eyebrow' }, t('上一次')), h('p', { className: 'la-sub' }, view.retry.question), h('blockquote', null, view.retry.answer)),
         h('div', null, h('span', { className: 'la-eyebrow' }, t('这一次')), h('p', { className: 'la-sub' }, view.retry.currentQuestion), h('blockquote', null, view.retry.currentAnswer)))) : null,
@@ -514,6 +514,7 @@ function LearningTab(props) {
     return h(Overview, { stats, empty, canStart: Boolean(draftEmpty && props.inputActions), onStart: () => startReview(props.inputActions) })
   }
   return h('div', { className: 'la-learning', 'aria-label': t('学习工作区') },
+    h(OverviewStrip, { stats, canStart: Boolean(draftEmpty && props.inputActions), onStart: () => startReview(props.inputActions) }),
     selected !== current ? h('button', { type: 'button', className: 'la-action la-return-task', onClick: () => select(null) }, t('回到当前练习'), h(Icon, { name: 'arrow' })) : null,
     h(CARDS[selected.view.view], { ...props, key: selected.view.id, view: selected.view, isStreaming: selected.isStreaming }))
 }

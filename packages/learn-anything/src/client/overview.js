@@ -49,7 +49,7 @@ function ReviewPanel({ due, canStart, onStart }) {
  * @param stats the STATS projection value (null/undefined before any learn-anything tool has run on a course)
  * @param empty rendered when there is no course yet
  */
-export function Overview({ stats, empty, canStart, onStart }) {
+export function Overview({ stats, empty, canStart, onStart, inStrip = false }) {
   if (!stats || typeof stats !== 'object') return empty
   const { current } = stats
   const total = Number(stats.total) || 0
@@ -57,8 +57,8 @@ export function Overview({ stats, empty, canStart, onStart }) {
   const percent = Number.isFinite(stats.percent) ? stats.percent : total ? Math.round((mastered / total) * 100) : 0
   const step = current ? stepOf(current) : null
   const need = current ? gateText(current.gate) : ''
-  return h('div', { className: 'la-learning la-overview', 'aria-label': t('学习概览') },
-    h('p', { className: 'la-eyebrow' }, t('学习概览')),
+  return h('div', { className: inStrip ? 'la-overview' : 'la-learning la-overview', 'aria-label': inStrip ? undefined : t('学习概览') },
+    inStrip ? null : h('p', { className: 'la-eyebrow' }, t('学习概览')),
     h('h3', { className: 'la-title' }, stats.goal),
     h('div', { className: 'la-ov-progress' },
       h('div', { className: 'la-bar', role: 'img', 'aria-label': t('已掌握 {mastered}/{total} 个知识点', { mastered, total }) },
@@ -74,6 +74,23 @@ export function Overview({ stats, empty, canStart, onStart }) {
         need ? h('p', { className: 'la-ov-need' }, need) : null)
       : total ? h('p', { className: 'la-ov-done' }, t('路线里的知识点都已达标或跳过')) : null,
     h(ReviewPanel, { due: Number(stats.due) || 0, canStart, onStart }))
+}
+
+/**
+ * Compact overview above an exercise in the 「学习」 tab: one line (current point, step, mastered
+ * count, due reviews) that expands to the full overview, so progress stays visible while practising.
+ */
+export function OverviewStrip({ stats, canStart, onStart }) {
+  if (!stats || typeof stats !== 'object') return null
+  const { current } = stats
+  const total = Number(stats.total) || 0
+  const mastered = Number(stats.mastered) || 0
+  const due = Number(stats.due) || 0
+  const where = current ? [current.title, Object.hasOwn(STEP_LABEL, current.phase) ? STEP_LABEL[current.phase] : current.phase].join(' · ') : stats.goal
+  const line = [where, t('已掌握 {mastered}/{total} 个知识点', { mastered, total }), due ? t('今日复习 {due} 项', { due }) : null].filter(Boolean).join(' · ')
+  return h('details', { className: 'la-ov-strip' },
+    h('summary', null, h('span', { className: 'la-ov-strip-label' }, t('学习概览')), h('span', { className: 'la-ov-strip-line' }, line), h(Icon, { name: 'chevron', className: 'la-chevron' })),
+    h(Overview, { stats, empty: null, canStart, onStart, inStrip: true }))
 }
 
 /** The learner clicks the same prompt the composer chip sends. */
