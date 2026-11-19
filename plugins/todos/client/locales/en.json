@@ -82,7 +82,6 @@
   "任务详情": "Task details",
   "日程详情": "Event details",
   "状态": "Status",
-  "未完成／恢复": "Open / reopen",
   "完成": "Complete",
   "取消": "Cancel",
   "有效": "Active",
@@ -241,5 +240,7 @@
   "当天 9:00": "That day, 9:00",
   "明天 9:00": "Tomorrow, 9:00",
   "开始前 15 分钟": "15 minutes before",
-  "开始前 1 小时": "1 hour before"
+  "开始前 1 小时": "1 hour before",
+  "今日日程": "Today’s schedule",
+  "任务时间块": "Task time block"
 }

@@ -16,7 +16,7 @@ export function PlannerLatest({ kind, value, linkedTaskLabel, zone }) {
     <dl className="planner-latest-content">
       {field("标题", value.title)}
       {field("说明", value.body)}
-      {field("状态", uiText(({ open: "未完成／恢复", done: "完成", active: "有效", cancelled: "取消" })[value.status]))}
+      {field("状态", uiText(({ open: "未完成", done: "完成", active: "有效", cancelled: "取消" })[value.status]))}
       {kind === "task" ? <>
         {field("计划日期", value.plannedDate)}
         {field("清单", value.list)}

@@ -40,6 +40,17 @@ def main():
      expect(page.get_by_role('status')).to_contain_text('已保存')
      quick.get_by_role('button',name='关闭',exact=True).click()
      expect(page.get_by_role('button',name='今天快速添加',exact=True)).to_be_visible()
+     # Today shows the day's events above its tasks.
+     page.evaluate("""async (zone) => {
+       const send=async(m,a,id)=>(await(await fetch('api/corilo-todos/v2/'+m,{method:'POST',headers:{'content-type':'application/json',...(id?{'x-corilo-todos-id':id}:{})},body:JSON.stringify(a)})).json()).value;
+       const identity=await send('identity',{});
+       const day=new Intl.DateTimeFormat('en-CA',{timeZone:zone}).format(new Date());
+       await send('calendar/create',{requestId:crypto.randomUUID(),value:{title:'今天的全天日程',allDay:true,start:day,end:new Date(Date.parse(day)+864e5).toISOString().slice(0,10),timeZone:zone}},identity.id);
+     }""", page.evaluate('Intl.DateTimeFormat().resolvedOptions().timeZone'))
+     page.get_by_role('button',name='刷新',exact=True).click()
+     agenda=page.get_by_role('region',name='今日日程')
+     expect(agenda).to_contain_text('今天的全天日程')
+     expect(agenda).to_contain_text('全天')
      # A reload must not bring the confirmation gate back.
      page.reload()
      page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).or_(page.get_by_role('button',name=re.compile(r'^(Close|关闭)$'),exact=True)).first.wait_for()

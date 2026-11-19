@@ -140,7 +140,7 @@ export function PlannerEditor({
           {options(
             s.editor.kind === "task"
               ? [
-                  ["open", uiText("未完成／恢复")],
+                  ["open", uiText("未完成")],
                   ["done", uiText("完成")],
                   ["cancelled", uiText("取消")],
                 ]

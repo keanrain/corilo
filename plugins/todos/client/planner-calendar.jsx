@@ -1,6 +1,6 @@
 import { uiText, useTodosLocale } from './i18n.mjs';
 import { CalendarPlus } from 'lucide-react';
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGrid from "@fullcalendar/daygrid";
 import timeGrid from "@fullcalendar/timegrid";
@@ -14,6 +14,11 @@ export function PlannerCalendar({ s, set, open, refresh }) {
   const language = useTodosLocale();
   const cal = useRef(),
     drags = useRef();
+  // Time grids get their own scroller so they can open at 8:00 instead of 0:00.
+  const [timeGridView, setTimeGridView] = useState(false);
+  useEffect(() => {
+    if (timeGridView) requestAnimationFrame(() => cal.current?.getApi().scrollToTime("08:00:00"));
+  }, [timeGridView]);
   useEffect(() => {
     if (!drags.current) return;
     const d = new Draggable(drags.current, {
@@ -96,7 +101,8 @@ export function PlannerCalendar({ s, set, open, refresh }) {
             right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
           }}
           timeZone={s.zone}
-          height="auto"
+          scrollTime="08:00:00"
+          height={timeGridView ? 720 : "auto"}
           selectable
           editable
           droppable
@@ -119,14 +125,15 @@ export function PlannerCalendar({ s, set, open, refresh }) {
               extendedProps: { task: t },
             })),
           ]}
-          datesSet={(info) =>
+          datesSet={(info) => {
+            setTimeGridView(info.view.type.startsWith("timeGrid"));
             set({
               range: {
                 start: info.start.toISOString(),
                 end: info.end.toISOString(),
               },
-            })
-          }
+            });
+          }}
           select={select}
           eventClick={(i) =>
             i.event.extendedProps.task

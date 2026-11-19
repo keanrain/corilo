@@ -207,3 +207,26 @@
 .planner-time-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; }
 .planner-time-shortcuts:empty { display: none; }
 .planner-time-shortcuts button, .planner-time-clear { font-size: 12px; }
+.planner-agenda { margin-bottom: 18px; }
+.planner-agenda .planner-group-heading { display: flex; align-items: center; gap: 6px; }
+.planner-agenda ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--planner-border); border-radius: 9px; overflow: hidden; }
+.planner-agenda li + li { border-top: 1px solid var(--planner-border); }
+.corilo-planner .planner-agenda button { width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 0; border-radius: 0; background: transparent; text-align: start; font-size: 13px; color: var(--planner-text); }
+.corilo-planner .planner-agenda button:hover { background: var(--planner-hover); }
+.planner-agenda-time { flex: 0 0 96px; font-variant-numeric: tabular-nums; color: var(--planner-accent); font-size: 12px; }
+.planner-agenda-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planner-agenda-meta { display: inline-flex; align-items: center; gap: 4px; color: var(--planner-muted); font-size: 12px; }
+@container (max-width: 600px) {
+  /* Narrow screens: one compact heading row, daily views first in the tab strip. */
+  .planner-heading { flex-wrap: nowrap; align-items: center; }
+  .planner-event-add span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .planner-navigation button[data-view="today"] { order: 0; }
+  .planner-navigation button[data-view="calendar"] { order: 1; margin-inline-start: 0 !important; }
+  .planner-navigation button[data-view="inbox"] { order: 2; }
+  .planner-navigation button[data-view="future"] { order: 3; }
+  .planner-navigation button[data-view="all"] { order: 4; }
+  .planner-navigation button[data-view="reminders"] { order: 5; }
+  .planner-navigation button[data-view="done"] { order: 6; }
+  .planner-navigation button[data-view="cancelled"] { order: 7; }
+  .planner-agenda-time { flex-basis: 84px; }
+}

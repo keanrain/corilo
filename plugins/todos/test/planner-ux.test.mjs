@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { Temporal } from '../client/planner-dates.mjs';
 import { newTaskDefaults } from '../client/planner-defaults.mjs';
 import { exactLabel, isPast, reminderShortcuts, resolveLocal, splitInstant } from '../client/planner-time.mjs';
+import { agendaRows } from '../client/planner-agenda.mjs';
 import { initialZone, saveZone, savedZone, validZone } from '../client/planner-zone.mjs';
 
 function memoryStorage(initial = {}) {
@@ -66,4 +67,17 @@ test('reminder shortcuts are future instants only and past reminders are flagged
   assert.deepEqual(event.map((s) => s.instant), ['2026-11-18T05:45:00Z', '2026-11-18T05:00:00Z']);
   assert.equal(isPast('2026-11-18T02:00:00Z', now), true);
   assert.equal(isPast('2026-11-18T04:00:00Z', now), false);
+});
+
+test('today agenda lists all-day events first, then by start, marking spans from other days', () => {
+  const now = Temporal.Instant.from('2026-11-18T03:00:00Z');
+  const rows = agendaRows([
+    { id: 'b', title: '整理访谈', allDay: false, start: '2026-11-18T06:00:00Z', end: '2026-11-18T08:00:00Z' },
+    { id: 'a', title: '周会', allDay: false, start: '2026-11-18T02:00:00Z', end: '2026-11-18T03:00:00Z' },
+    { id: 'c', title: '出差', allDay: true, start: '2026-11-18', end: '2026-11-19' },
+    { id: 'd', title: '通宵', allDay: false, start: '2026-11-17T14:00:00Z', end: '2026-11-18T01:00:00Z' },
+  ], 'Asia/Shanghai', now);
+  assert.deepEqual(rows.map((r) => [r.item.id, r.allDay, r.from, r.to]), [
+    ['c', true, null, null], ['d', false, null, '09:00'], ['a', false, '10:00', '11:00'], ['b', false, '14:00', '16:00'],
+  ]);
 });
