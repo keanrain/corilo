@@ -4,6 +4,15 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.8.0
+
+- 修复 Files.md 图片资源被当作文本转码、浏览器无法解码的问题（如收集页空状态图标）。图片、字体等二进制资源现在原样返回。
+  Fix Files.md images being re-encoded as text and failing to decode (for example the capture empty-state icon). Binary assets are now served byte for byte.
+- Files.md 界面文案跟随 DSH 语言：工具栏提示、收集输入框与空状态、收集条目操作、右键菜单、原生对话框，以及侧栏的「收集」「日记」系统项。vendor 文件保持原样，笔记名与正文不翻译。收集条目操作按钮补充无障碍名称。
+  Files.md interface strings follow the DSH language at runtime; vendor files are unchanged and note names/contents are never translated. Capture actions gain accessible names.
+- 工作区默认打开收集页。新笔记按界面语言命名为「未命名」/「Untitled」，并选中占位标题，直接输入即可命名。
+  The workspace opens on the capture page. New notes are named 未命名/Untitled with the title selected, so typing names the note.
+
 ## 0.7.1
 
 - 将 CodeMirror、Lezer、DOMPurify 与 markdown-it 移为构建依赖，移除未使用的 `uuid`。生产安装继续使用已构建的客户端。
