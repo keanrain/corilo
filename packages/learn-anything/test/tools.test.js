@@ -184,6 +184,48 @@ test('a graded answer returns a feedback card: verdict, attribution, level-up an
   } finally { await cleanup() }
 })
 
+test('gentle wrong answers: the first wrong in a verify run stays in verify; repeated attribution or a confident miss goes to assess', async () => {
+  const { env, cleanup } = await workspace()
+  try {
+    await t.courseSave.execute(COURSE, env)
+    await t.kpDefineModels.execute({ kpId: 'scope', models: [{ id: 'map', type: 'associative', input: '引用位置', output: '绑定', reference: 'r' }] }, env)
+    const kpFile = () => store.readJson(join(env.cwd, '.learn/kp/scope.json'))
+    let n = 0
+    const rec = (verdict, extra = {}) => t.verificationRecord.execute({ kpId: 'scope', modelId: 'map', question: `g-${++n}`, questionType: 'scenario', answer: 'a', verdict, hintsUsed: 0, difficulty: 2, ...extra }, env)
+    const toVerify = async () => { for (const phase of ['prescribe', 'build', 'verify']) await t.kpSetPhase.execute({ kpId: 'scope', modelId: 'map', phase, reason: 'r' }, env) }
+    await toVerify()
+    assert.equal((await kpFile()).models[0].phase, 'verify')
+
+    const first = await rec('wrong', { attribution: 'lower-layer-loss', confidence: 'unsure' })
+    assert.match(first, /留在验证阶段/)
+    assert.match(first, /第一次答错/)
+    assert.doesNotMatch(first, /回到评估学况/)
+    assert.equal((await kpFile()).models[0].phase, 'verify')
+    assert.equal(parseView(first).flow.next, 1, 'difficulty still drops')
+    assert.equal(parseView(first).flow.last.zone, 'hard')
+
+    const second = await rec('wrong', { attribution: 'lower-layer-loss', confidence: 'unsure' })
+    assert.match(second, /同一归因连续答错.*回到评估学况/)
+    assert.equal((await kpFile()).models[0].phase, 'assess')
+
+    await toVerify()
+    const diff = await rec('wrong', { attribution: 'mismatch' })
+    assert.match(diff, /留在验证阶段/, 'a different attribution after a wrong stays gentle')
+    assert.equal((await kpFile()).models[0].phase, 'verify')
+
+    await rec('correct', { difficulty: 1 })
+    const afterCorrect = await rec('wrong', { attribution: 'mismatch' })
+    assert.match(afterCorrect, /留在验证阶段/, 'a correct answer in between breaks the consecutive run')
+
+    const sure = await rec('wrong', { attribution: 'concept-confusion', confidence: 'sure' })
+    assert.match(sure, /「稳」却答错.*回到评估学况/)
+    assert.equal((await kpFile()).models[0].phase, 'assess')
+
+    await toVerify()
+    assert.equal((await kpFile()).models[0].phase, 'verify')
+  } finally { await cleanup() }
+})
+
 test('streak counts days in a row with an answer', () => {
   const at = (d, h = 12) => new Date(2026, 9, d, h).toISOString()
   const now = new Date(2026, 9, 22, 20)

@@ -116,7 +116,7 @@ export async function apply(ctx, config) {
     parameters: tool.parameters,
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
     execute: tool.execute,
-    ...(tool.readOnly ? { isConcurrencySafe: () => true } : {}),
+    ...(tool.readOnly || tool.concurrencySafe ? { isConcurrencySafe: () => true } : {}),
   }))
 
   for (const tool of [...ALL_TOOLS, ...INGEST_TOOLS]) {
@@ -131,7 +131,7 @@ export async function apply(ctx, config) {
         render: (_args, value) => [{ type: 'text', text: value.text }],
         presentationMeta: (_args, value) => (value.stats === undefined ? null : { learnStats: value.stats }),
       },
-      ...(tool.readOnly ? { isConcurrencySafe: () => true } : {}),
+      ...(tool.readOnly || tool.concurrencySafe ? { isConcurrencySafe: () => true } : {}),
       async execute(args, exec) {
         const session = exec.agent?.session
         const env = {

@@ -130,3 +130,17 @@ test('registered write tools serialize updates from separate sessions sharing a 
   assert.equal(examples.length, 5)
   assert.equal(new Set(examples.map((example) => example.id)).size, 5)
 })
+
+test('examiner and verification_record share one parallel pool; other writers stay exclusive', async () => {
+  const { tools } = await host()
+  // dsh-tools batch.ts groups only consecutive concurrency-safe calls (and invalid arguments fall back to exclusive):
+  // the next question can be written while grading runs.
+  const calls = {
+    examiner: { description: '出题', prompt: 'p' }, verification_record: { kpId: 'k', question: 'q', questionType: 'scenario' },
+    kp_get: { kpId: 'k' }, checker: { description: '核对', prompt: 'p' },
+    target_map_update: { kpId: 'k' }, course_save: { goal: 'g', status: 'active', chapters: [] }, diagnosis_record: { kpId: 'k', findings: [] },
+  }
+  const parallel = (name) => tools.get(name).isConcurrencySafe?.(calls[name]) === true
+  assert.deepEqual(['examiner', 'verification_record', 'kp_get'].map(parallel), [true, true, true])
+  assert.deepEqual(['checker', 'target_map_update', 'course_save', 'diagnosis_record'].map(parallel), [false, false, false, false])
+})
