@@ -13,6 +13,7 @@ import { Sources } from './sources.js'
 import { TargetEditor } from './target-editor.js'
 import { OutlineEditor } from './outline.js'
 import { ConceptCompareCard } from './concept-compare.js'
+import { Overview, startReview, STATS_KEY as OVERVIEW_STATS_KEY } from './overview.js'
 import { quizHistory } from '../quiz/answer.js'
 import { flashcardHistory } from '../quiz/flashcard.js'
 
@@ -505,7 +506,12 @@ function LearningTab(props) {
   const [selectedId, select] = react.useState(() => requested === current?.view.id ? null : requested ?? null)
   react.useEffect(() => { select(requested === current?.view.id ? null : requested ?? null) }, [info.tab.navigation.revision])
   const selected = tasks.findLast((task) => task.view.id === selectedId) ?? current
-  if (!selected) return h('div', { className: 'la-learning-empty' }, h(Icon, { name: 'book' }), h('p', null, t('开始练习后，题目会留在这里。')))
+  const stats = props.useProjection?.(OVERVIEW_STATS_KEY)
+  const draftEmpty = props.useInput?.((input) => input.phase === 'plain' && input.draft.trim() === '' && input.attachmentIds.length === 0)
+  if (!selected) {
+    const empty = h('div', { className: 'la-learning-empty' }, h(Icon, { name: 'book' }), h('p', null, t('开始练习后，题目会留在这里。')))
+    return h(Overview, { stats, empty, canStart: Boolean(draftEmpty && props.inputActions), onStart: () => startReview(props.inputActions) })
+  }
   return h('div', { className: 'la-learning', 'aria-label': t('学习工作区') },
     selected !== current ? h('button', { type: 'button', className: 'la-action la-return-task', onClick: () => select(null) }, t('回到当前练习'), h(Icon, { name: 'arrow' })) : null,
     h(CARDS[selected.view.view], { ...props, key: selected.view.id, view: selected.view, isStreaming: selected.isStreaming }))

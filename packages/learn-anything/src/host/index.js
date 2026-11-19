@@ -50,8 +50,13 @@ const MAX_TEXTS = 400
 const SECTION_ORDER = 9500
 
 const userTextsSchema = zod.array(zod.string())
+const gateSchema = zod.object({
+  target: zod.string(), streak: zod.object({ have: zod.number(), need: zod.number() }).optional(), missing: zod.array(zod.string()),
+})
 const statsSchema = zod.object({
-  goal: zod.string(), due: zod.number(), total: zod.number(), mastered: zod.number(), percent: zod.number(),
+  goal: zod.string(),
+  // Added after the first release; sessions recorded before it carry no `current`.
+  current: zod.object({ id: zod.string(), title: zod.string(), phase: zod.string(), kind: zod.string().optional(), gate: gateSchema.optional() }).nullable().optional(), due: zod.number(), total: zod.number(), mastered: zod.number(), percent: zod.number(),
   streak: zod.number().optional(), today: zod.boolean().optional(),
 }).nullable()
 
