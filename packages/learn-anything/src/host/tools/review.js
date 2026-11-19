@@ -1,10 +1,11 @@
 // Due reviews, progress cards, and the Web composer's learning statistics.
 import * as store from '../store.js'
 import { meetsGate } from '../mastery.js'
+import { gateProgress } from '../flow.js'
 import { due, emptyReviews, activeReviews, forgottenExamples, examplePracticeText } from '../review.js'
 import { progressView } from '../render.js'
 import { listMistakes } from '../retry.js'
-import { str, ATTRIBUTION_LABEL, loadVerifications, learningKps, describeModel } from './shared.js'
+import { str, ATTRIBUTION_LABEL, loadVerifications, learningKps, currentKp, describeModel } from './shared.js'
 
 /** `YYYY-MM-DD HH:mm` in the host's local time zone (the learner's machine). */
 export function localMinute(date) {
@@ -109,6 +110,24 @@ export const progressGet = {
 }
 
 /**
+ * The knowledge point the route is on and what is left before its next level, for the
+ * learning overview. Null when every point is mastered or skipped. `gate` is absent
+ * for information points and points without a model yet.
+ */
+function currentOf(course, kps, verifications, gate) {
+  let kp
+  try { kp = currentKp(course, kps) } catch { return null }
+  if (!kp) return null
+  const out = { id: kp.id, title: kp.title, phase: kp.phase, kind: kp.kind === 'information' ? 'information' : 'knowledge' }
+  const model = kp.kind === 'information' ? null : kp.models.find((m) => m.phase !== 'mastered') ?? null
+  if (model) {
+    const progress = gateProgress(model, verifications.filter((v) => v.kpId === kp.id && v.modelId === model.id), model.mastery ?? 'none', gate)
+    if (progress) out.gate = progress
+  }
+  return out
+}
+
+/**
  * The numbers behind the Web composer chip: reviews due now, the share of outline
  * knowledge points at 熟练 or above, and the daily streak.
  * Null when the workspace has no course.
@@ -124,6 +143,7 @@ export async function learnStats(cwd, now, gate) {
   const verifications = await loadVerifications(cwd)
   return {
     goal: course.goal,
+    current: currentOf(course, kps, verifications, gate),
     due: due(activeReviews(reviews, course, kps), now).length,
     total: kps.length,
     mastered,

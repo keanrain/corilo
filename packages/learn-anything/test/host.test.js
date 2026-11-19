@@ -130,3 +130,20 @@ test('registered write tools serialize updates from separate sessions sharing a 
   assert.equal(examples.length, 5)
   assert.equal(new Set(examples.map((example) => example.id)).size, 5)
 })
+
+test('the stats projection carries the current knowledge point and still accepts the old shape', async (t) => {
+  const { call, projections } = await workspace(t)
+  const result = await call('course_get', {})
+  const projection = projections.get('learn-anything/stats')
+  const meta = { learnStats: result.stats }
+  const state = projection.apply(null, { type: 'tool/result', data: { meta } })
+  const parsed = projection.stateSchema.parse(state)
+  assert.deepEqual(parsed.current, { id: 'closure', title: '闭包', phase: 'assess', kind: 'knowledge', gate: { target: 'proficient', streak: { have: 0, need: 3 }, missing: ['discriminate-neg', 'rephrase'] } })
+  assert.deepEqual(projection.wire.viewSchema.parse(projection.wire.view(state)).current, parsed.current)
+  // Sessions recorded before `current` existed, and a finished route, must still validate.
+  const old = { goal: '闭包', due: 0, total: 1, mastered: 0, percent: 0, streak: 2, today: true }
+  assert.deepEqual(projection.stateSchema.parse(old), old)
+  assert.equal(projection.stateSchema.parse({ ...old, current: null }).current, null)
+  assert.equal(projection.stateSchema.parse(null), null)
+  assert.equal(projection.apply(state, { type: 'user/message', data: {} }), state, 'unrelated events keep the last stats')
+})

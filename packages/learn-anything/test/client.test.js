@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { runInNewContext } from 'node:vm'
 import * as react from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { marker } from '../src/host/render.js'
 import { formatQuizAnswer, parseQuizAction, quizAnswerDisplay, quizHistory } from '../src/quiz/answer.js'
 import { playAnswerComplete } from '../src/quiz/play.js'
@@ -75,7 +76,7 @@ function client(reactRuntime = react) {
     const node = viewNodes.get(`learn-anything-card:${callId}`)
     return node && node.visibility !== 'hidden' ? slots.get('conversation.chat.node:learn-anything-card')({ ...props, ...injected, node }) : null
   }
-  const workspace = (id) => slots.get('sidebar.right.pane.tab:@corilo/learn-anything/learning')({ ...props,
+  const workspace = (id, extra = {}) => slots.get('sidebar.right.pane.tab:@corilo/learn-anything/learning')({ ...props, ...extra,
     useTabInfo: () => ({ tab: { navigation: { revision: 1, params: id ? { id } : {} } } }) })
   const answer = (text, overrides = {}) => slots.get('conversation.chat.node:assistant-step')({ ...props,
     node: { kind: 'assistant-step', location: { kind: 'turn', turn }, data: { step: 3, status: 'settled', blocks: [{ kind: 'text', text }] } },
@@ -738,4 +739,27 @@ test('feedback shows previous and current reasoning side by side for a retry', (
   const nodes = elements(card.type(card.props))
   assert.ok(nodes.some((node) => node.props['aria-label'] === '重赛前后对照'))
   for (const text of ['上次情境', '上次错误推理', '这次新情境', '这次完整推理']) assert.ok(nodes.some((node) => node.props.children === text), text)
+})
+
+test('the learning tab shows the overview until an exercise exists, then keeps the exercise', () => {
+  const app = client()
+  const stats = { goal: 'Java', due: 1, total: 3, mastered: 1, percent: 33, current: { id: 'k', title: '继承', phase: 'build' } }
+  const markup = (element) => renderToStaticMarkup(element)
+  assert.match(markup(app.workspace(undefined, { useProjection: () => null })), /开始练习后/, 'no course: the old empty state')
+  assert.match(markup(app.workspace()), /开始练习后/, 'no projection hook: the old empty state')
+  const overview = app.workspace(undefined, { useProjection: (key) => key === 'learn-anything/stats' ? stats : undefined })
+  const out = markup(overview)
+  for (const text of ['Java', '继承', '用自己的话总结', '开始复习']) assert.ok(out.includes(text), text)
+  const sent = []
+  app.inputActions.setDraft = (text) => sent.push(text)
+  app.inputActions.submit = () => sent.push('submit')
+  const panel = overview.props.onStart
+  panel()
+  assert.deepEqual(sent, ['开始今日复习', 'submit'], 'the same prompt as the composer chip')
+  assert.equal(overview.props.canStart, true)
+  app.setInput({ draft: '正在输入' })
+  assert.equal(app.workspace(undefined, { useProjection: () => stats }).props.canStart, false)
+  assert.match(markup(app.workspace(undefined, { useProjection: () => ({ goal: 'Java', due: 0, total: 3, mastered: 1, percent: 33 }) })), /今天没有到期的复习/, 'old-shape stats')
+  app.result('quiz_show', { view: 'quiz', id: 'q1', kp: { id: 'k', title: '继承' }, question: '题目？', options: [] })()
+  assert.doesNotMatch(markup(app.workspace('q1', { useProjection: () => stats })), /la-overview/, 'an active exercise keeps today\'s behaviour')
 })
