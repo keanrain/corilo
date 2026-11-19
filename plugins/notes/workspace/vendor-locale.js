@@ -61,7 +61,13 @@
     window[name] = (message) => native(translateDialog(message));
   }
   const nativePrompt = window.prompt.bind(window);
-  window.prompt = (message, value) => nativePrompt(translateDialog(message), value === undefined ? value : translateDialog(value));
+  window.prompt = (message, value) => {
+    // Only the upstream create-folder placeholder is UI text. Rename defaults
+    // are existing names and must be passed through verbatim.
+    const defaultValue = message === 'Enter folder name:' && value === 'New Folder'
+      ? translateDialog(value) : value;
+    return nativePrompt(translateDialog(message), defaultValue);
+  };
 
   // Where interface text lives. Anything else (tree names, editor) is user data.
   const attributes = ['data-tooltip', 'aria-label', 'title', 'placeholder'];
@@ -69,7 +75,8 @@
   const original = new WeakMap(); // element -> {attr: upstream value} / text node -> upstream text
   function swapText(node) {
     const upstream = original.get(node) ?? node.nodeValue;
-    const want = zhActive() ? zh[upstream.trim()] : null;
+    const key = upstream.trim();
+    const want = zhActive() && Object.hasOwn(zh, key) ? zh[key] : null;
     if (want) { original.set(node, upstream); if (node.nodeValue !== want) node.nodeValue = want; }
     else if (original.has(node) && node.nodeValue !== upstream) node.nodeValue = upstream;
   }
@@ -78,7 +85,7 @@
     for (const attr of attributes) {
       if (!element.hasAttribute(attr)) continue;
       const upstream = saved[attr] ?? element.getAttribute(attr);
-      const want = zhActive() ? zh[upstream] : null;
+      const want = zhActive() && Object.hasOwn(zh, upstream) ? zh[upstream] : null;
       if (want) { saved[attr] = upstream; if (element.getAttribute(attr) !== want) element.setAttribute(attr, want); }
       else if (attr in saved && element.getAttribute(attr) !== upstream) element.setAttribute(attr, upstream);
     }

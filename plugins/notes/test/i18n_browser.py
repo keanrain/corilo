@@ -64,6 +64,14 @@ def run():
                                 expect(frame.locator('#sidebar')).to_contain_text('Language')
                                 # Change only the display language while the iframe holds unsaved text.
                                 actual = page.frames[-1]
+                                if not english:
+                                    defaults = []
+                                    def inspect_prompt(dialog):
+                                        defaults.append((dialog.message, dialog.default_value))
+                                        dialog.dismiss()
+                                    page.once('dialog', inspect_prompt)
+                                    actual.evaluate("() => prompt('Rename folder:', 'New Folder')")
+                                    assert defaults == [('重命名文件夹：', 'New Folder')], defaults
                                 actual.evaluate("async()=>{await openFile('/Language.md');}")
                                 actual.evaluate("()=>{clearInterval(window.saver);editor.replaceRange('保留草稿', {line:editor.lastLine(),ch:0});}")
                                 before = actual.evaluate('()=>editor.getValue()')
