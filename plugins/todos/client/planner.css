@@ -195,3 +195,15 @@
 
 @container (max-width: 600px) { .planner-editor { width: 100cqw; padding-inline: 20px; } }
 .planner-editor footer button[type="submit"] { min-width: 88px; }
+.planner-time-field { grid-column: 1 / -1; border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 7px; }
+.planner-time-field legend { padding: 0; margin-bottom: 7px; font-size: 12px; color: var(--planner-muted); }
+.planner-time-inputs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.planner-time-inputs input[type="date"] { flex: 1 1 150px; min-width: 0; }
+.planner-time-inputs input[type="time"] { flex: 0 1 120px; min-width: 0; }
+.planner-time-zone { margin: 0; font-size: 11px; color: var(--planner-muted); }
+.planner-time-choice { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border-radius: 7px; background: var(--planner-danger-bg); }
+.planner-time-choice p { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--planner-danger); }
+.planner-time-past { margin: 0; font-size: 12px; color: var(--planner-danger); }
+.planner-time-shortcuts { display: flex; flex-wrap: wrap; gap: 6px; }
+.planner-time-shortcuts:empty { display: none; }
+.planner-time-shortcuts button, .planner-time-clear { font-size: 12px; }

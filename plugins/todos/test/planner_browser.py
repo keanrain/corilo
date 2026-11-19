@@ -99,6 +99,39 @@ def main():
      form.get_by_role('button',name='保存',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('已保存')
      form.get_by_role('button',name='关闭',exact=True).click()
+     # Timed events and reminders use date + time controls in the record's zone.
+     zone=page.evaluate('Intl.DateTimeFormat().resolvedOptions().timeZone')
+     from datetime import datetime, timezone as tz
+     from zoneinfo import ZoneInfo
+     utc=lambda d,t:datetime.fromisoformat(f'{d}T{t}').replace(tzinfo=ZoneInfo(zone)).astimezone(tz.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+     page.get_by_role('button',name='新建日程',exact=True).first.click()
+     form.get_by_label('标题',exact=True).fill('定时安排')
+     form.get_by_label('全天',exact=True).uncheck()
+     form.get_by_label('开始日期',exact=True).fill('2027-01-05')
+     form.get_by_label('开始时间',exact=True).fill('09:00')
+     expect(form.get_by_label('结束时间',exact=True)).to_have_value('09:30')
+     form.get_by_role('button',name='开始前 1 小时',exact=True).click()
+     expect(form.get_by_label('提醒时间',exact=True)).to_have_value('08:00')
+     form.get_by_role('button',name='保存',exact=True).click()
+     expect(page.get_by_role('status')).to_contain_text('已保存')
+     form.get_by_role('button',name='关闭',exact=True).click()
+     saved=page.evaluate("""async () => {
+       const send=async(m,a,id)=>(await(await fetch('api/corilo-todos/v2/'+m,{method:'POST',headers:{'content-type':'application/json',...(id?{'x-corilo-todos-id':id}:{})},body:JSON.stringify(a)})).json()).value;
+       const identity=await send('identity',{});
+       const r=await send('calendar/range',{start:'2027-01-04T00:00:00Z',end:'2027-01-07T00:00:00Z',timeZone:'UTC'},identity.id);
+       return r.items.find(e=>e.title==='定时安排');
+     }""")
+     assert saved['start']==utc('2027-01-05','09:00') and saved['end']==utc('2027-01-05','09:30') and saved['reminderAt']==utc('2027-01-05','08:00'), saved
+     # A reminder time that has passed is flagged instead of silently ignored.
+     page.get_by_role('button',name='全部',exact=True).click()
+     page.get_by_role('button',name='今天快速添加',exact=True).click()
+     form.get_by_label('提醒日期',exact=True).fill('2020-01-01')
+     form.get_by_label('提醒时间',exact=True).fill('09:00')
+     expect(form.get_by_text('这个时间已过，不会提醒')).to_be_visible()
+     form.get_by_role('button',name='清除',exact=True).click()
+     expect(form.get_by_text('这个时间已过，不会提醒')).to_have_count(0)
+     page.on('dialog',lambda d:d.accept())
+     form.get_by_role('button',name='关闭',exact=True).click()
      page.get_by_role('button',name='日历',exact=True).click()
      expect(page.locator('.fc')).to_be_visible()
      for name in ['周','日','日程','月']:

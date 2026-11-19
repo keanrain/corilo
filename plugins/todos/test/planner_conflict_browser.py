@@ -1,6 +1,12 @@
 """Real DSH regression coverage for conflict recovery and delayed save refresh."""
 import json, os, pathlib, re, shutil, subprocess, tempfile, time, uuid
 from playwright.sync_api import sync_playwright, expect
+from datetime import datetime
+from zoneinfo import ZoneInfo
+def exact(at, zone):
+ # Conflict previews show the wall-clock time in the record's zone plus its offset.
+ z=datetime.fromisoformat(at.replace('Z','+00:00')).astimezone(ZoneInfo(zone));o=z.strftime('%z')
+ return z.strftime('%Y-%m-%d %H:%M')+f' (UTC{o[:3]}:{o[3:]})'
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 
 def api(page,method,args=None):
@@ -72,12 +78,12 @@ def check_preview_order(page, form, task_id, external, preview, latest):
  assert len(held)==1 and held[0][1].json()['value']['version']==external['version']
  api(page,'tasks/update',{'requestId':str(uuid.uuid4()),'id':task_id,'expected':external['version'],'patch':{'due':{'kind':'instant','at':'2027-03-05T15:00:00Z','timeZone':'America/New_York'}}})
  latest.click()
- assert_preview(preview,{'截止类型':'精确时间','截止':'2027-03-05T15:00:00Z','截止时区':'America/New_York'})
+ assert_preview(preview,{'截止类型':'精确时间','截止':exact('2027-03-05T15:00:00Z','America/New_York'),'截止时区':'America/New_York'})
  with page.expect_response(lambda res:res.url.endswith('/v2/tasks/read')):
   held[0][0].fulfill(response=held[0][1])
  # Wait for rendering after the older response has arrived.
  page.evaluate('() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
- assert_preview(preview,{'截止类型':'精确时间','截止':'2027-03-05T15:00:00Z','截止时区':'America/New_York'})
+ assert_preview(preview,{'截止类型':'精确时间','截止':exact('2027-03-05T15:00:00Z','America/New_York'),'截止时区':'America/New_York'})
  # If the old response was adopted, the actual following save is rejected.
  form.get_by_role('button',name='保留输入，按最新版本编辑',exact=True).click()
  form.get_by_role('button',name='保存',exact=True).click()
@@ -125,7 +131,7 @@ def main():
      latest.click()
      preview=form.locator('section').filter(has=page.get_by_role('heading',name='服务器最新内容',exact=True))
      expect(preview).to_be_visible()
-     assert_preview(preview,{'标题':'Remote task title','说明':'Remote task body','状态':'完成','计划日期':'2027-03-04','清单':'Remote list','优先级':'紧急','截止类型':'日期','截止':'2027-03-05','截止时区':'Asia/Tokyo','提醒时间（含 UTC 或偏移，留空关闭）':'2027-03-04T10:00:00Z'})
+     assert_preview(preview,{'标题':'Remote task title','说明':'Remote task body','状态':'完成','计划日期':'2027-03-04','清单':'Remote list','优先级':'紧急','截止类型':'日期','截止':'2027-03-05','截止时区':'Asia/Tokyo','提醒':exact('2027-03-04T10:00:00Z','UTC')})
      expect(form.get_by_label('说明',exact=True)).to_have_value('edited after conflict')
      assert form.get_by_label('计划日期',exact=True).input_value()=='2026-12-01'
      check_preview_order(page,form,task['id'],external,preview,latest)
@@ -139,14 +145,15 @@ def main():
      form.get_by_role('button',name='保存',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('版本冲突')
      latest.click()
-     assert_preview(preview,{'计划日期':'未设置','清单':'未设置','截止类型':'无截止','截止':'未设置','截止时区':'未设置','提醒时间（含 UTC 或偏移，留空关闭）':'未设置'})
+     assert_preview(preview,{'计划日期':'未设置','清单':'未设置','截止类型':'无截止','截止':'未设置','截止时区':'未设置','提醒':'未设置'})
      form.get_by_role('button',name='采用服务器内容',exact=True).click()
      expect(latest).to_have_count(0)
      expect(preview).to_have_count(0)
      expect(form.get_by_role('alert')).to_have_count(0)
      expect(form.get_by_label('说明',exact=True)).to_have_value('Server cleared optional fields')
      expect(form.get_by_label('计划日期',exact=True)).to_have_value('')
-     expect(form.get_by_label('提醒时间（含 UTC 或偏移，留空关闭）',exact=True)).to_have_value('')
+     expect(form.get_by_label('提醒日期',exact=True)).to_have_value('')
+     expect(form.get_by_label('提醒时间',exact=True)).to_have_value('')
      delayed_save_refresh(page,form,task['id'])
      delayed_save_refresh(page,form,task['id'],receipt=True)
      form.get_by_role('button',name='关闭详情',exact=True).click()
@@ -163,7 +170,7 @@ def main():
      form.get_by_label('地点',exact=True).fill('Local room')
      expect(latest).to_be_visible()
      latest.click()
-     assert_preview(preview,{'标题':'Remote event','说明':'Remote event body','状态':'取消','全天':'否','开始':day+'T11:00:00Z','结束（全天结束日期不含当天）':day+'T12:00:00Z','日程原时区':'Asia/Tokyo','地点':'Room 2','关联任务':completed['title'],'提醒时间（含 UTC 或偏移，留空关闭）':day+'T10:30:00Z'})
+     assert_preview(preview,{'标题':'Remote event','说明':'Remote event body','状态':'取消','全天':'否','开始':exact(day+'T11:00:00Z','Asia/Tokyo'),'结束':exact(day+'T12:00:00Z','Asia/Tokyo'),'日程原时区':'Asia/Tokyo','地点':'Room 2','关联任务':completed['title'],'提醒':exact(day+'T10:30:00Z','UTC')})
      form.get_by_role('button',name='采用服务器内容',exact=True).click()
      linked=form.get_by_label('关联任务',exact=True)
      expect(linked).to_have_value(completed['id'])
@@ -179,7 +186,7 @@ def main():
      form.get_by_role('button',name='保存',exact=True).click()
      expect(form.get_by_role('status')).to_contain_text('版本冲突')
      latest.click()
-     assert_preview(preview,{'全天':'是','开始':day,'结束（全天结束日期不含当天）':end,'地点':'未设置','关联任务':'独立事件','提醒时间（含 UTC 或偏移，留空关闭）':'未设置'})
+     assert_preview(preview,{'全天':'是','开始':day,'结束（全天结束日期不含当天）':end,'地点':'未设置','关联任务':'独立事件','提醒':'未设置'})
      form.get_by_role('button',name='采用服务器内容',exact=True).click()
      expect(form.get_by_label('全天',exact=True)).to_be_checked()
      expect(form.get_by_label('开始',exact=True)).to_have_value(day)

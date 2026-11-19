@@ -7,6 +7,15 @@ import { PlannerLatest } from './planner-latest.jsx';
 import { options, priorities, useLinkedTaskLabel } from "./planner-fields.jsx";
 import { strip } from "./planner-record.mjs";
 import { shiftStart, localInstant, Temporal } from "./planner-dates.mjs";
+import { PlannerTimeField } from "./planner-time-field.jsx";
+import { reminderShortcuts } from "./planner-time.mjs";
+
+const shortcutLabels = {
+  "day-9": "当天 9:00",
+  "tomorrow-9": "明天 9:00",
+  "before-15": "开始前 15 分钟",
+  "before-60": "开始前 1 小时",
+};
 export function PlannerEditor({
   s,
   set,
@@ -58,13 +67,20 @@ export function PlannerEditor({
       returnFocus.current?.focus();
     }
   }
+  function moveStart(next) {
+    try {
+      const shifted = shiftStart(s.editor.value, next);
+      set((old) => ({ editor: { ...old.editor, value: { ...old.editor.value, ...shifted } } }));
+    } catch {
+      edit("start", next);
+    }
+  }
   const field = (label, k, type = "text") => (
     <label>
       {label}
       <input
         type={type}
         list={k === "timeZone" ? "corilo-planner-zones" : undefined}
-        placeholder={k === "reminderAt" ? "2026-11-20T09:00:00+08:00" : undefined}
         value={s.editor.value[k] ?? ""}
         onChange={(e) =>
           edit(
@@ -178,18 +194,21 @@ export function PlannerEditor({
           </label>
           {s.editor.value.due && (
             <>
-              <label>{uiText("截止")}<input
-                  type={s.editor.value.due.kind === "date" ? "date" : "text"}
-                  value={s.editor.value.due.date ?? s.editor.value.due.at}
-                  onChange={(e) =>
-                    edit("due", {
-                      ...s.editor.value.due,
-                      [s.editor.value.due.kind === "date" ? "date" : "at"]:
-                        e.target.value,
-                    })
-                  }
+              {s.editor.value.due.kind === "date" ? (
+                <label>{uiText("截止")}<input
+                    type="date"
+                    value={s.editor.value.due.date}
+                    onChange={(e) => edit("due", { ...s.editor.value.due, date: e.target.value })}
+                  />
+                </label>
+              ) : (
+                <PlannerTimeField
+                  label={uiText("截止")}
+                  value={s.editor.value.due.at}
+                  zone={s.editor.value.due.timeZone}
+                  onChange={(at) => edit("due", { ...s.editor.value.due, at })}
                 />
-              </label>
+              )}
               <label>{uiText("截止时区")}<input
                   list="corilo-planner-zones"
                   value={s.editor.value.due.timeZone}
@@ -231,29 +250,21 @@ export function PlannerEditor({
               }}
             />
           </label>
-          <label>{uiText("开始")}<input
-              type={s.editor.value.allDay ? "date" : "text"}
-              value={s.editor.value.start}
-              onChange={(e) => {
-                try {
-                  const shifted = shiftStart(s.editor.value, e.target.value);
-                  set((old) => ({
-                    editor: {
-                      ...old.editor,
-                      value: { ...old.editor.value, ...shifted },
-                    },
-                  }));
-                } catch {
-                  edit("start", e.target.value);
-                }
-              }}
-            />
-          </label>
-          {field(
-            uiText("结束（全天结束日期不含当天）"),
-            "end",
-            s.editor.value.allDay ? "date" : "text",
+          {s.editor.value.allDay ? (
+            <label>{uiText("开始")}<input
+                type="date"
+                value={s.editor.value.start}
+                onChange={(e) => moveStart(e.target.value)}
+              />
+            </label>
+          ) : (
+            <PlannerTimeField label={uiText("开始")} value={s.editor.value.start}
+              zone={s.editor.value.timeZone} onChange={moveStart} />
           )}
+          {s.editor.value.allDay
+            ? field(uiText("结束（全天结束日期不含当天）"), "end", "date")
+            : <PlannerTimeField label={uiText("结束")} value={s.editor.value.end}
+                zone={s.editor.value.timeZone} onChange={(end) => edit("end", end)} />}
           {field(uiText("日程原时区"), "timeZone")}
           {field(uiText("地点"), "location")}
           <label>{uiText("关联任务")}<select
@@ -295,11 +306,18 @@ export function PlannerEditor({
             ))}
         </div>
       )}
-      {field(uiText("提醒时间（含 UTC 或偏移，留空关闭）"), "reminderAt")}
+      <PlannerTimeField label={uiText("提醒")} value={s.editor.value.reminderAt} zone={s.zone}
+        clearable warnPast onChange={(at) => edit("reminderAt", at)}>
+        <div className="planner-time-shortcuts">
+          {reminderShortcuts(s.editor.value, s.editor.kind, s.zone).map((shortcut) => (
+            <button key={shortcut.key} type="button" onClick={() => edit("reminderAt", shortcut.instant)}>{uiText(shortcutLabels[shortcut.key])}</button>
+          ))}
+        </div>
+      </PlannerTimeField>
       {s.editor.latest && (
         <section>
           <h3>{uiText("服务器最新内容")}</h3>
-          <PlannerLatest kind={s.editor.kind} value={s.editor.latest}
+          <PlannerLatest kind={s.editor.kind} value={s.editor.latest} zone={s.zone}
             linkedTaskLabel={previewTaskId === taskId ? linkedTaskLabel : previewTaskLabel} />
           <p className="planner-conflict-help">{uiText("保留输入会用当前表单的全部内容替换此版本，请先核对以上字段。")}</p>
           <button
