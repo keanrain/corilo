@@ -18,7 +18,7 @@ test('current plugin ignores legacy recovery configuration and exposes only core
   t.after(async () => { await ctx.fiber.dispose(); await rm(temporary, { recursive: true, force: true }); });
   await ctx.plugin(SystemPrompt); await ctx.plugin(Tools);
   const fiber = await ctx.plugin(notes, { root, stateRoot });
-  assert.equal(ctx.tools.definitions().length, 8);
+  assert.equal(ctx.tools.definitions().length, 7);
   const pipeline = new ToolExecutionPipeline(ctx);
   const prepared = await pipeline.prepare({ callId: 'one', name: 'corilo_notes_save', arguments: { path: '普通.md', text: 'only Markdown', expected: null }, signal: new AbortController().signal });
   const result = await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared);

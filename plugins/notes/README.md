@@ -112,8 +112,8 @@ between the exported checklist and the database. Do not delete either source.
 
 ## Tools, provenance and verification
 
-The eight `corilo_notes_*` tools retain their identifiers: list, browse, search,
-read, create, save, rename and capture. Agent saves personal checklists and journals
+The seven `corilo_notes_*` tools retain their identifiers: list, browse, search,
+read, create, save and rename; the capture tool was removed with the capture page. Agent saves personal checklists and journals
 as ordinary versioned Markdown; its execution-plan todo is a separate concept.
 Actual DeepSeek interaction requires its own validation and is not claimed by
 synthetic tool-pipeline tests.

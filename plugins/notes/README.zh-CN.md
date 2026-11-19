@@ -59,7 +59,7 @@ corilo-import-todos --source /absolute/old/todos/todos.sqlite --root /absolute/n
 
 ## 工具、来源与验证
 
-八个 `corilo_notes_*` 工具标识保持：list、browse、search、read、create、save、rename、capture。Agent 将个人清单与日记保存为普通、带版本的 Markdown；其执行计划 todo 是另一概念。真实 DeepSeek 交互需独立验证，不能由合成工具管线测试代替。
+七个 `corilo_notes_*` 工具标识保持：list、browse、search、read、create、save、rename；收集工具随收集页一并移除。Agent 将个人清单与日记保存为普通、带版本的 Markdown；其执行计划 todo 是另一概念。真实 DeepSeek 交互需独立验证，不能由合成工具管线测试代替。
 
 上游：https://github.com/zakirullin/files.md ，固定提交 `9e948ba6071e320c41c866f92817cf96f9bb7ba6`。`vendor/filesmd/SOURCE.json` 记录哈希，上游 Web 文件未改动。`workspace-api.mjs` 对文件名安全、生命周期、读取错误传播与仅本地媒体施加校验式运行时补丁；`workspace/` 适配文件句柄和原生 Agent 导航。原 MIT 与第三方声明随包分发。classic CodeMirror 6／Astryx 代码和声明仅为显式兼容保留。
 

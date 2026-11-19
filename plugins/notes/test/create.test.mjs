@@ -29,7 +29,6 @@ test('new documents use available readable names and persist exact initial text 
   assert.equal((await reopened.list()).items.length, 4);
   const checkpoint = (await reopened.history(first.path)).items[0];
   assert.equal((await reopened.readRevision(first.path, checkpoint.revision)).text, '');
-  await assert.rejects(store.capture(''), { status: 400 }, 'create does not loosen raw capture validation');
   await assert.rejects(store.create({ text: '\ud800' }), { status: 400 });
   await assert.rejects(store.create({ text: 'a'.repeat(1024 * 1024 + 1) }), { status: 413 });
 });

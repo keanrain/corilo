@@ -18,7 +18,7 @@ async function fixture(t) {
   await store.save({ path: '中文.md', text: '\uFEFF第一版\r\n  原话  ', expected: null });
   const before = await store.read('中文.md');
   await store.save({ path: '中文.md', text: '第二版', expected: before.version });
-  const gone = await store.capture('回收站中的原话');
+  const gone = await store.create({ text: '回收站中的原话' });
   await store.trash({ path: gone.path, expected: gone.version });
   const attachment = randomBytes(4096);
   await fs.mkdir(path.join(root, '附件'));

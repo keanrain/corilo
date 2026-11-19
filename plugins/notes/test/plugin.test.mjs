@@ -15,7 +15,7 @@ test('published Cordis and Harness pipeline load notes tools, validate calls and
   t.after(async()=>{await ctx.fiber.dispose();await rm(root,{recursive:true,force:true});});
   await ctx.plugin(SystemPrompt);await ctx.plugin(Tools);
   const fiber=await ctx.plugin(notes,{root});
-  assert.equal(ctx.tools.definitions().length,8);
+  assert.equal(ctx.tools.definitions().length,7);
   const pipeline=new ToolExecutionPipeline(ctx);
   let callId=0;
   const call=async(name,args,signal=new AbortController().signal)=>{
@@ -38,8 +38,7 @@ test('published Cordis and Harness pipeline load notes tools, validate calls and
   const conflict=await call('corilo_notes_save',{path:read.value.path,text:'不能覆盖',expected:read.value.version});
   assert.equal(conflict.isError,true);
   assert.equal(await readFile(path.join(root,read.value.path),'utf8'),'更新');
-  const captured=await call('corilo_notes_capture',{text:'exact\r\nraw words'});
-  assert.equal(await readFile(path.join(root,captured.value.path),'utf8'),'exact\r\nraw words');
+  assert.ok(!ctx.tools.definitions().some(x=>x.name==='corilo_notes_capture'));
   assert.equal((await call('corilo_notes_read',{path:123})).isError,true);
   assert.equal((await call('corilo_notes_read',{path:'../private.md'})).isError,true);
   const abort=new AbortController();abort.abort();
@@ -61,7 +60,7 @@ test('published Cordis and Harness pipeline load notes tools, validate calls and
   assert.equal(await readFile(path.join(root,seeded.value.path),'utf8'),'\uFEFF初始原话\r\n  空白  ');
   assert.equal((await call('corilo_notes_create',{},abort.signal)).isError,true);
   const final=await call('corilo_notes_list',{});
-  assert.equal(final.value.items.length,4);
+  assert.equal(final.value.items.length,3);
   await fiber.dispose();
   assert.equal(ctx.tools.definitions().length,0,'unloading cleans up real registry effects');
   assert.equal((await call('corilo_notes_list',{})).isError,true);

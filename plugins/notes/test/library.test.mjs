@@ -31,7 +31,7 @@ test('metadata keyset browsing covers >2000 notes and >8MiB without reading bodi
 
 test('packaged ripgrep finds captured Chinese and English bodies with accurate lines and safe literal queries', async t => {
   const { root, store } = await fixture(t);
-  const capture = await store.capture('第一行\r\n今天见到蓝鲸 Alpha. [literal]\r\n末行');
+  const capture = await store.create({ text: '第一行\r\n今天见到蓝鲸 Alpha. [literal]\r\n末行' });
   await fs.writeFile(path.join(root, 'Alpha.md'), 'other\nALPHA again\n');
   const chinese = await searchNotes(store, { query: '蓝鲸' });
   assert.equal(chinese.truncated, false);
@@ -99,7 +99,7 @@ test('body search passes the old 8MiB cliff and fails explicitly at its own 64Mi
   const { root, store } = await fixture(t);
   const body = 'x'.repeat(900 * 1024);
   await Promise.all(Array.from({ length: 10 }, (_, i) => fs.writeFile(path.join(root, `${i}.md`), body)));
-  const capture = await store.capture('蓝鲸');
+  const capture = await store.create({ text: '蓝鲸' });
   assert.equal((await searchNotes(store, { query: '蓝鲸' })).items[0].path, capture.path);
   await Promise.all(Array.from({ length: 64 }, (_, i) => fs.writeFile(path.join(root, `large-${i}.md`), body)));
   await assert.rejects(searchNotes(store, { query: '蓝鲸' }), status(413));
