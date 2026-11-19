@@ -6,8 +6,8 @@ The three products have independent versions, lockfiles, and packages. The root 
 
 | Product selector | Package directory | Current version | Current channel |
 |---|---|---|---|
-| `notes` | `plugins/notes` | 0.8.0 | GitHub prerelease and local archives |
-| `todos` | `plugins/todos` | 0.7.0 | GitHub prerelease and local archives |
+| `notes` | `plugins/notes` | 0.9.0 | GitHub prerelease and local archives |
+| `todos` | `plugins/todos` | 0.8.0 | GitHub prerelease and local archives |
 | `learn-anything` | `packages/learn-anything` | 0.1.0 | GitHub prerelease and local archives for existing DSH users |
 
 [Download published archives](https://github.com/keanrain/corilo/releases).

@@ -105,7 +105,7 @@ hasLastServerOk = () => false;
 syncFilesWithServer = async () => {};
 syncLocalFileWithServer = async () => {};
 syncMediaFiles = async () => {};
-post = async () => { throw new Error(coriloNotesUI.t("请使用工作区上方的 Agent 入口操作资料；外部机器人服务未连接")); };
+post = async () => { throw new Error(coriloNotesUI.t("外部机器人服务未连接")); };
 openDir = async () => showToast(coriloNotesUI.t("当前使用 Corilo 本机知识库；目录由启动器管理"));
 rename = async (from, to) => {
     const expected = coriloExpected(from) || (await coriloJSON('/api/fs/version', {path:from})).version;

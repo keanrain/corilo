@@ -2,7 +2,7 @@
 
 [简体中文](QUICKSTART.zh-CN.md) | **English**
 
-The notes plugin integrates the complete Files.md frontend with Harness. One plugin handles notes, Markdown checklists, capture, and journals while retaining native menus and features. Files live in an ordinary host directory; Git, a Corilo account, and a model key are not required.
+The notes plugin integrates the complete Files.md frontend with Harness. One plugin handles notes, Markdown checklists, and journals (reading and editing only) while retaining native menus and features. Files live in an ordinary host directory; Git, a Corilo account, and a model key are not required.
 
 ## Three steps from source
 
@@ -22,7 +22,7 @@ In a new installation directory:
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.8.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.9.0.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
@@ -33,7 +33,7 @@ If an instance manages DSH through its own package.json, declare `"@deepseek-ai/
 
 ## Use and upgrades
 
-Use the native file tree, creation, search, title rename, split panes, and checklists as in Files.md. The top save status reports Saved only after host confirmation. Chat captures directly into Chat.md; the Agent button switches to a native Harness conversation and preserves the workspace on return. Ordinary recording does not call a model.
+Use the native file tree, creation, search, title rename, split panes, and checklists as in Files.md. The top save status reports Saved only after host confirmation. The workspace opens the last note read; there is no capture page or Agent button. Agent is reached from the host sidebar and the workspace is preserved on return. Ordinary recording does not call a model.
 
 Conflicts and unknown save results retain input. Verify the file or explicitly save a separate copy; do not automatically resend. Leaving an unsaved page prompts a warning; refresh/crash recovery is not promised.
 

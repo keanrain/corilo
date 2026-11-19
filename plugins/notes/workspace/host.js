@@ -1,4 +1,5 @@
-/* Files.md lifecycle adapter for the Harness-owned filesystem and Agent. */
+/* Files.md lifecycle adapter for the Harness-owned filesystem. The workspace is
+ * for reading and editing notes: the capture page and the Agent hand-off are not offered. */
 clearInterval(window.saver);
 window.coriloMediaAllowed=url=>{try{const parsed=new URL(url,location.href);return ['blob:','data:'].includes(parsed.protocol)||parsed.origin===location.origin&&['http:','https:'].includes(parsed.protocol);}catch{return false;}};
 const coriloOpenWindow=window.open.bind(window);
@@ -8,16 +9,17 @@ let coriloReady = false, coriloSaving = null, coriloNavigation = Promise.resolve
 let coriloNavigating = false, coriloPaused = false, coriloChatAttempt = null, coriloCopying = false;
 const coriloBlocked = new Map();
 const coriloPanel = document.createElement('aside'); coriloPanel.id = 'corilo-workspace-status';
-coriloPanel.innerHTML = '<button id="corilo-files" aria-label="工作区文件">文件</button><span id="corilo-status" role="status">正在打开工作区…</span><button id="corilo-agent">Agent</button><div id="corilo-error" role="alert"></div><div id="corilo-resolution" hidden><button id="corilo-verify">核对文件</button><button id="corilo-copy">保存副本</button><button id="corilo-retry">重试保存</button></div><div id="corilo-latest" hidden><textarea aria-label="文件最新内容" readonly></textarea><button id="corilo-adopt">采用文件内容</button></div>';
+coriloPanel.innerHTML = '<button id="corilo-files" aria-label="工作区文件">文件</button><span id="corilo-status" role="status">正在打开工作区…</span><div id="corilo-empty" hidden><p>还没有笔记</p><button id="corilo-empty-new">新建笔记</button></div><div id="corilo-error" role="alert"></div><div id="corilo-resolution" hidden><button id="corilo-verify">核对文件</button><button id="corilo-copy">保存副本</button><button id="corilo-retry">重试保存</button></div><div id="corilo-latest" hidden><textarea aria-label="文件最新内容" readonly></textarea><button id="corilo-adopt">采用文件内容</button></div>';
 document.body.append(coriloPanel);
 const $c = id => document.getElementById(id);
 const coriloLabels = {
-  'corilo-files': '文件', 'corilo-verify': '核对文件', 'corilo-copy': '保存副本',
+  'corilo-files': '文件', 'corilo-empty-new': '新建笔记', 'corilo-verify': '核对文件', 'corilo-copy': '保存副本',
   'corilo-retry': '重试保存', 'corilo-adopt': '采用文件内容',
 };
 function coriloTranslate() {
   for (const [id, label] of Object.entries(coriloLabels)) $c(id).textContent=coriloNotesUI.t(label);
   $c('corilo-files').setAttribute('aria-label',coriloNotesUI.t('工作区文件'));
+  $c('corilo-empty').querySelector('p').textContent=coriloNotesUI.t('还没有笔记');
   $c('corilo-latest').querySelector('textarea').setAttribute('aria-label',coriloNotesUI.t('文件最新内容'));
   if (!coriloReady) $c('corilo-status').textContent=coriloNotesUI.t('正在打开工作区…');
   else if(coriloBlocked.size || coriloUnknownWrite) $c('corilo-status').textContent=coriloNotesUI.t('当前修改尚未确认保存');
@@ -79,10 +81,28 @@ syncCurrentFile = async (explicit = false) => {
     })();
     try { await coriloSaving; coriloCheckSaved(); } finally { coriloSaving=null; coriloSaved(); }
 };
-const upstreamOpenChat = openChat, upstreamOpenChatModal = openChatModal, upstreamSendToChat = sendToChat;
-openChat = async (...args) => { await syncCurrentFile(); await upstreamOpenChat(...args); report(); };
-openChatModal = async (...args) => { await syncCurrentFile(); await upstreamOpenChatModal(...args); report(); };
-sendToChat = async (...args) => { const input=chatInput.value;try{await upstreamSendToChat(...args);coriloChatAttempt=null;coriloSaved();}catch(error){coriloChatAttempt=input;coriloError(error);} };
+// Every upstream path that would open the capture page (start-up, the idle
+// timer, keyboard shortcuts, deleting the open note) keeps or opens a note.
+const coriloLastKey='corilo-notes-last';
+function coriloNotes(){
+    const out=[];const walk=tree=>{for(const entry of Object.values(tree||{})){
+        if(entry?.isFile){if(entry.path.endsWith('.md')&&entry.path!==CHAT_PATH)out.push(entry);}
+        else if(entry&&typeof entry==='object')walk(entry);
+    }};walk(files);return out;
+}
+async function coriloOpenDefault(){
+    const notes=coriloNotes();let last=null;try{last=localStorage.getItem(coriloLastKey);}catch{}
+    const target=notes.find(note=>note.path===last)||notes.sort((a,b)=>(b.lastModified||0)-(a.lastModified||0))[0];
+    $c('corilo-empty').hidden=Boolean(target);
+    if(target)await openFile(target.path);
+}
+openChat = async () => {
+    await syncCurrentFile();
+    if(editor.path&&editor.path!==CHAT_PATH&&getMemFile(editor.path))return;
+    await coriloOpenDefault();report();
+};
+openChatModal = async () => {};
+toggleChatModal = () => {};
 const upstreamNewFile = newFile;
 newFile = async (...args) => {
     await upstreamNewFile(...args);
@@ -100,7 +120,7 @@ openFile = (...args) => {
             await upstreamOpenFile(...args);
             const cm=args[2]==='editor2-textarea'?editor2:editor;
             const loaded=getMemFile(cm.path)?.handle;
-            if(loaded){cm.coriloFileHandle=new CoriloFile(cm.path);cm.coriloFileHandle.etag=loaded.etag;}
+            if(loaded){cm.coriloFileHandle=new CoriloFile(cm.path);cm.coriloFileHandle.etag=loaded.etag;$c('corilo-empty').hidden=true;try{localStorage.setItem(coriloLastKey,cm.path);}catch{}}
         }finally{coriloNavigating=false;for(const cm of [editor,editor2])cm?.setOption('readOnly',Boolean(coriloReloading));report();}
     });
     coriloNavigation=task.catch(()=>{});return task;
@@ -119,9 +139,7 @@ async function coriloReload() {
     try{await coriloReloading;}finally{coriloReloading=null;for(const cm of [editor,editor2])cm?.setOption('readOnly',coriloNavigating);report();}
 }
 $c('corilo-files').onclick=()=>toggleSidebar();
-$c('corilo-agent').onclick=async()=>{
-    try{await syncCurrentFile();if(dirty())throw Error(coriloNotesUI.t("请先保存当前输入，再交给 Agent"));parent.postMessage({type:'corilo-workspace-agent'},location.origin);}catch(error){coriloError(error);}
-};
+$c('corilo-empty-new').onclick=()=>newFile().catch(coriloError);
 $c('corilo-retry').onclick=()=>syncCurrentFile(true).catch(coriloError);
 $c('corilo-verify').onclick=async()=>{
     const cm=currentEditor;if(!cm?.path)return;
@@ -181,8 +199,8 @@ init=async()=>{
         cm.getInputField().addEventListener('compositionend',()=>{cm.state.coriloComposing=false;});
         cm.addKeyMap({'Ctrl-S':()=>syncCurrentFile(true).catch(coriloError),'Cmd-S':()=>syncCurrentFile(true).catch(coriloError)});
     }
-    // The workspace opens on the capture page: write first, sort later.
-    await openChat();
+    // The workspace opens on the last note read, else the most recently changed one.
+    await coriloOpenDefault();
     coriloSaved();
     window.saver=setInterval(()=>{if(!coriloBlocked.size)syncCurrentFile().catch(coriloError);},1000);
 };

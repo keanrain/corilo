@@ -4,9 +4,9 @@
 
 Corilo 自有界面跟随 DSH 语言设置（中文／English），切换不改变用户内容或草稿。
 
-**版本 0.8.0** · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · 尚未发布 npm。
+**版本 0.9.0** · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · 尚未发布 npm。
 
-一个插件在 Harness 中提供 Files.md 工作区：文件、Markdown 笔记、清单、收集、日记、分栏编辑和媒体。保留固定上游版本的完整 Web 目录与菜单。Harness 提供认证、原生 Agent 会话、模型配置和权限；不启动 Go 同步服务、Pi loop、Telegram 服务或独立模型界面。
+一个插件在 Harness 中提供 Files.md 工作区：文件、Markdown 笔记、清单、日记、分栏编辑和媒体，只用于查看和编辑笔记。保留固定上游版本的完整 Web 目录与菜单。Harness 提供认证、原生 Agent 会话、模型配置和权限；不启动 Go 同步服务、Pi loop、Telegram 服务或独立模型界面。
 
 ## 安装与运行
 
@@ -23,7 +23,7 @@ node plugins/notes/cli.mjs start --config /absolute/corilo-instance/notes.patch.
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.8.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.9.0.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
@@ -32,9 +32,9 @@ npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.pat
 
 ## 工作区与 Agent
 
-原生 Files.md 界面运行在持久 iframe 中。文件访问使用 Harness 鉴权路由，以主机磁盘为唯一权威；无需浏览器目录授权、本地镜像或外部同步。原生菜单、新建文件／目录、搜索、标题改名、移动／归档、链接、分栏、收集、日记和清单保留。宿主状态／Agent 栏在工作区上方预留空间。外部嵌入媒体不会自动加载，本地媒体仍可使用。目录选择器说明目录在主机配置，外部机器人／API 操作会说明相关服务未连接。
+原生 Files.md 界面运行在持久 iframe 中。文件访问使用 Harness 鉴权路由，以主机磁盘为唯一权威；无需浏览器目录授权、本地镜像或外部同步。原生菜单、新建文件／目录、搜索、标题改名、移动／归档、链接、分栏、日记和清单保留；收集页与 Agent 按钮不提供。宿主保存状态栏在工作区上方预留空间。外部嵌入媒体不会自动加载，本地媒体仍可使用。目录选择器说明目录在主机配置，外部机器人／API 操作会说明相关服务未连接。
 
-`Chat.md` 是确定性收集文件，`Later.md` 是 Markdown 清单，`journal/` 保存日记，`media/` 保存附件。这些文件与 Harness 模型会话分开。Agent 按钮先保存待提交编辑，再打开原生会话；返回保留同一 iframe 和编辑会话。Agent 工具读取、按版本保存同一组文件，并与工作区共享队列。直接编辑、收集、日记和复选框操作不调用模型。
+已有的 `Chat.md` 原样保留在磁盘上，界面不再显示收集页；`Later.md` 是 Markdown 清单，`journal/` 保存日记，`media/` 保存附件。这些文件与 Harness 模型会话分开。切到其他宿主面板前先保存待提交编辑；返回保留同一 iframe 和编辑会话。Agent 工具读取、按版本保存同一组文件，并与工作区共享队列。直接编辑、日记和复选框操作不调用模型。
 
 写入校验实际读取的版本；旧版本写入失败并保留输入。未知写入结果会暂停该文件后续写入，直到读取核验结果。收集提交后丢失回执不能盲目重发。错误时可以核验文件、明确采用磁盘版本或另存笔记。改名不得覆盖已有目标。服务队列不能与任意外部编辑器／默认 shell 工具形成事务。离开页面会提示未保存输入；不承诺浏览器刷新／崩溃恢复。
 

@@ -1,4 +1,4 @@
-/* Retain the upstream workspace below a small Harness status/Agent bar. */
+/* Retain the upstream workspace below a small Harness status bar. */
 body{padding-top:44px;box-sizing:border-box}
 #corilo-workspace-status{position:fixed;z-index:9999;top:0;left:0;right:0;min-height:44px;box-sizing:border-box;font:12px/1.5 system-ui;background:var(--col-bg-alt,#fafaf8);color:var(--col-tx,#222);border-bottom:1px solid var(--col-border,#8884);padding:5px 12px 5px 44px}
 #corilo-workspace-status>button{float:right}
@@ -13,3 +13,42 @@ body{padding-top:44px;box-sizing:border-box}
 
 #corilo-workspace-status>#corilo-files{display:none}
 @media(max-width:670px){#corilo-workspace-status>#corilo-files{display:inline-block;float:none;margin-left:0;margin-right:8px;vertical-align:middle}#corilo-status{vertical-align:middle}}
+
+/* Notes only: no capture page or capture entry in the tree. */
+#sidebar li:has(> .sidebar-chat),#sidebar .sidebar-chat,#chat-container,#close-chat,#fullscreen-chat{display:none!important}
+#corilo-empty{position:fixed;inset:44px 0 0 var(--corilo-empty-left,0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--col-tx-alt);font:14px/1.5 var(--font);pointer-events:none}
+#corilo-empty[hidden]{display:none}
+#corilo-empty p{margin:0}
+#corilo-empty button{pointer-events:auto;float:none!important;margin:0!important}
+
+/* Corilo palette: a quiet warm sidebar, a white page and one blue accent,
+   matching the task planner. Replaces the high-contrast "brutal" accents. */
+:root{
+  --corilo-accent:#345fe5;--corilo-accent-soft:#edf2ff;--corilo-hover:#efebe7;--corilo-selected:#e9e4df;
+  --color-neo-blue:var(--corilo-accent)!important;--color-neo-orange:#b5651d!important;--color-neo-lime:var(--corilo-accent-soft)!important;
+  --col-tx:#25282f!important;--col-tx-alt:#6b6f78!important;--col-bg:#ffffff!important;--col-bg-alt:#f6f3f0!important;
+  --col-bg-active:var(--corilo-selected)!important;--col-border:#e6e1dc!important;--col-url:#6b6f78!important;
+  --col-inline-code-bg:#f3f0ec!important;--col-marker:var(--corilo-accent)!important;
+}
+@media (prefers-color-scheme: dark){:root{
+  --corilo-accent:#adc2ff;--corilo-accent-soft:#2a3554;--corilo-hover:#26282e;--corilo-selected:#2e3037;
+  --color-neo-orange:#e0a56b!important;
+  --col-tx:#eceef3!important;--col-tx-alt:#a8afbd!important;--col-bg:#202227!important;--col-bg-alt:#1c1d21!important;
+  --col-border:#343842!important;--col-url:#a8afbd!important;--col-inline-code:#eceef3!important;--col-inline-code-bg:#2a2d34!important;
+}}
+#sidebar,.sidebar{background:var(--col-bg-alt)!important}
+.tree-container li span.tree-item{border-radius:7px!important;margin-inline-end:6px!important}
+.tree-container li span.tree-item:hover{background-color:var(--corilo-hover)!important;color:var(--col-tx)!important}
+.tree-container li span.tree-item:hover .tree-mod_icon svg{stroke:var(--col-tx-alt)!important}
+.tree-container span.tree-item.tree-leaf.selected,.tree-container span.tree-item.tree-leaf.selected:hover{background-color:var(--corilo-selected)!important;color:var(--col-tx)!important;font-weight:600}
+.tree-container span.tree-item.tree-leaf.selected .tree-mod_icon svg{stroke:var(--col-tx)!important}
+#toolbar button:hover svg{stroke:var(--corilo-accent)!important}
+.cm-s-hypermd-light span.cm-link,.cm-s-hypermd-light span.cm-string.cm-url.cm-hmd-barelink{color:var(--corilo-accent)!important;border-bottom:1px solid color-mix(in srgb,var(--corilo-accent) 35%,transparent)!important}
+.cm-s-hypermd-light pre.CodeMirror-activeline span.cm-link,.cm-s-hypermd-light pre.CodeMirror-activeline span.cm-string.cm-url.cm-hmd-barelink{background:var(--corilo-accent-soft)!important;color:var(--corilo-accent)!important}
+.cm-s-hypermd-light span.cm-link:hover,.cm-s-hypermd-light span.cm-string.cm-url.cm-hmd-barelink:hover{color:var(--corilo-accent)!important;border-bottom:1px solid var(--corilo-accent)!important}
+.cm-s-hypermd-light .cm-strong{font-weight:650}
+.cm-s-hypermd-light pre.HyperMD-quote-1:before{background:var(--col-border)!important;width:3px!important}
+.cm-s-hypermd-light pre.HyperMD-quote-1{background:transparent!important;color:var(--col-tx-alt)}
+#corilo-workspace-status{background:var(--col-bg)!important;border-bottom-color:var(--col-border)!important}
+#corilo-workspace-status button{border-color:var(--col-border)!important;border-radius:7px!important}
+#corilo-workspace-status button:hover{background:var(--corilo-hover)}

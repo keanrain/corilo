@@ -30,9 +30,13 @@ def run():
      frame=iframe.content_frame
      expect(frame.locator('#corilo-status')).to_have_text('已保存到主机',timeout=20000)
      actual=page.frames[-1]
-     # The workspace opens on the capture page, in the interface language.
-     assert actual.evaluate('isChat')
-     expect(frame.locator('#chat-input')).to_have_attribute('placeholder','想到什么，先记下来…')
+     # Notes only: the workspace opens a note; no capture page, capture entry or Agent button.
+     wait_open=time.monotonic()+15
+     while not actual.evaluate("typeof editor.path==='string'") and time.monotonic()<wait_open:time.sleep(.1)
+     assert actual.evaluate("!isChat&&editor.path.endsWith('.md')&&editor.path!==CHAT_PATH")
+     expect(frame.locator('#chat-container')).to_be_hidden()
+     expect(frame.locator('#sidebar .sidebar-chat')).to_be_hidden()
+     expect(frame.locator('#corilo-agent')).to_have_count(0)
      # Vendor images are served byte for byte, so the browser can decode them.
      assert actual.evaluate("async()=>(await createImageBitmap(await (await fetch('img/icon.png')).blob())).width")==512
      def wait(check,timeout=15):
@@ -87,7 +91,7 @@ def run():
      wait(lambda:actual.evaluate('Boolean(window.releaseSave)'))
      actual.evaluate("()=>{window.chatResult=null;openChat().then(()=>window.chatResult='opened',error=>window.chatResult=error.message);editor.replaceRange('，等待时的新输入',{line:editor.lastLine(),ch:editor.getLine(editor.lastLine()).length});window.releaseSave();}")
      wait(lambda:actual.evaluate('window.navigationResult!==null&&window.chatResult!==null'))
-     assert actual.evaluate("!isChat&&window.chatResult!=='opened'"), 'Joining an in-flight save must also preserve input'
+     assert actual.evaluate("!isChat"), 'A capture-page request must keep the open note'
      assert actual.evaluate("editor.path==='/未命名.md'&&!editor.isClean()&&editor.getValue().includes('等待时的新输入')"), 'Navigation discarded input typed during save'
      assert '等待时的新输入' not in (notes/'未命名.md').read_text()
      actual.evaluate('async()=>{await syncCurrentFile();}')
@@ -108,39 +112,10 @@ def run():
      frame.locator('#search-input').fill('Hello')
      expect(frame.locator('#search-results')).to_contain_text('Hello')
      frame.locator('#search-input').press('Escape')
-     # Native capture and journal paths execute without a model or Telegram.
-     actual.evaluate('async()=>{await openChat();}')
-     frame.locator('#chat-input').fill('保留原生收集流程');frame.locator('#send-chat').click()
-     wait(lambda:(notes/'Chat.md').exists() and '保留原生收集流程' in (notes/'Chat.md').read_text())
-     # A lost capture acknowledgement keeps the input and blocks duplicate sends.
-     def lose_capture(route):
-      args=route.request.post_data_json
-      if args.get('method')=='write' and args.get('path')=='Chat.md':
-       assert route.fetch().json()['ok'];route.abort();page.unroute('**/workspace/fs',lose_capture)
-      else:route.continue_()
-     page.route('**/workspace/fs',lose_capture)
-     frame.locator('#chat-input').fill('收集响应丢失，只能记录一次');frame.locator('#send-chat').click()
-     expect(frame.locator('#corilo-error')).to_contain_text('结果可能未知')
-     assert (notes/'Chat.md').read_text().count('收集响应丢失，只能记录一次')==1
-     frame.locator('#send-chat').click()
-     assert (notes/'Chat.md').read_text().count('收集响应丢失，只能记录一次')==1
-     frame.locator('#corilo-verify').click();expect(frame.locator('#chat-input')).to_have_value('')
-     frame.locator('#chat-input').fill('今天的日记 jj');frame.locator('#send-chat').click()
-     wait(lambda:any('今天的日记' in f.read_text() for f in (notes/'journal').glob('*.md')))
-     # Read failures in native journal helpers must never overwrite existing text.
-     journal=next((notes/'journal').glob('*.md'));before_journal=journal.read_text()
-     def fail_journal_read(route):
-      args=route.request.post_data_json
-      if args.get('method')=='read' and 'journal/' in args.get('path',''):
-       route.fulfill(json={'ok':False,'error':{'status':503,'message':'测试读取失败'}});page.unroute('**/workspace/fs',fail_journal_read)
-      else:route.continue_()
-     page.route('**/workspace/fs',fail_journal_read)
-     frame.locator('#chat-input').fill('读失败也不能覆盖日记 jj');frame.locator('#send-chat').click()
-     expect(frame.locator('#corilo-error')).to_contain_text('测试读取失败')
-     assert journal.read_text()==before_journal
-     expect(frame.locator('#chat-input')).to_have_value('读失败也不能覆盖日记 jj')
-     frame.locator('#send-chat').click();wait(lambda:'读失败也不能覆盖日记' in journal.read_text())
-     assert '今天的日记' in journal.read_text()
+     # Upstream capture triggers (idle timer, shortcuts) keep the open note.
+     assert actual.evaluate("async()=>{const before=editor.path;await openChat();return editor.path===before&&!isChat}")
+     frame.locator('body').press('Control+Enter')
+     assert actual.evaluate('!isChat')
      # Media bytes are preserved by the same host adapter.
      api('create',path='media',kind='directory');created=api('create',path='media/small.png',kind='file')
      image=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=')
@@ -151,10 +126,10 @@ def run():
      actual.evaluate("()=>editor.replaceRange('，继续编辑',{line:editor.lastLine(),ch:editor.getLine(editor.lastLine()).length})")
      wait(lambda:(notes/'Cafe\u0301.md').read_text()=='保留原始文件名，继续编辑')
      assert not (notes/'Café.md').exists()
-     # Navigating to Harness Agent preserves the iframe and its editor session.
+     # Navigating to another Harness panel preserves the iframe and its editor session.
      actual.evaluate("async()=>{await coriloReload();await openFile('/Hello.md');}")
      actual.evaluate("()=>{window.frameProof='retained';}")
-     frame.locator('#corilo-agent').click();expect(iframe).not_to_be_visible()
+     page.get_by_role('button',name='插件',exact=True).click();expect(iframe).not_to_be_visible()
      page.get_by_role('button',name='笔记',exact=True).click();expect(iframe).to_be_visible()
      assert actual.evaluate('window.frameProof')=='retained'
      # Stale writes preserve both editor text and external disk content.
@@ -214,6 +189,6 @@ def run():
      assert errors==[],errors
      assert external==[],external
      browser.close()
-    print('Files.md in real Harness passed: native menus/new/edit/rename/split/task Markdown/capture/journal/media, authenticated shared storage, retained Agent navigation, stale/unknown saves, desktop/mobile; no model or external services.')
+    print('Files.md in real Harness passed: native menus/new/edit/rename/split/task Markdown/media, notes-only (no capture page or Agent button), authenticated shared storage, retained panel navigation, stale/unknown saves, desktop/mobile; no model or external services.')
    finally:host.terminate();host.wait(timeout=20)
 if __name__=='__main__':run()

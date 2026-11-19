@@ -4,10 +4,10 @@
 
 Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts.
 
-**Version 0.8.0** · [Quick start](QUICKSTART.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
+**Version 0.9.0** · [Quick start](QUICKSTART.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
 
 One plugin supplies the Files.md workspace inside Harness: files, Markdown notes,
-checklists, capture, journals, split editing and media. The complete pinned upstream
+checklists, journals, split editing and media, for reading and editing notes only. The complete pinned upstream
 web tree and menus are retained. Harness supplies authentication, native Agent
 conversations, model configuration and permissions. No Go sync server, Pi loop,
 Telegram service or separate model UI is started.
@@ -27,7 +27,7 @@ For a received tarball, in a new installation directory:
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.8.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.9.0.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
@@ -43,18 +43,18 @@ can use `notes.patch.example.yml`, with absolute entry and root paths.
 The native Files.md interface runs in a persistent iframe document. File access
 uses authenticated Harness routes and the host disk as the sole authority; no
 browser directory grant, local mirror or external sync is required. Native menus,
-new files/folders, search, title rename, move/archive, links, split panes, capture,
-journals and checklists remain. The host status/Agent bar reserves space above the
-workspace. External embedded media are not fetched automatically; local media
+new files/folders, search, title rename, move/archive, links, split panes,
+journals and checklists remain; there is no capture page and no Agent button. The
+host save-status bar reserves space above the workspace. External embedded media are not fetched automatically; local media
 remain available. The folder chooser explains that the directory is configured on
 the host. External bot/API actions explain that those services are not connected.
 
-`Chat.md` is deterministic capture, `Later.md` is a Markdown checklist, `journal/`
+An existing `Chat.md` stays on disk untouched but is not shown; `Later.md` is a Markdown checklist, `journal/`
 contains journals and `media/` holds attachments. These are separate from Harness
-model conversations. The Agent button flushes pending edits and selects the native
-conversation; returning retains the same iframe and editing session. Agent tools
+model conversations. Pending edits are flushed before switching to another host panel;
+returning retains the same iframe and editing session. Agent tools
 read and version-save the same files and share the same queue as the workspace.
-No model is invoked by direct editing, capture, journals or checkbox operations.
+No model is invoked by direct editing, journals or checkbox operations.
 
 Writes check the version actually read; stale writes fail and retain input.
 Unknown writes stop further writes to that file until a read verifies the result.
