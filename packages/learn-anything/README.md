@@ -27,14 +27,14 @@ npm run pack:learn-anything
 将生成的 `.tgz` 安装到已有 Web profile（把 `web` 换成你实际使用的 profile 名称）：
 
 ```sh
-dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.0.tgz
+dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.1.tgz
 ```
 
 重启该 DSH 实例，在已有工作区中新建会话并选择「学习导师」预设。学习记录保存在会话工作区的 `.learn/` 中。
 
 插件只添加教学预设、工具与界面，不创建专用 profile，不自动切换工作区，不改变宿主默认预设、会话日志或插件清单设置。宿主启动、模型配置与插件更新均使用 DSH 原有流程。
 
-`market/index.json` 保留为后续 npm 发布后的市场索引；其安装目标是 npm 包，尚未发布时使用上述本地 `.tgz`。发布时同步索引的 `version` / `publishTimestamp`。`PROMPT.md` 与 `research/` 中的独立启动方案仅为历史设计。
+DSH 插件市场索引见 `market/index.json`。GitHub 预发布提供上面的 `.tgz` 安装包。
 
 ## 互动题
 

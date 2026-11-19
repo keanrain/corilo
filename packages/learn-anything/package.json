@@ -1,6 +1,6 @@
 {
   "name": "@corilo/learn-anything",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Personal learning tutor for DeepSeek Harness, built on the 渐构 (incremental construction) learning method",
   "type": "module",
   "icon": "./icon.svg",

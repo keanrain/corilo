@@ -27,14 +27,14 @@ npm run pack:learn-anything
 Install the resulting `.tgz` into an existing Web profile, replacing `web` with the profile you actually use:
 
 ```sh
-dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.0.tgz
+dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.1.tgz
 ```
 
 Restart that DSH instance, create a session in an existing workspace, and select the Learning Tutor (学习导师) preset. Learning records live in `.learn/` under the session workspace.
 
 The plugin adds teaching presets, tools, and UI only. It does not create a dedicated profile, switch workspaces automatically, or change the host's default preset, session-log, or plugin-inventory settings. Use normal DSH startup, model configuration, and plugin-update workflows.
 
-`market/index.json` is retained for market distribution after a future npm publication. Its target is an npm package, so use the local `.tgz` above until published. Synchronize `version` / `publishTimestamp` when publishing. Standalone-launcher plans in `PROMPT.md` and `research/` are historical only.
+The DSH plugin market index is in `market/index.json`. GitHub prereleases provide the `.tgz` archive used above. Standalone-launcher plans in `PROMPT.md` and `research/` are historical only.
 
 ## Interactive exercises
 
