@@ -219,3 +219,25 @@ test("completing cancels pending linked reminders and restoring regenerates futu
     1,
   );
 });
+
+test("task summary counts open tasks per smart view and per named list", async (t) => {
+  const { store } = await fixture(t);
+  const now = "2026-11-18T04:00:00Z";
+  await create(store, { title: "今天的事", plannedDate: "2026-11-18", list: "工作" });
+  await create(store, { title: "明天的事", plannedDate: "2026-11-19", list: "工作" });
+  await create(store, { title: "随手记下" });
+  await create(store, { title: "康复训练", list: "康复" });
+  const done = await create(store, { title: "做完了", list: "康复" });
+  await update(store, done, { status: "done" });
+  const summary = await store.taskSummary({ timeZone: "Asia/Shanghai", now });
+  assert.deepEqual(summary.views, { inbox: 1, today: 1, future: 1, all: 4 });
+  assert.deepEqual(summary.lists, [
+    { name: "工作", count: 2 },
+    { name: "康复", count: 1 },
+  ]);
+  for (const view of ["inbox", "today", "future", "all"])
+    assert.equal(
+      (await store.tasks({ view, timeZone: "Asia/Shanghai", now })).total,
+      summary.views[view],
+    );
+});

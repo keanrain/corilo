@@ -14,8 +14,30 @@ from i18n_browser import switch_language
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
+def nav(panel, name):
+    # Narrow layouts keep the views in a drawer behind the heading toggle.
+    button = panel.get_by_role('button', name=name, exact=True)
+    if panel.locator('.planner-drawer-toggle').is_visible():
+        panel.locator('.planner-drawer-toggle').click()
+    button.click()
+    expect(panel.locator('.planner-sidebar.is-open')).to_have_count(0)
+
+
+def side(panel, name):
+    # Sidebar actions that keep the drawer open (refresh, export).
+    button = panel.get_by_role('button', name=name, exact=True)
+    opened = panel.locator('.planner-drawer-toggle').is_visible()
+    if opened:
+        panel.locator('.planner-drawer-toggle').click()
+    button.click()
+    if opened:
+        box = panel.locator('.planner-scrim').bounding_box()
+        panel.locator('.planner-scrim').click(position={'x': box['width'] - 8, 'y': box['height'] / 2})
+        expect(panel.locator('.planner-sidebar.is-open')).to_have_count(0)
+
+
 def exercise_interactions(page, panel, dialogs):
-    panel.get_by_role('button', name='今天', exact=True).click()
+    nav(panel, '今天')
     title = '把方案发给同事'
     check = panel.get_by_role('checkbox', name='完成：' + title, exact=True)
     expect(check).to_be_enabled()
@@ -26,10 +48,10 @@ def exercise_interactions(page, panel, dialogs):
     assert len(writes) == 1, 'Rapid completion must submit only once'
     expect(panel.get_by_role('button', name=title, exact=True)).to_have_count(0)
     def reopen():
-        panel.get_by_role('button', name='已完成', exact=True).click()
+        nav(panel, '已完成')
         panel.get_by_role('checkbox', name='恢复：' + title, exact=True).click()
         expect(panel.get_by_role('status')).to_contain_text('任务已恢复')
-        panel.get_by_role('button', name='今天', exact=True).click()
+        nav(panel, '今天')
         expect(check).to_be_enabled()
     reopen()
     def lose(route):
@@ -135,7 +157,7 @@ def main():
                                   await send('calendar/create',{requestId:crypto.randomUUID(),value:{title:'留一段时间阅读',body:'合成日程',allDay:true,start:day,end:tomorrow,timeZone:'UTC'}},identity.id);
                                 }''')
                                 seeded = True
-                            panel.get_by_role('button', name='刷新', exact=True).click()
+                            side(panel, '刷新')
                             expect(panel.get_by_role('button', name='准备阅读新的一章', exact=True)).to_be_visible()
                             assert panel.evaluate('(el)=>el.scrollWidth<=el.clientWidth+1'), 'Planner overflows its host frame'
                             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'), 'Document overflows horizontally'
@@ -191,13 +213,13 @@ def main():
                             form.get_by_role('button', name='关闭详情', exact=True).click()
                             expect(form).to_have_count(0)
                             assert len(dialogs) == count, 'Clean details should close without confirmation'
-                            panel.get_by_role('button', name='日历', exact=True).click()
+                            nav(panel, '日历')
                             expect(panel.locator('.fc')).to_be_visible()
                             expect(panel.get_by_role('button', name='准备阅读新的一章 · 安排', exact=True)).to_be_visible()
                             assert panel.evaluate('(el)=>el.scrollWidth<=el.clientWidth+1'), 'Calendar overflows'
                             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
                             page.screenshot(path=str(artifacts / f'planner-{scheme}-{layout}-calendar.png'), animations='disabled')
-                            panel.get_by_role('button', name='提醒', exact=True).click()
+                            nav(panel, '提醒')
                             expect(panel.get_by_role('heading', name='还没有提醒', exact=True)).to_be_visible()
                             expect(panel.get_by_role('button', name='允许网页通知', exact=True)).to_be_visible()
                             if scheme == 'dark' and width < 700:
@@ -217,7 +239,7 @@ def main():
                                 expect(form.get_by_role('button', name='Save', exact=True)).to_be_enabled()
                                 page.keyboard.press('Escape')
                                 expect(form).to_have_count(0)
-                                panel.get_by_role('button', name='All', exact=True).click()
+                                nav(panel, 'All')
                                 expect(panel.get_by_role('button', name=long_title, exact=True)).to_be_visible()
                                 assert panel.evaluate('(el)=>el.scrollWidth<=el.clientWidth+1')
                                 assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')

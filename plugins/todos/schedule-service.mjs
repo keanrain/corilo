@@ -1,6 +1,7 @@
 import {
   installQueryFunctions,
   queryTasks,
+  queryTaskSummary,
   queryCalendar,
 } from "./schedule-queries.mjs";
 import { randomUUID, createHash } from "node:crypto";
@@ -233,6 +234,10 @@ export class ScheduleService extends TodoStore {
   async tasks(args = {}) {
     await this.check();
     return queryTasks(this, args);
+  }
+  async taskSummary(args) {
+    await this.check();
+    return queryTaskSummary(this, args);
   }
   async calendar(args) {
     await this.check();

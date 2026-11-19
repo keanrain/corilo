@@ -15,8 +15,12 @@
   --planner-focus: light-dark(#345fe5, #adc2ff);
   --planner-danger: light-dark(#b83a35, #ffb0a8);
   --planner-danger-bg: light-dark(#fff1ef, #422b2b);
+  --planner-side-bg: light-dark(#f6f3f0, #1c1d21);
+  --planner-side-active: light-dark(#e9e4df, #2e3037);
+  --planner-side-hover: light-dark(#efebe7, #26282e);
   container-type: inline-size;
-  display: grid; grid-template-rows: auto auto minmax(0, 1fr);
+  position: relative;
+  display: grid; grid-template-rows: minmax(0, 1fr);
   width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden;
   background: var(--planner-surface); color: var(--planner-text); color-scheme: inherit;
   font: inherit; font-size: 14px; line-height: 1.5;
@@ -37,17 +41,12 @@
 .corilo-planner h1, .corilo-planner h2, .corilo-planner h3, .corilo-planner p { margin: 0; }
 .corilo-planner .planner-primary, .planner-editor button[type="submit"] { border-color: transparent; color: var(--planner-button-text); background: var(--planner-button-bg); font-weight: 500; }
 .corilo-planner .planner-primary:hover:not(:disabled), .planner-editor button[type="submit"]:hover:not(:disabled) { background: color-mix(in srgb, var(--planner-button-bg) 90%, var(--planner-text)); }
-.planner-shell { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-width: 0; padding: 12px 28px; border-bottom: 1px solid var(--planner-border); }
-.planner-brand { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+.planner-brand { display: flex; align-items: center; gap: 8px; padding: 2px 6px 12px 10px; font-size: 13px; font-weight: 600; }
+.planner-brand-actions { display: flex; margin-inline-start: auto; }
 .planner-brand svg { color: var(--planner-accent); }
-.planner-shell-actions { display: flex; align-items: center; gap: 5px; }
 .corilo-planner .planner-icon-button { width: 36px; min-width: 36px; padding: 7px; border-color: transparent; color: var(--planner-muted); background: transparent; }
 .corilo-planner .planner-add { padding-inline: 12px; font-size: 12px; margin-inline-start: 8px; }
-.planner-navigation { display: flex; align-items: center; gap: 5px; padding: 9px 28px; border-bottom: 1px solid var(--planner-border); overflow-x: auto; scrollbar-width: thin; min-width: 0; }
-.corilo-planner .planner-navigation button { flex-shrink: 0; border-color: transparent; color: var(--planner-muted); background: transparent; padding: 7px 11px; font-size: 12px; }
-.corilo-planner .planner-navigation button[aria-pressed="true"] { color: var(--planner-accent); background: var(--planner-accent-bg); font-weight: 600; }
-.planner-navigation button:nth-child(7) { margin-inline-start: auto; }
-.planner-body { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; min-height: 0; }
+.planner-body { grid-column: 2; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; min-height: 0; }
 .planner-main { overflow: auto; min-width: 0; min-height: 0; padding: 32px 40px 48px; scrollbar-gutter: stable; }
 .planner-content { max-width: 880px; margin-inline: auto; }
 .planner-content.is-calendar { max-width: 1300px; }
@@ -97,8 +96,6 @@
 .corilo-planner .planner-schedule-button { flex-shrink: 0; width: 44px; min-height: 44px; padding: 8px; border: 0; color: var(--planner-muted); opacity: 0; }
 .planner-schedule-button span { display: none; }
 .planner-task-rows > li:hover .planner-schedule-button, .planner-task-rows > li:focus-within .planner-schedule-button { opacity: 1; }
-.corilo-planner .planner-inline-add { color: var(--planner-muted); background: transparent; justify-content: flex-start; border: 0; padding: 11px 14px; margin-top: 8px; font-size: 13px; }
-.planner-inline-add svg { color: var(--planner-accent); }
 .corilo-planner .planner-load-more { display: flex; margin: 20px auto; font-size: 12px; }
 .planner-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 55px 16px; color: var(--planner-muted); }
 .corilo-planner .planner-empty h2 { font-size: 15px; color: var(--planner-text); font-weight: 500; }
@@ -166,9 +163,6 @@
   .planner-main { padding-inline: 24px; }
 }
 @container (max-width: 600px) {
-  .planner-shell { padding: max(8px, var(--dsh-frame-top-clearance, 0px)) 16px 8px; padding-inline-start: max(16px, var(--dsh-frame-leading-clearance, 0px)); }
-  .planner-brand { font-size: 12px; }.planner-shell-actions { gap: 0; }.corilo-planner .planner-add { margin-inline-start: 3px; font-size: 12px; }
-  .planner-navigation { padding: 7px 12px; }.corilo-planner .planner-navigation button { padding-inline: 10px; min-height: 40px; }.planner-navigation button:nth-child(7) { margin-inline-start: 8px; }
   .planner-main { padding: 24px 18px 36px; }.planner-heading { align-items: flex-start; flex-wrap: wrap; gap: 14px; margin-bottom: 20px; }.corilo-planner h1 { font-size: 24px; }
   .planner-toolbar { justify-content: flex-start; gap: 4px; }.planner-heading-meta { font-size: 11px; }
   .corilo-planner input, .corilo-planner select, .corilo-planner textarea, .corilo-planner label input, .corilo-planner label select, .corilo-planner label textarea, .corilo-planner .planner-search input { font-size: 16px; }
@@ -217,16 +211,46 @@
 .planner-agenda-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .planner-agenda-meta { display: inline-flex; align-items: center; gap: 4px; color: var(--planner-muted); font-size: 12px; }
 @container (max-width: 600px) {
-  /* Narrow screens: one compact heading row, daily views first in the tab strip. */
   .planner-heading { flex-wrap: nowrap; align-items: center; }
-  .planner-event-add span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .planner-navigation button[data-view="today"] { order: 0; }
-  .planner-navigation button[data-view="calendar"] { order: 1; margin-inline-start: 0 !important; }
-  .planner-navigation button[data-view="inbox"] { order: 2; }
-  .planner-navigation button[data-view="future"] { order: 3; }
-  .planner-navigation button[data-view="all"] { order: 4; }
-  .planner-navigation button[data-view="reminders"] { order: 5; }
-  .planner-navigation button[data-view="done"] { order: 6; }
-  .planner-navigation button[data-view="cancelled"] { order: 7; }
+  .planner-event-add span, .planner-add span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .planner-agenda-time { flex-basis: 84px; }
+}
+
+/* Sidebar: views, calendar, lists and closed views in one quiet column. */
+.planner-layout { display: grid; grid-template-columns: 236px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); min-width: 0; min-height: 0; }
+.planner-sidebar { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; min-height: 0; overflow: auto; padding: max(14px, var(--dsh-frame-top-clearance, 0px)) 10px 12px; background: var(--planner-side-bg); border-inline-end: 1px solid var(--planner-border); }
+.planner-side-nav { display: flex; flex-direction: column; flex: 1; }
+.planner-side-group { display: flex; flex-direction: column; gap: 1px; padding-block: 6px; }
+.planner-side-group + .planner-side-group { border-top: 1px solid var(--planner-border); }
+.planner-side-closed { margin-top: auto; }
+.corilo-planner .planner-side-heading { padding: 8px 10px 4px; font-size: 11px; font-weight: 500; color: var(--planner-muted); letter-spacing: .02em; }
+.corilo-planner .planner-side-nav button { justify-content: flex-start; gap: 10px; width: 100%; min-height: 38px; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--planner-text); font-size: 13.5px; text-align: start; }
+.corilo-planner .planner-side-nav button svg { flex-shrink: 0; color: var(--planner-muted); }
+.corilo-planner .planner-side-nav button:hover:not(:disabled) { background: var(--planner-side-hover); }
+.corilo-planner .planner-side-nav button[aria-pressed="true"] { background: var(--planner-side-active); font-weight: 600; }
+.corilo-planner .planner-side-nav button[aria-pressed="true"] svg { color: var(--planner-text); }
+.planner-side-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planner-side-count { color: var(--planner-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.planner-side-footer { padding-top: 8px; border-top: 1px solid var(--planner-border); }
+.planner-side-footer .planner-timezone summary { justify-content: flex-start; }
+.planner-side-footer .planner-timezone summary span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planner-side-footer .planner-timezone-fields { top: auto; bottom: calc(100% + 6px); inset-inline-start: 0; inset-inline-end: auto; }
+.corilo-planner .planner-drawer-toggle { display: none; }
+.planner-heading-title { flex: 1; min-width: 0; }
+.planner-heading-title h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planner-quick-add { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding: 3px 4px 3px 14px; border: 1px solid transparent; border-radius: 10px; background: var(--planner-subtle); color: var(--planner-muted); }
+.planner-quick-add:focus-within { border-color: var(--planner-accent); background: var(--planner-surface); }
+.planner-quick-add svg { flex-shrink: 0; color: var(--planner-accent); }
+.corilo-planner .planner-quick-add input { flex: 1; min-height: 40px; padding: 0; border: 0; background: transparent; font-size: 14px; }
+.corilo-planner .planner-quick-add input:focus-visible { outline: 0; }
+.corilo-planner .planner-quick-more { flex-shrink: 0; border: 0; background: transparent; color: var(--planner-muted); font-size: 12px; }
+.planner-scrim { display: none; }
+@container (max-width: 760px) {
+  .planner-layout { grid-template-columns: minmax(0, 1fr); }
+  .planner-body { grid-column: 1; }
+  .planner-sidebar { position: absolute; z-index: 95; inset-block: 0; inset-inline-start: 0; width: min(272px, 86cqw); transform: translateX(-102%); visibility: hidden; transition: transform 160ms ease, visibility 0s linear 160ms; box-shadow: none; }
+  .planner-sidebar.is-open { transform: none; visibility: visible; transition: transform 160ms ease; box-shadow: 16px 0 48px #0000002a; }
+  .corilo-planner .planner-scrim { display: block; position: absolute; z-index: 94; inset: 0; min-height: 0; padding: 0; border: 0; border-radius: 0; background: #0000002e; }
+  .corilo-planner .planner-drawer-toggle { display: inline-flex; flex-shrink: 0; margin-inline-start: -8px; }
+  .planner-heading { align-items: center; }
 }

@@ -1,15 +1,24 @@
 import { uiText, useTodosLocale } from './i18n.mjs';
-import React from 'react';
+import React, { useState } from 'react';
 import { CalendarDays, CalendarPlus, Check, CheckCheck, Flag, Plus, Search, SlidersHorizontal, Tag, Undo2, X } from 'lucide-react';
 import { options, priorities } from './planner-fields.jsx';
 import { plannerDateLabel } from './planner-present.mjs';
 import { usePlannerPopover } from './use-planner-popover.mjs';
 import { PlannerAgenda } from './planner-agenda.jsx';
 
-export function PlannerTaskList({ s, set, open, refresh, toggleTask }) {
+export function PlannerTaskList({ s, set, open, refresh, toggleTask, quickAdd }) {
   const language = useTodosLocale();
+  const [draft, setDraft] = useState('');
+  const adding = !['done', 'cancelled'].includes(s.view);
+  async function add(e) {
+    e.preventDefault();
+    if (e.nativeEvent?.isComposing) return;
+    if (await quickAdd(draft)) setDraft('');
+  }
   const filters = usePlannerPopover();
-  const filtered = Boolean(s.query || s.list || s.priority);
+  // A list picked in the sidebar is a place, not a filter: no filter badge or summary for it.
+  const listView = s.view === 'all' && Boolean(s.list);
+  const filtered = Boolean(s.query || s.priority || (s.list && !listView));
   const groups = new Map();
   for (const task of s.items) {
     const group = s.view === 'today' ? task.classification.group : s.view === 'future' ? task.classification.future : '';
@@ -17,6 +26,13 @@ export function PlannerTaskList({ s, set, open, refresh, toggleTask }) {
     groups.get(group).push(task);
   }
   return <>
+    {adding && <form className="planner-quick-add" onSubmit={add}>
+      <Plus size={17} aria-hidden="true" />
+      <input aria-label={uiText('快速添加任务')} placeholder={uiText('添加任务，回车保存')} value={draft} maxLength={500} disabled={!s.confirmed}
+        onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') setDraft(''); }} />
+      <button type="button" className="planner-quick-more" disabled={s.busy || Boolean(s.pending)} title={uiText('打开详情填写更多')}
+        onClick={() => { if (open('task', null, draft.trim() ? { title: draft.trim() } : {})) setDraft(''); }}>{uiText('添加任务')}</button>
+    </form>}
     <div className="planner-filters">
       <label className="planner-search"><Search size={17} aria-hidden="true" /><span className="planner-sr-only">{uiText('搜索')}</span><input placeholder={uiText('搜索任务')} value={s.query} onChange={(e) => set({ query: e.target.value })} /></label>
       <details ref={filters} className="planner-filter-options">
@@ -53,7 +69,6 @@ export function PlannerTaskList({ s, set, open, refresh, toggleTask }) {
         </li>)}
       </ul>
     </section>)}
-    {!['done', 'cancelled'].includes(s.view) && <button className="planner-inline-add" disabled={s.busy || Boolean(s.pending)} onClick={() => open('task')}><Plus size={17} aria-hidden="true" />{uiText('添加任务')}</button>}
     {s.cursor && <button className="planner-load-more" onClick={() => refresh(true)}>{uiText('加载更多任务')}</button>}
   </>;
 }
