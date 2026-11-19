@@ -31,7 +31,7 @@ test('overview shows goal, progress, current point, step, what is left and due r
 
 test('overview is localised (en) with the agreed step names', () => {
   const out = inEnglish(() => html({ ...base, current }))
-  for (const text of ['理解闭包', '1 of 4 knowledge points mastered · 25%', 'Try new situations', 'Step 5 of 5', 'Still needed for Proficient: 2 more correct in a row (no hints, no guesses), a counterexample discrimination question, a rephrased question', '2 reviews due today', 'Start review', '🔥 3 days']) {
+  for (const text of ['理解闭包', '1 of 4 knowledge points mastered · 25%', 'Try new situations', 'Step 5 of 5', 'Still needed for Proficient: 2 more correct in a row (no hints, no guesses), a spot-the-counterexample question, a reworded question', '2 reviews due today', 'Start review', '🔥 3 days']) {
     assert.ok(out.includes(text), text)
   }
   const names = ['describe', 'assess', 'prescribe', 'build', 'verify', 'memorize', 'mastered']

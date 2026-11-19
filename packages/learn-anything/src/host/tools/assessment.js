@@ -30,9 +30,12 @@ export const FINDING_TYPES = [
 
 export const verificationRecord = {
   name: 'verification_record',
+  // A write tool, but every call is serialized by withWorkspaceWrite; scheduling it in the same pool as the read-only
+  // examiner lets the tutor generate the next question while the answer is graded.
+  concurrencySafe: true,
   description:
     'Step ⑤ 验证模型. The host finds the real learner answer to the displayed question and invokes an independent examiner before recording. Tutor-supplied answers, verdicts, difficulty and confidence are not trusted. This recomputes mastery, schedules spaced review once the model passes the gate, ' +
-    'adds the question to the model\'s examples (例习循环), and moves the model to `mastered` when the gate is met, back to `assess` after a wrong answer, ' +
+    'adds the question to the model\'s examples (例习循环), and moves the model to `mastered` when the gate is met, back to `assess` after a wrong answer outside a verify run, a repeated attribution in two consecutive wrong answers, or a wrong answer with confidence `sure` (the first other wrong answer in a verify run stays in `verify`), ' +
     'and keeps a model already in `verify` there after a correct or partial answer so practice flows straight on (from any other phase it goes to `assess`). Returns the next question\'s difficulty and type (adaptive, keeps the learner in the flow channel). ' +
     'For an information point omit modelId, use questionType "recall", and provide factId when it has more than one fact.',
   parameters: {
@@ -107,7 +110,13 @@ export const verificationRecord = {
     const passed = meetsGate(level)
     // In a practice run only a wrong answer sends the model back to diagnosis; a correct or partial one keeps it going.
     // Answers from elsewhere (a review of a mastered model, a quick check while building) keep the old route to assess.
-    const practising = model?.phase === 'verify' && record.verdict !== 'wrong'
+    // The first wrong answer of a run stays in verify too (gentle path); it goes to diagnosis only on a repeated attribution
+    // in two consecutive wrong answers for this model, or a wrong answer given with confidence `sure` (confident misconception).
+    const prior = model ? verifications.filter((v) => v.kpId === kp.id && v.modelId === model.id && v.id !== record.id).at(-1) : null
+    const repeated = record.verdict === 'wrong' && Boolean(record.attribution) && prior?.verdict === 'wrong' && prior.attribution === record.attribution
+    const confident = record.verdict === 'wrong' && record.confidence === 'sure'
+    const gentle = model?.phase === 'verify' && record.verdict === 'wrong' && !repeated && !confident
+    const practising = model?.phase === 'verify' && (record.verdict !== 'wrong' || gentle)
     if (model) model.phase = passed ? 'mastered' : practising ? 'verify' : 'assess'
     else kp.phase = passed ? 'mastered' : 'memorize'
     await saveKp(env, kp)
@@ -138,8 +147,9 @@ export const verificationRecord = {
     if (passed) lines.push(kp.phase === 'mastered' ? '该知识点已达标，可以进入下一个知识点。' : '该模型已达标，继续本知识点的下一个模型。')
     if (flow && !passed) {
       lines.push(`下一题：难度 ${flow.next} 级（${DIFFICULTY[flow.next]}；${flow.reason}），题型建议 ${flow.nextType}。${progressText(flow.progress)}`)
-      if (!practising) lines.push(`回到评估学况：${PHASE_GUIDE.assess} 诊断后用一道 ${flow.next} 级的题重新验证（这已经是调整后的难度，不要再降）。`)
-      else lines.push('留在验证阶段；若有缺前置或同一缺口反复出现的证据，先按 diagnose 重新检查任务。适合继续时，一两句话点评后，同一轮请考官按建议出下一题并 quiz_show。')
+      if (gentle) lines.push('这是本轮练习的第一次答错，留在验证阶段：先肯定答对的部分，只用一个反例或更小的追问让用户自己发现缺口，然后按上面已降低的难度继续出下一题；不必重新诊断。若下次又因同一归因答错，或用户「稳」却答错，会转入评估学况。')
+      else if (!practising) lines.push(`${repeated ? '同一归因连续答错' : confident ? '「稳」却答错（自信的误解）' : ''}${repeated || confident ? '，' : ''}回到评估学况：${PHASE_GUIDE.assess} 诊断后用一道 ${flow.next} 级的题重新验证（这已经是调整后的难度，不要再降）。`)
+      else if (practising) lines.push('留在验证阶段；若有缺前置或同一缺口反复出现的证据，先按 diagnose 重新检查任务。适合继续时，一两句话点评后，同一轮用预出的题（难度与上面一致）或请考官按建议出下一题，再 quiz_show。')
     }
     // The learner's feedback card (verdict, calibration, flow channel, what is left); the examiner's feedback stays with the tutor.
     const view = feedbackView({

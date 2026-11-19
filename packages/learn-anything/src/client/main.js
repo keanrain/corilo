@@ -7,6 +7,7 @@ import { QuizCard, QUIZ_CSS } from './quiz.js'
 import { FlashcardCard, FLASHCARD_CSS } from './flashcard.js'
 import { partialJson } from './stream.js'
 import { registerAnswerCards } from './answer.js'
+import { withFeedbackCard } from './feedback-row.js'
 import { Icon } from './icons.js'
 import { CARD_CSS, PRESENTATION_CSS, NOTE_EDITOR_CSS } from './styles.js'
 import { Sources } from './sources.js'
@@ -580,7 +581,7 @@ function apply(ctx) {
     ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
       name: 'tool.call.toolview',
       key: toolName,
-    }, makeRow(toolName)))
+    }, toolName === 'verification_record' ? withFeedbackCard(makeRow(toolName), { parseView, resultText, card: (view) => h(CARDS[view.view], { view }) }) : makeRow(toolName)))
   }
 }
 
