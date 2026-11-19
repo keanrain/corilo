@@ -59,7 +59,11 @@ export function usePlannerEditor({ get, set, call, refresh }) {
     if (p.operation === "task-status") {
       set({ ...settled, notice: value.status === "done" ? "任务已完成" : "任务已恢复" });
     } else if (p.operation === "task-quick") {
-      set({ ...settled, notice: "已添加" });
+      set((current) => ({
+        ...settled,
+        quickDraft: current.quickDraft === p.snapshot ? "" : current.quickDraft,
+        notice: "已添加",
+      }));
     } else if (e) {
       const changed = JSON.stringify(e.value) !== JSON.stringify(p.snapshot);
       set({
@@ -96,18 +100,21 @@ export function usePlannerEditor({ get, set, call, refresh }) {
   }
   // Inline add: a title and Enter creates the task in the current view, with
   // the same receipt handling as any other write.
-  async function quickAdd(title) {
-    const { busy, pending, zone, view, list } = get();
-    const text = title.trim();
-    if (!text || busy || pending) return false;
+  async function quickAdd() {
+    const { busy, pending, zone, view, list, quickDraft } = get();
+    const text = quickDraft.trim();
+    if (!text || busy || pending) return;
     const value = {
       title: text, body: "", status: "open", plannedDate: null, due: null,
       priority: "normal", list: "", reminderAt: null,
       ...newTaskDefaults({ view, list, zone }),
     };
-    await submit({ operation: "task-quick", method: "tasks/create", args: { requestId: uuid(), value } });
-    const after = get();
-    return !after.pending && !after.error;
+    await submit({
+      operation: "task-quick",
+      method: "tasks/create",
+      args: { requestId: uuid(), value },
+      snapshot: quickDraft,
+    });
   }
   async function toggleTask(item) {
     const current = get();

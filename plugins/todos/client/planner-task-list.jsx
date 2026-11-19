@@ -1,5 +1,5 @@
 import { uiText, useTodosLocale } from './i18n.mjs';
-import React, { useState } from 'react';
+import React from 'react';
 import { CalendarDays, CalendarPlus, Check, CheckCheck, Flag, Plus, Search, SlidersHorizontal, Tag, Undo2, X } from 'lucide-react';
 import { options, priorities } from './planner-fields.jsx';
 import { plannerDateLabel } from './planner-present.mjs';
@@ -8,12 +8,12 @@ import { PlannerAgenda } from './planner-agenda.jsx';
 
 export function PlannerTaskList({ s, set, open, refresh, toggleTask, quickAdd }) {
   const language = useTodosLocale();
-  const [draft, setDraft] = useState('');
+  const draft = s.quickDraft;
   const adding = !['done', 'cancelled'].includes(s.view);
-  async function add(e) {
+  function add(e) {
     e.preventDefault();
     if (e.nativeEvent?.isComposing) return;
-    if (await quickAdd(draft)) setDraft('');
+    void quickAdd();
   }
   const filters = usePlannerPopover();
   // A list picked in the sidebar is a place, not a filter: no filter badge or summary for it.
@@ -28,10 +28,10 @@ export function PlannerTaskList({ s, set, open, refresh, toggleTask, quickAdd })
   return <>
     {adding && <form className="planner-quick-add" onSubmit={add}>
       <Plus size={17} aria-hidden="true" />
-      <input aria-label={uiText('快速添加任务')} placeholder={uiText('添加任务，回车保存')} value={draft} maxLength={500} disabled={!s.confirmed}
-        onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') setDraft(''); }} />
+      <input aria-label={uiText('快速添加任务')} placeholder={uiText('添加任务，回车保存')} value={draft} maxLength={200} disabled={!s.confirmed}
+        onChange={(e) => set({ quickDraft: e.target.value })} onKeyDown={(e) => { if (e.key === 'Escape' && !e.nativeEvent.isComposing) set({ quickDraft: '' }); }} />
       <button type="button" className="planner-quick-more" disabled={s.busy || Boolean(s.pending)} title={uiText('打开详情填写更多')}
-        onClick={() => { if (open('task', null, draft.trim() ? { title: draft.trim() } : {})) setDraft(''); }}>{uiText('添加任务')}</button>
+        onClick={() => { if (open('task', null, draft.trim() ? { title: draft.trim() } : {})) set({ quickDraft: '' }); }}>{uiText('添加任务')}</button>
     </form>}
     <div className="planner-filters">
       <label className="planner-search"><Search size={17} aria-hidden="true" /><span className="planner-sr-only">{uiText('搜索')}</span><input placeholder={uiText('搜索任务')} value={s.query} onChange={(e) => set({ query: e.target.value })} /></label>

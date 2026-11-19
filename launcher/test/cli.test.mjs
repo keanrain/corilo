@@ -135,7 +135,7 @@ for (const entry of [cli, legacyCli]) test(`${entry === cli ? 'canonical' : 'leg
   const notesIdentity = await call('notes', 'identity', {});
   assert.equal(notesIdentity.interface, 'filesmd');
   const todoIdentity = legacyDual ? await call('todos', 'identity', {}) : null;
-  const saved = await call('notes', 'capture', { text: '统一入口保存的虚构笔记' }, notesIdentity.id);
+  const saved = await call('notes', 'create', { text: '统一入口保存的虚构笔记' }, notesIdentity.id);
   assert.equal((await call('notes', 'read', { path: saved.path }, notesIdentity.id)).text, '统一入口保存的虚构笔记');
   if (legacyDual) {
   const created = await call('todos', 'create', { requestId: randomUUID(), title: '统一入口的个人待办' }, todoIdentity.id);

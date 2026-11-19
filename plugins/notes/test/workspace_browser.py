@@ -8,6 +8,8 @@ def run():
   (notes/'Cafe\u0301.md').write_text('保留原始文件名')
   (notes/'Hello.md').write_text('原始正文\n- [ ] 阅读')
   (notes/'Later.md').write_text('- [ ] 准备晚饭\n- [x] 买菜\n')
+  capture=(notes/'Chat.md')
+  capture.write_bytes('保留旧收集内容\r\n'.encode('utf-8'))
   overlay=base/'overlay.json';overlay.write_text(json.dumps([{'insert':[{'id':'corilo-notes','name':str(ROOT/'index.mjs'),'config':{'root':str(notes)}}]},{'id':'workspace-controller','config':{'documentsDirectory':str(base/'agent-workspace')}}]))
   with (base/'host.log').open('w') as log:
    host=subprocess.Popen(['node',str(ROOT/'node_modules/@deepseek-ai/dsh/lib/bin.js'),'web','--patch',str(overlay),'--no-open','--port','0'],cwd=base,stdout=log,stderr=log,env=dict(os.environ,HOME=str(base/'home'),DSH_HOME=str(base/'harness'),DSH_AGENTS_HOME=str(base/'agents'),XDG_CONFIG_HOME=str(base/'config')))
@@ -34,6 +36,7 @@ def run():
      wait_open=time.monotonic()+15
      while not actual.evaluate("typeof editor.path==='string'") and time.monotonic()<wait_open:time.sleep(.1)
      assert actual.evaluate("!isChat&&editor.path.endsWith('.md')&&editor.path!==CHAT_PATH")
+     assert capture.read_bytes()=='保留旧收集内容\r\n'.encode('utf-8')
      expect(frame.locator('#chat-container')).to_be_hidden()
      expect(frame.locator('#sidebar .sidebar-chat')).to_be_hidden()
      expect(frame.locator('#corilo-agent')).to_have_count(0)
@@ -186,6 +189,7 @@ def run():
      assert actual.evaluate('document.documentElement.scrollWidth<=window.innerWidth+1')
      page.screenshot(path=str(shots/'workspace-mobile.png'))
      assert not (notes/'archive/Log.txt').exists()
+     assert capture.read_bytes()=='保留旧收集内容\r\n'.encode('utf-8')
      assert errors==[],errors
      assert external==[],external
      browser.close()

@@ -72,6 +72,31 @@ def main():
      expect(page.get_by_role('button',name='侧卧转体',exact=True)).to_be_visible()
      expect(quick).to_have_value('')
      expect(rehab).to_contain_text('2')
+     # The real write succeeds but its response is lost. Receipt acceptance
+     # must clear its quick-add title so Enter cannot create a duplicate.
+     def lose_quick_response(route):
+      assert route.fetch().json()['ok']
+      route.abort()
+     page.route('**/api/corilo-todos/v2/tasks/create',lose_quick_response,times=1)
+     received='已收回执的快速任务'
+     quick.fill(received)
+     quick.press('Enter')
+     expect(quick).to_have_value(received)
+     page.get_by_role('button',name='核对操作',exact=True).click()
+     expect(quick).to_have_value('')
+     expect(page.get_by_role('button',name=received,exact=True)).to_have_count(1)
+     # Input entered before the response belongs to the next task.
+     held=[]
+     page.route('**/api/corilo-todos/v2/tasks/create',lambda route:held.append(route),times=1)
+     quick.fill('先提交的快速任务')
+     quick.press('Enter')
+     expect(page.get_by_role('button',name='新建任务',exact=True)).to_be_disabled()
+     quick.fill('下一项尚未保存')
+     assert len(held)==1
+     held[0].continue_()
+     expect(page.get_by_role('button',name='先提交的快速任务',exact=True)).to_be_visible()
+     expect(quick).to_have_value('下一项尚未保存')
+     quick.press('Escape')
      side.get_by_role('button',name='今天',exact=True).click()
      # A reload must not bring the confirmation gate back.
      page.reload()

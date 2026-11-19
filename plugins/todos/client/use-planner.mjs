@@ -25,6 +25,7 @@ function plannerStore(identity) {
     query: "",
     list: "",
     priority: "",
+    quickDraft: "",
     total: 0,
     counts: {},
     cursor: null,
@@ -130,7 +131,7 @@ export function usePlanner(identity) {
     sheet.textContent = styles;
     document.head.append(sheet);
     const guard = (e) => {
-      if (get().editor || get().pending) {
+      if (get().editor || get().pending || get().quickDraft) {
         e.preventDefault();
         e.returnValue = "";
       }

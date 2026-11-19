@@ -122,7 +122,7 @@ Upstream: https://github.com/zakirullin/files.md at
 `9e948ba6071e320c41c866f92817cf96f9bb7ba6`. `vendor/filesmd/SOURCE.json` records hashes;
 vendored web files are unchanged. `workspace-api.mjs` applies checked runtime
 patches for filename safety, lifecycle, read-error propagation and local-only media.
-`workspace/` adapts file handles and native Agent navigation. Original MIT and
+`workspace/` adapts file handles and editor state for the host. Original MIT and
 bundled third-party notices are distributed. Classic CodeMirror 6/Astryx code and
 its notices remain only for explicit compatibility.
 

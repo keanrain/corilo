@@ -16,7 +16,7 @@ Each package has its own lockfile, installation, and distribution. The learning 
 
 New instances created from this checkout enable notes + todos planner v2. Existing single-plugin and older dual-plugin configurations keep their original behavior; databases are not migrated automatically.
 
-Notes uses the Files.md workspace, with its file tree, Markdown, checklists, capture, journals, attachments, and split editing. The task plugin provides task dates, lists, priorities, calendars, time blocks, persistent reminders, and browser notifications with explicit permission. Ordinary UI operations do not require a model; Harness manages models, sessions, authentication, and permissions.
+Notes uses the Files.md workspace, with its file tree, Markdown, checklists, journals, attachments, and split editing. The task plugin provides task dates, lists, priorities, calendars, time blocks, persistent reminders, and browser notifications with explicit permission. Ordinary UI operations do not require a model; Harness manages models, sessions, authentication, and permissions.
 
 Corilo-owned UI follows the DSH language setting and supports Chinese and English. Switching languages does not change notes, task content, or tutor answers. Upstream Files.md UI and tutor teaching materials retain their original content.
 
