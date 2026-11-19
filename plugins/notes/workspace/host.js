@@ -83,6 +83,14 @@ const upstreamOpenChat = openChat, upstreamOpenChatModal = openChatModal, upstre
 openChat = async (...args) => { await syncCurrentFile(); await upstreamOpenChat(...args); report(); };
 openChatModal = async (...args) => { await syncCurrentFile(); await upstreamOpenChatModal(...args); report(); };
 sendToChat = async (...args) => { const input=chatInput.value;try{await upstreamSendToChat(...args);coriloChatAttempt=null;coriloSaved();}catch(error){coriloChatAttempt=input;coriloError(error);} };
+const upstreamNewFile = newFile;
+newFile = async (...args) => {
+    await upstreamNewFile(...args);
+    // Select the placeholder title so typing names the note right away.
+    const line=editor.getLine(0)||'';
+    if(line.startsWith('# '))editor.setSelection({line:0,ch:line.length},{line:0,ch:2});
+    editor.focus();
+};
 const upstreamOpenFile = openFile;
 openFile = (...args) => {
     const task = coriloNavigation.then(async()=>{
@@ -173,8 +181,8 @@ init=async()=>{
         cm.getInputField().addEventListener('compositionend',()=>{cm.state.coriloComposing=false;});
         cm.addKeyMap({'Ctrl-S':()=>syncCurrentFile(true).catch(coriloError),'Cmd-S':()=>syncCurrentFile(true).catch(coriloError)});
     }
-    const first=Object.keys(files).find(name=>name.endsWith('.md')&&name!=='Chat.md');
-    if(first)await openFile('/'+first);else await openChat();
+    // The workspace opens on the capture page: write first, sort later.
+    await openChat();
     coriloSaved();
     window.saver=setInterval(()=>{if(!coriloBlocked.size)syncCurrentFile().catch(coriloError);},1000);
 };
