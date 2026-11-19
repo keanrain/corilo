@@ -11,7 +11,11 @@ const requirePatch = (source, before, after) => {
   if (!source.includes(before)) throw new Error('Pinned Files.md integration no longer matches its source');
   return source.replace(before, after);
 };
-function transform(name, data) {
+// Only text assets carry integration patches; images and fonts must reach the
+// browser byte for byte, so they never pass through a string conversion.
+const textAssets = new Set(['.html', '.js', '.css', '.svg', '.json']);
+export function transform(name, data) {
+  if (!textAssets.has(path.extname(name))) return data;
   let source = data.toString();
   if (name === 'lib/sidebar.js') {
     source = requirePatch(source, 'span_desc.innerHTML = ret + name + "</span>";', 'span_desc.innerHTML = ret; span_desc.appendChild(document.createTextNode(name));');
@@ -32,6 +36,9 @@ function transform(name, data) {
     }
   }
   if (name === 'app.js') {
+    // New notes are named in the interface language (「未命名」 / 「Untitled」).
+    source = requirePatch(source, "let filename = 'New file.md';", "const coriloUntitled = coriloNotesUI.t('未命名');\n    let filename = `${coriloUntitled}.md`;");
+    source = requirePatch(source, "filename = `New file (${num}).md`;", "filename = `${coriloUntitled} (${num}).md`;");
     const start = source.indexOf('// Reload files once the app gains focus.'), end = source.indexOf("document.addEventListener('keydown'", start);
     if (start < 0 || end < 0) throw new Error('Pinned Files.md lifecycle patch mismatch');
     source = source.slice(0, start) + source.slice(end);
@@ -42,7 +49,7 @@ function transform(name, data) {
       .replace(/    <script src="welcome.js[^\n]+\n/, '')
       .replace(/    \/\/ Allow offline mode\.[\s\S]*?\.catch\([^\n]+\n/, '')
       .replace('    init();', '    init().catch(coriloError);');
-    source = requirePatch(source, '<script>\n    window.COMMIT_HASH', '<link rel="stylesheet" href="host.css">\n<script src="i18n.js"></script>\n<script src="adapter.js"></script>\n<script src="host.js"></script>\n<script>\n    window.COMMIT_HASH');
+    source = requirePatch(source, '<script>\n    window.COMMIT_HASH', '<link rel="stylesheet" href="host.css">\n<script src="i18n.js"></script>\n<script src="vendor-locale.js"></script>\n<script src="adapter.js"></script>\n<script src="host.js"></script>\n<script>\n    window.COMMIT_HASH');
   }
   return Buffer.from(source);
 }
@@ -61,7 +68,7 @@ export async function registerWorkspaceApi(ctx, store) {
     }
   };
   await walk(path.join(directory, 'vendor/filesmd/web'));
-  for (const name of ['i18n.js','adapter.js','host.js','host.css']) {
+  for (const name of ['i18n.js','vendor-locale.js','adapter.js','host.js','host.css']) {
     register({ path:prefix+name, methods:['GET'], requestBody:'buffered', async fetch() { return new Response(await fs.readFile(path.join(directory,'workspace',name)), { headers:{'content-type':mime[path.extname(name)],'cache-control':'no-store','x-content-type-options':'nosniff'} }); } });
   }
   // The streaming carrier is bounded here before parsing or allocating a file.

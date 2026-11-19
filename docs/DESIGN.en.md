@@ -6,13 +6,13 @@
 
 ## Notes workspace
 
-Open the Files.md notes panel within DSH. Retain the file tree, editing, search, renaming, moving, archiving, split panes, capture, journals, and checklists. Save before switching to Agent; returning retains the iframe editor state. Save conflicts preserve input without silently overwriting external changes.
+Open the Files.md notes panel within DSH. Retain the file tree, editing, search, renaming, moving, archiving, split panes, capture, journals, and checklists. The workspace opens on the capture page; Files.md interface text follows the host language while note names and contents are never translated. New notes select their placeholder title so typing names them. Save before switching to Agent; returning retains the iframe editor state. Save conflicts preserve input without silently overwriting external changes.
 
 ## Tasks and calendars
 
-New instances enable todos planner. Task views include Inbox, Today, Future, All, Completed, and Cancelled, with separate Calendar and Reminders views. Search, filters, and pagination are supported. Today distinguishes overdue, today, and previously planned items.
+New instances enable todos planner. Task views include Inbox, Today, Future, All, Completed, and Cancelled, with separate Calendar and Reminders views. Search, filters, and pagination are supported. Today distinguishes overdue, today, and previously planned items, and lists the day's events and task time blocks above them. Tasks added from Today, Future or a list filter are prefilled with that date or list. The display zone applies the device zone at once, is remembered per browser, and is changed explicitly in the time-zone popover.
 
-Creation and details support dates, deadlines, priorities, and lists. Date deadlines and exact instants use distinct inputs. Details commit through explicit Save. Unknown request outcomes are checked through receipts rather than immediately resubmitted.
+Creation and details support dates, deadlines, priorities, and lists. Date deadlines and exact instants use distinct inputs. Exact deadlines, reminders and timed event bounds use date + time controls in the record's zone; daylight-saving gaps and overlaps list candidates with explicit offsets for the person to choose. Reminders offer shortcuts and flag times that have passed. Details commit through explicit Save. Unknown request outcomes are checked through receipts rather than immediately resubmitted.
 
 Calendar views include month, week, day, and agenda, supporting independent events, all-day events, and task time blocks. Dragging or resizing first restores the current display and opens a pending form; confirmation commits the change. Forms provide equivalent operations. Valid start changes preserve duration; end times are exclusive.
 

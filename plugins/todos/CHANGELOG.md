@@ -4,6 +4,17 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.7.0
+
+- 显示时区直接采用本机时区并按浏览器记住，不再每次打开都要先点「确认时区」。在时区弹层中可以明确改用其他时区。
+  The display zone applies immediately and is remembered per browser; the "Confirm time zone" gate is gone. Choose another zone explicitly in the time-zone popover.
+- 在「今天」「未来」或某个清单筛选下新建任务，会预填对应的计划日期或清单，保存后仍留在当前视图。
+  Tasks added from Today, Future or a list filter get the matching planned date or list, so they stay in the view they were added from.
+- 提醒、定时日程的开始／结束和精确截止改为「日期 + 时间」控件，按记录所属时区理解，存储格式不变。夏令时切换造成的不存在或重复时刻不做猜测，改为列出带 UTC 偏移的候选让用户选择。提醒提供快捷时间，选择已过的时间会就地提示不会提醒。冲突预览显示本地时间加偏移。
+  Reminders, timed event start/end and exact deadlines use date + time controls in the record's zone; stored instants are unchanged. Daylight-saving gaps and overlaps are never guessed: candidates with explicit UTC offsets are offered. Reminder shortcuts and an inline note for past reminder times. Conflict previews show wall-clock time plus offset.
+- 「今天」顶部列出当天的日程与任务时间块。周／日视图从 8:00 开始显示。窄屏头部更紧凑，「今天」「日历」排在标签最前。状态文案改为「未完成」，「已取消」改用禁止图标；时区与本机相同时只显示图标。
+  Today lists the day's events and task time blocks. Week/day grids open at 8:00. Compact phone heading with Today and Calendar first. Status reads "Open"; Cancelled uses a ban icon; the zone name shows only when it differs from the device.
+
 ## 0.6.6
 
 - 将 FullCalendar 和 Luxon 移为构建依赖，生产安装继续使用已构建的客户端。Temporal 仍供宿主处理日期。

@@ -2,6 +2,7 @@ import { uiText } from './i18n.mjs';
 import { useRef } from "react";
 import { v4 as uuid } from "uuid";
 import { Temporal } from "./planner-dates.mjs";
+import { newTaskDefaults } from "./planner-defaults.mjs";
 import { strip } from "./planner-record.mjs";
 import { plannerDraftChanged } from "./planner-present.mjs";
 import { PLANNER_READ_TIMEOUT_MS } from "./planner-api.mjs";
@@ -10,7 +11,7 @@ export function usePlannerEditor({ get, set, call, refresh }) {
     returnFocus = useRef(),
     composing = useRef(false);
   function open(kind, item = null, defaults = {}) {
-    const { pending, busy, editor, zone } = get();
+    const { pending, busy, editor, zone, view, list } = get();
     if (pending || busy) return;
     if (plannerDraftChanged(editor) && !window.confirm(uiText("放弃当前未提交的编辑？"))) return;
     returnFocus.current = document.activeElement;
@@ -27,6 +28,8 @@ export function usePlannerEditor({ get, set, call, refresh }) {
             priority: "normal",
             list: "",
             reminderAt: null,
+            ...newTaskDefaults({ view, list, zone }),
+            ...defaults,
           }
         : {
             title: "",

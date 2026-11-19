@@ -37,7 +37,7 @@ def run(planner):
                     page.get_by_role('button',name='Tasks',exact=True).click()
                     title = '保存 user content'
                     if planner:
-                        page.get_by_role('button',name='Confirm time zone',exact=True).click()
+                        expect(page.get_by_role('button',name='New task',exact=True)).to_be_enabled(timeout=20000)
                         page.get_by_role('button',name='New task',exact=True).click()
                         form = page.get_by_role('form',name='Item details')
                         form.get_by_label('Title',exact=True).fill(title)

@@ -4,6 +4,7 @@ import { CalendarDays, CalendarPlus, Check, CheckCheck, Flag, Plus, Search, Slid
 import { options, priorities } from './planner-fields.jsx';
 import { plannerDateLabel } from './planner-present.mjs';
 import { usePlannerPopover } from './use-planner-popover.mjs';
+import { PlannerAgenda } from './planner-agenda.jsx';
 
 export function PlannerTaskList({ s, set, open, refresh, toggleTask }) {
   const language = useTodosLocale();
@@ -27,6 +28,7 @@ export function PlannerTaskList({ s, set, open, refresh, toggleTask }) {
         </div>
       </details>
     </div>
+    {s.view === 'today' && !filtered && <PlannerAgenda s={s} open={open} />}
     {filtered && <div className="planner-list-summary"><span>{uiText('{count} 项任务', { count: s.total })}</span><button onClick={() => set({ query: '', list: '', priority: '' })}>{uiText('清空筛选')}</button></div>}
     {!s.items.length && <div className="planner-empty"><CheckCheck size={34} strokeWidth={1.3} aria-hidden="true" /><h2>{uiText(filtered ? '没有找到匹配的任务' : '这里还没有任务')}</h2><p>{uiText(filtered ? '试试其他关键词，或清空筛选。' : '记下一件要做的事，慢慢来。')}</p></div>}
     {[...groups].map(([group, items]) => <section className="planner-task-group" key={group || 'tasks'}>

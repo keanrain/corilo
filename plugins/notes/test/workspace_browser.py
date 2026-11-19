@@ -30,6 +30,11 @@ def run():
      frame=iframe.content_frame
      expect(frame.locator('#corilo-status')).to_have_text('已保存到主机',timeout=20000)
      actual=page.frames[-1]
+     # The workspace opens on the capture page, in the interface language.
+     assert actual.evaluate('isChat')
+     expect(frame.locator('#chat-input')).to_have_attribute('placeholder','想到什么，先记下来…')
+     # Vendor images are served byte for byte, so the browser can decode them.
+     assert actual.evaluate("async()=>(await createImageBitmap(await (await fetch('img/icon.png')).blob())).width")==512
      def wait(check,timeout=15):
       deadline=time.monotonic()+timeout
       while time.monotonic()<deadline:
@@ -56,9 +61,11 @@ def run():
      frame.locator('#new-folder').click();wait(lambda:(notes/'原生目录').is_dir())
      # Real native new-file control and editing surface.
      frame.locator('#new-file').click()
-     wait(lambda:actual.evaluate("()=>editor.path==='/New file.md'"))
+     # The placeholder title is selected, so typing names the note at once.
+     wait(lambda:actual.evaluate("editor.getSelection()==='未命名'"))
+     wait(lambda:actual.evaluate("()=>editor.path==='/未命名.md'"))
      frame.locator('.CodeMirror').first.click();page.keyboard.press('Control+End');page.keyboard.insert_text('直接写作，保存为普通 Markdown')
-     wait(lambda:(notes/'New file.md').read_text()=='直接写作，保存为普通 Markdown')
+     wait(lambda:(notes/'未命名.md').read_text()=='直接写作，保存为普通 Markdown')
      # A navigation must not discard text typed while its save acknowledgement is pending.
      actual.evaluate("""()=>{
       clearInterval(window.saver);
@@ -81,14 +88,14 @@ def run():
      actual.evaluate("()=>{window.chatResult=null;openChat().then(()=>window.chatResult='opened',error=>window.chatResult=error.message);editor.replaceRange('，等待时的新输入',{line:editor.lastLine(),ch:editor.getLine(editor.lastLine()).length});window.releaseSave();}")
      wait(lambda:actual.evaluate('window.navigationResult!==null&&window.chatResult!==null'))
      assert actual.evaluate("!isChat&&window.chatResult!=='opened'"), 'Joining an in-flight save must also preserve input'
-     assert actual.evaluate("editor.path==='/New file.md'&&!editor.isClean()&&editor.getValue().includes('等待时的新输入')"), 'Navigation discarded input typed during save'
-     assert '等待时的新输入' not in (notes/'New file.md').read_text()
+     assert actual.evaluate("editor.path==='/未命名.md'&&!editor.isClean()&&editor.getValue().includes('等待时的新输入')"), 'Navigation discarded input typed during save'
+     assert '等待时的新输入' not in (notes/'未命名.md').read_text()
      actual.evaluate('async()=>{await syncCurrentFile();}')
-     assert '等待时的新输入' in (notes/'New file.md').read_text()
+     assert '等待时的新输入' in (notes/'未命名.md').read_text()
      actual.evaluate("()=>{window.saver=setInterval(()=>{if(!coriloBlocked.size)syncCurrentFile().catch(coriloError);},1000);}")
      # The filename is the editable first heading, with native rename semantics.
      actual.evaluate("()=>editor.replaceRange('# 新名字',{line:0,ch:0},{line:0,ch:editor.getLine(0).length})")
-     wait(lambda:(notes/'新名字.md').exists() and not (notes/'New file.md').exists())
+     wait(lambda:(notes/'新名字.md').exists() and not (notes/'未命名.md').exists())
      assert (notes/'新名字.md').read_text()=='直接写作，保存为普通 Markdown，第一段，等待时的新输入'
      # Split-pane version ownership and unchanged underlying Markdown checklists.
      actual.evaluate("async()=>{await openFile('/Later.md',true,'editor2-textarea');}")

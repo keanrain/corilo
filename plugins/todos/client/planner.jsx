@@ -1,7 +1,7 @@
 import { uiText, useTodosLocale } from './i18n.mjs';
 import React from 'react';
-import { Bell, CalendarDays, CalendarRange, CheckCheck, CircleCheck, Clock3, Download, Inbox, ListTodo, Plus, RefreshCw, Trash2 } from 'lucide-react';
-import { Temporal } from './planner-dates.mjs';
+import { Ban, Bell, CalendarDays, CalendarRange, CheckCheck, CircleCheck, Clock3, Download, Inbox, ListTodo, Plus, RefreshCw } from 'lucide-react';
+import { validZone, saveZone, deviceZone } from './planner-zone.mjs';
 import { usePlanner } from './use-planner.mjs';
 import { PlannerTaskList } from './planner-task-list.jsx';
 import { PlannerCalendar } from './planner-calendar.jsx';
@@ -11,7 +11,7 @@ import { PlannerEditor } from './planner-editor.jsx';
 const zones = [...new Set(['UTC', ...(Intl.supportedValuesOf?.('timeZone') ?? [])])];
 const views = {
   inbox: ['收集箱', Inbox], today: ['今天', CalendarDays], future: ['未来', CalendarRange], all: ['全部', ListTodo],
-  done: ['已完成', CircleCheck], cancelled: ['已取消', Trash2], calendar: ['日历', CalendarDays], reminders: ['提醒', Bell],
+  done: ['已完成', CircleCheck], cancelled: ['已取消', Ban], calendar: ['日历', CalendarDays], reminders: ['提醒', Bell],
 };
 export function Planner({ identity }) {
   const language = useTodosLocale();
@@ -41,7 +41,7 @@ export function Planner({ identity }) {
       </div>
     </header>
     <nav className="planner-navigation" aria-label={uiText('任务视图')}>
-      {Object.entries(views).map(([key, [label, Icon]]) => <button key={key} aria-pressed={s.view === key} onClick={() => set({ view: key })}><Icon size={16} strokeWidth={1.7} aria-hidden="true" /><span>{uiText(label)}</span></button>)}
+      {Object.entries(views).map(([key, [label, Icon]]) => <button key={key} data-view={key} aria-pressed={s.view === key} onClick={() => set({ view: key })}><Icon size={16} strokeWidth={1.7} aria-hidden="true" /><span>{uiText(label)}</span></button>)}
     </nav>
     <div className="planner-body"><div className="planner-main"><div className={`planner-content${s.view === 'calendar' ? ' is-calendar' : ''}`}>
       <header className="planner-heading">
@@ -49,11 +49,13 @@ export function Planner({ identity }) {
         <div className="planner-toolbar">
           {s.confirmed && <button className="planner-event-add" disabled={s.busy || Boolean(s.pending)} onClick={() => open('event')}><CalendarDays size={15} aria-hidden="true" /><span>{uiText('新建日程')}</span></button>}
           <details className="planner-timezone" open={!s.confirmed || undefined}>
-            <summary title={uiText('显示时区')}><Clock3 size={15} aria-hidden="true" /><span>{s.zone}</span></summary>
-            <div className="planner-timezone-fields"><label>{uiText('显示时区')}<input list="corilo-planner-zones" value={s.zone} onChange={(e) => set({ zone: e.target.value, confirmed: false })} /></label><button onClick={() => {
-              try { Temporal.Now.zonedDateTimeISO(s.zone); set({ confirmed: true, error: '' }); }
-              catch { set({ error: '请选择有效时区' }); }
-            }}>{s.confirmed ? uiText('时区已确认') : uiText('确认时区')}</button></div>
+            <summary title={`${uiText('显示时区')}: ${s.zone}`}><Clock3 size={15} aria-hidden="true" />{s.zone === deviceZone() ? <span className="planner-sr-only">{s.zone}</span> : <span>{s.zone}</span>}</summary>
+            <div className="planner-timezone-fields"><label>{uiText('显示时区')}<input list="corilo-planner-zones" value={s.zoneDraft ?? s.zone} onChange={(e) => set({ zoneDraft: e.target.value })} /></label><button disabled={s.busy || Boolean(s.pending) || Boolean(s.editor)} onClick={(e) => {
+              const zone = s.zoneDraft ?? s.zone;
+              if (!validZone(zone)) { set({ error: '请选择有效时区' }); return; }
+              saveZone(zone); set({ zone, zoneDraft: null, confirmed: true, error: '' });
+              e.currentTarget.closest('details')?.removeAttribute('open');
+            }}>{uiText('使用此时区')}</button>{s.zone !== deviceZone() && <p className="planner-timezone-hint">{uiText('此设备时区为 {zone}', { zone: deviceZone() })}</p>}</div>
           </details>
         </div>
       </header>

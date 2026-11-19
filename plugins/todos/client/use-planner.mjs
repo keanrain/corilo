@@ -4,6 +4,8 @@ import { useSyncExternalStore, useEffect, useRef, useMemo } from "react";
 import { createPlannerApi, PLANNER_READ_TIMEOUT_MS } from "./planner-api.mjs";
 import { usePlannerEditor } from "./use-planner-editor.mjs";
 import styles from "./planner.css";
+import { initialZone } from "./planner-zone.mjs";
+import { Temporal } from "./planner-dates.mjs";
 let retained;
 function plannerStore(identity) {
   if (retained && retained.get().identity === identity) return retained;
@@ -11,10 +13,11 @@ function plannerStore(identity) {
   let snapshot = {
     identity,
     view: "today",
-    zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    confirmed: false,
+    ...initialZone(),
+    zoneDraft: null,
     items: [],
     events: [],
+    agenda: [],
     deadlines: [],
     notifications: [],
     query: "",
@@ -70,6 +73,17 @@ function plannerStore(identity) {
         };
       } else {
         change = await loadPlannerTasks(read, m, more);
+        if (m.view === "today" && !more) {
+          // Today shows the day's events beside its tasks, read for the same day.
+          const day = Temporal.Now.plainDateISO(m.zone);
+          const bound = (d) => d.toZonedDateTime({ timeZone: m.zone }).toInstant().toString();
+          const agenda = await read("calendar/range", {
+            start: bound(day),
+            end: bound(day.add({ days: 1 })),
+            timeZone: m.zone,
+          });
+          change = { ...change, agenda: agenda.items };
+        }
       }
       if (g === generation) set(change);
     } catch (e) {

@@ -27,7 +27,37 @@ def main():
      if page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).is_visible():page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).click()
      page.get_by_role('button',name=re.compile(r'^(Close|关闭)$'),exact=True).click()
      page.get_by_role('button',name='待办',exact=True).click()
-     page.get_by_role('button',name='确认时区',exact=True).click(timeout=20000)
+     # The display zone applies at once: no confirmation gate before the list.
+     expect(page.get_by_role('button',name='新建任务',exact=True)).to_be_enabled(timeout=20000)
+     expect(page.get_by_role('button',name='确认时区',exact=True)).to_have_count(0)
+     # Adding from Today keeps the task in Today (it used to fall into the inbox).
+     page.get_by_role('button',name='今天',exact=True).click()
+     page.get_by_role('button',name='添加任务',exact=True).click()
+     quick=page.get_by_role('form',name='事项详情')
+     expect(quick.get_by_label('计划日期',exact=True)).not_to_have_value('')
+     quick.get_by_label('标题',exact=True).fill('今天快速添加')
+     quick.get_by_role('button',name='保存',exact=True).click()
+     expect(page.get_by_role('status')).to_contain_text('已保存')
+     quick.get_by_role('button',name='关闭',exact=True).click()
+     expect(page.get_by_role('button',name='今天快速添加',exact=True)).to_be_visible()
+     # Today shows the day's events above its tasks.
+     page.evaluate("""async (zone) => {
+       const send=async(m,a,id)=>(await(await fetch('api/corilo-todos/v2/'+m,{method:'POST',headers:{'content-type':'application/json',...(id?{'x-corilo-todos-id':id}:{})},body:JSON.stringify(a)})).json()).value;
+       const identity=await send('identity',{});
+       const day=new Intl.DateTimeFormat('en-CA',{timeZone:zone}).format(new Date());
+       await send('calendar/create',{requestId:crypto.randomUUID(),value:{title:'今天的全天日程',allDay:true,start:day,end:new Date(Date.parse(day)+864e5).toISOString().slice(0,10),timeZone:zone}},identity.id);
+     }""", page.evaluate('Intl.DateTimeFormat().resolvedOptions().timeZone'))
+     page.get_by_role('button',name='刷新',exact=True).click()
+     agenda=page.get_by_role('region',name='今日日程')
+     expect(agenda).to_contain_text('今天的全天日程')
+     expect(agenda).to_contain_text('全天')
+     # A reload must not bring the confirmation gate back.
+     page.reload()
+     page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).or_(page.get_by_role('button',name=re.compile(r'^(Close|关闭)$'),exact=True)).first.wait_for()
+     if page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).is_visible():page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).click()
+     page.get_by_role('button',name=re.compile(r'^(Close|关闭)$'),exact=True).click()
+     page.get_by_role('button',name='待办',exact=True).click()
+     expect(page.get_by_role('button',name='今天快速添加',exact=True)).to_be_visible(timeout=20000)
      page.get_by_role('button',name='新建任务',exact=True).click()
      form=page.get_by_role('form',name='事项详情')
      form.get_by_label('标题',exact=True).fill('恢复的任务')
@@ -79,6 +109,39 @@ def main():
      form.get_by_label('标题',exact=True).fill('全天安排')
      form.get_by_role('button',name='保存',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('已保存')
+     form.get_by_role('button',name='关闭',exact=True).click()
+     # Timed events and reminders use date + time controls in the record's zone.
+     zone=page.evaluate('Intl.DateTimeFormat().resolvedOptions().timeZone')
+     from datetime import datetime, timezone as tz
+     from zoneinfo import ZoneInfo
+     utc=lambda d,t:datetime.fromisoformat(f'{d}T{t}').replace(tzinfo=ZoneInfo(zone)).astimezone(tz.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+     page.get_by_role('button',name='新建日程',exact=True).first.click()
+     form.get_by_label('标题',exact=True).fill('定时安排')
+     form.get_by_label('全天',exact=True).uncheck()
+     form.get_by_label('开始日期',exact=True).fill('2027-01-05')
+     form.get_by_label('开始时间',exact=True).fill('09:00')
+     expect(form.get_by_label('结束时间',exact=True)).to_have_value('09:30')
+     form.get_by_role('button',name='开始前 1 小时',exact=True).click()
+     expect(form.get_by_label('提醒时间',exact=True)).to_have_value('08:00')
+     form.get_by_role('button',name='保存',exact=True).click()
+     expect(page.get_by_role('status')).to_contain_text('已保存')
+     form.get_by_role('button',name='关闭',exact=True).click()
+     saved=page.evaluate("""async () => {
+       const send=async(m,a,id)=>(await(await fetch('api/corilo-todos/v2/'+m,{method:'POST',headers:{'content-type':'application/json',...(id?{'x-corilo-todos-id':id}:{})},body:JSON.stringify(a)})).json()).value;
+       const identity=await send('identity',{});
+       const r=await send('calendar/range',{start:'2027-01-04T00:00:00Z',end:'2027-01-07T00:00:00Z',timeZone:'UTC'},identity.id);
+       return r.items.find(e=>e.title==='定时安排');
+     }""")
+     assert saved['start']==utc('2027-01-05','09:00') and saved['end']==utc('2027-01-05','09:30') and saved['reminderAt']==utc('2027-01-05','08:00'), saved
+     # A reminder time that has passed is flagged instead of silently ignored.
+     page.get_by_role('button',name='全部',exact=True).click()
+     page.get_by_role('button',name='今天快速添加',exact=True).click()
+     form.get_by_label('提醒日期',exact=True).fill('2020-01-01')
+     form.get_by_label('提醒时间',exact=True).fill('09:00')
+     expect(form.get_by_text('这个时间已过，不会提醒')).to_be_visible()
+     form.get_by_role('button',name='清除',exact=True).click()
+     expect(form.get_by_text('这个时间已过，不会提醒')).to_have_count(0)
+     page.on('dialog',lambda d:d.accept())
      form.get_by_role('button',name='关闭',exact=True).click()
      page.get_by_role('button',name='日历',exact=True).click()
      expect(page.locator('.fc')).to_be_visible()
