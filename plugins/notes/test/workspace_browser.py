@@ -30,6 +30,8 @@ def run():
      frame=iframe.content_frame
      expect(frame.locator('#corilo-status')).to_have_text('已保存到主机',timeout=20000)
      actual=page.frames[-1]
+     # Vendor images are served byte for byte, so the browser can decode them.
+     assert actual.evaluate("async()=>(await createImageBitmap(await (await fetch('img/icon.png')).blob())).width")==512
      def wait(check,timeout=15):
       deadline=time.monotonic()+timeout
       while time.monotonic()<deadline:

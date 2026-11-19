@@ -4,6 +4,7 @@ import { useSyncExternalStore, useEffect, useRef, useMemo } from "react";
 import { createPlannerApi, PLANNER_READ_TIMEOUT_MS } from "./planner-api.mjs";
 import { usePlannerEditor } from "./use-planner-editor.mjs";
 import styles from "./planner.css";
+import { initialZone } from "./planner-zone.mjs";
 let retained;
 function plannerStore(identity) {
   if (retained && retained.get().identity === identity) return retained;
@@ -11,8 +12,8 @@ function plannerStore(identity) {
   let snapshot = {
     identity,
     view: "today",
-    zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    confirmed: false,
+    ...initialZone(),
+    zoneDraft: null,
     items: [],
     events: [],
     deadlines: [],

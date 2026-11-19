@@ -63,6 +63,7 @@
 .planner-timezone summary::-webkit-details-marker, .planner-filter-options summary::-webkit-details-marker { display: none; }
 .planner-timezone-fields, .planner-filter-fields { position: absolute; z-index: 12; inset-inline-end: 0; top: calc(100% + 6px); width: 250px; padding: 18px; display: grid; gap: 14px; border: 1px solid var(--planner-border); border-radius: 10px; background: var(--planner-surface); box-shadow: 0 10px 32px #00000014; }
 .planner-timezone-fields button { font-size: 12px; }
+.planner-timezone-hint { margin: 0; font-size: 12px; color: var(--planner-muted); }
 .planner-filters { display: flex; gap: 12px; align-items: center; padding-bottom: 13px; margin-bottom: 6px; border-bottom: 1px solid var(--planner-border); }
 .corilo-planner .planner-search { display: flex; flex: 1; flex-direction: row; align-items: center; gap: 9px; min-width: 0; }
 .planner-search svg { flex-shrink: 0; }

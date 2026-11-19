@@ -11,7 +11,11 @@ const requirePatch = (source, before, after) => {
   if (!source.includes(before)) throw new Error('Pinned Files.md integration no longer matches its source');
   return source.replace(before, after);
 };
-function transform(name, data) {
+// Only text assets carry integration patches; images and fonts must reach the
+// browser byte for byte, so they never pass through a string conversion.
+const textAssets = new Set(['.html', '.js', '.css', '.svg', '.json']);
+export function transform(name, data) {
+  if (!textAssets.has(path.extname(name))) return data;
   let source = data.toString();
   if (name === 'lib/sidebar.js') {
     source = requirePatch(source, 'span_desc.innerHTML = ret + name + "</span>";', 'span_desc.innerHTML = ret; span_desc.appendChild(document.createTextNode(name));');

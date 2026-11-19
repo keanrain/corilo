@@ -141,8 +141,6 @@
   "任务与日历": "Tasks and calendar",
   "显示时区": "Display time zone",
   "请选择有效时区": "Choose a valid time zone.",
-  "时区已确认": "Time zone confirmed",
-  "确认时区": "Confirm time zone",
   "任务视图": "Task views",
   "新建任务": "New task",
   "新建日程": "New event",
@@ -231,5 +229,7 @@
   "否": "No",
   "无法读取关联任务": "Unable to load the linked task.",
   "刷新超时，请重试": "Refresh timed out. Try again.",
-  "保留输入会用当前表单的全部内容替换此版本，请先核对以上字段。": "Keeping your input will replace this version with the entire current form. Review all fields above first."
+  "保留输入会用当前表单的全部内容替换此版本，请先核对以上字段。": "Keeping your input will replace this version with the entire current form. Review all fields above first.",
+  "使用此时区": "Use this time zone",
+  "此设备时区为 {zone}": "This device uses {zone}"
 }

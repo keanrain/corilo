@@ -107,7 +107,7 @@ def main():
      if page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).is_visible():page.get_by_role('button',name=re.compile(r'^(Continue|继续)$'),exact=True).click()
      page.get_by_role('button',name=re.compile(r'^(Close|关闭)$'),exact=True).click()
      page.get_by_role('button',name='待办',exact=True).click()
-     page.get_by_role('button',name='确认时区',exact=True).click()
+     expect(page.get_by_role('button',name='新建任务',exact=True)).to_be_enabled(timeout=20000)
      task=api(page,'tasks/create',{'requestId':str(uuid.uuid4()),'value':{'title':'Review synthetic task','body':'original body','plannedDate':'2026-12-01','reminderAt':'2026-12-01T09:00:00Z'}})
      page.get_by_role('button',name='全部',exact=True).click()
      page.get_by_role('button',name='Review synthetic task',exact=True).click()

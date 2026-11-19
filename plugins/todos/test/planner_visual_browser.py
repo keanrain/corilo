@@ -135,7 +135,7 @@ def main():
                                   await send('calendar/create',{requestId:crypto.randomUUID(),value:{title:'留一段时间阅读',body:'合成日程',allDay:true,start:day,end:tomorrow,timeZone:'UTC'}},identity.id);
                                 }''')
                                 seeded = True
-                            panel.get_by_role('button', name='确认时区', exact=True).click()
+                            panel.get_by_role('button', name='刷新', exact=True).click()
                             expect(panel.get_by_role('button', name='准备阅读新的一章', exact=True)).to_be_visible()
                             assert panel.evaluate('(el)=>el.scrollWidth<=el.clientWidth+1'), 'Planner overflows its host frame'
                             assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'), 'Document overflows horizontally'
