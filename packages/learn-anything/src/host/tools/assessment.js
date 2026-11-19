@@ -113,7 +113,8 @@ export const verificationRecord = {
     // The first wrong answer of a run stays in verify too (gentle path); it goes to diagnosis only on a repeated attribution
     // in two consecutive wrong answers for this model, or a wrong answer given with confidence `sure` (confident misconception).
     const prior = model ? verifications.filter((v) => v.kpId === kp.id && v.modelId === model.id && v.id !== record.id).at(-1) : null
-    const repeated = record.verdict === 'wrong' && Boolean(record.attribution) && prior?.verdict === 'wrong' && prior.attribution === record.attribution
+    // Two wrong answers without an attribution count as the same gap, so a run cannot stay gentle forever for lack of one.
+    const repeated = record.verdict === 'wrong' && prior?.verdict === 'wrong' && (prior.attribution ?? null) === (record.attribution ?? null)
     const confident = record.verdict === 'wrong' && record.confidence === 'sure'
     const gentle = model?.phase === 'verify' && record.verdict === 'wrong' && !repeated && !confident
     const practising = model?.phase === 'verify' && (record.verdict !== 'wrong' || gentle)
@@ -147,7 +148,7 @@ export const verificationRecord = {
     if (passed) lines.push(kp.phase === 'mastered' ? '该知识点已达标，可以进入下一个知识点。' : '该模型已达标，继续本知识点的下一个模型。')
     if (flow && !passed) {
       lines.push(`下一题：难度 ${flow.next} 级（${DIFFICULTY[flow.next]}；${flow.reason}），题型建议 ${flow.nextType}。${progressText(flow.progress)}`)
-      if (gentle) lines.push('这是本轮练习的第一次答错，留在验证阶段：先肯定答对的部分，只用一个反例或更小的追问让用户自己发现缺口，然后按上面已降低的难度继续出下一题；不必重新诊断。若下次又因同一归因答错，或用户「稳」却答错，会转入评估学况。')
+      if (gentle) lines.push('这次答错不必马上诊断，留在验证阶段：先肯定答对的部分，只用一个反例或更小的追问让用户自己发现缺口，然后按上面已降低的难度继续出下一题；不必重新诊断。若接着又因同一归因答错（都没有归因也算），或用户「稳」却答错，会转入评估学况。')
       else if (!practising) lines.push(`${repeated ? '同一归因连续答错' : confident ? '「稳」却答错（自信的误解）' : ''}${repeated || confident ? '，' : ''}回到评估学况：${PHASE_GUIDE.assess} 诊断后用一道 ${flow.next} 级的题重新验证（这已经是调整后的难度，不要再降）。`)
       else if (practising) lines.push('留在验证阶段；若有缺前置或同一缺口反复出现的证据，先按 diagnose 重新检查任务。适合继续时，一两句话点评后，同一轮用预出的题（难度与上面一致）或请考官按建议出下一题，再 quiz_show。')
     }

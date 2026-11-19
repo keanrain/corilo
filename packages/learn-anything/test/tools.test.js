@@ -198,7 +198,7 @@ test('gentle wrong answers: the first wrong in a verify run stays in verify; rep
 
     const first = await rec('wrong', { attribution: 'lower-layer-loss', confidence: 'unsure' })
     assert.match(first, /留在验证阶段/)
-    assert.match(first, /第一次答错/)
+    assert.match(first, /不必马上诊断/)
     assert.doesNotMatch(first, /回到评估学况/)
     assert.equal((await kpFile()).models[0].phase, 'verify')
     assert.equal(parseView(first).flow.next, 1, 'difficulty still drops')
@@ -223,6 +223,11 @@ test('gentle wrong answers: the first wrong in a verify run stays in verify; rep
 
     await toVerify()
     assert.equal((await kpFile()).models[0].phase, 'verify')
+
+    await rec('correct', { difficulty: 1 })
+    assert.match(await rec('wrong'), /留在验证阶段/, 'a wrong answer without an attribution starts gentle')
+    assert.match(await rec('wrong'), /同一归因连续答错.*回到评估学况/, 'two consecutive wrong answers without attributions are the same gap')
+    assert.equal((await kpFile()).models[0].phase, 'assess')
   } finally { await cleanup() }
 })
 
