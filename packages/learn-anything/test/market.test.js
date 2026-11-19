@@ -18,7 +18,11 @@ test('market index parses and lists this package at its current version', () => 
   assert.equal(entry.versions[0].engines.dsh, pkg.peerDependencies['@deepseek-ai/dsh-tools'])
   // The icon is the package's own, resolved next to the index.
   assert.equal(entry.icon, 'https://example.com/learn-anything/icon.svg')
-  assert.deepEqual(marketInstallTarget(entry.name, entry.versions[0]), { spec: `${pkg.name}@${pkg.version}` })
+  const version = entry.versions[0]
+  assert.equal(version.source.type, 'git')
+  assert.deepEqual(marketInstallTarget(entry.name, version), {
+    spec: `git+https://github.com/keanrain/corilo.git#${version.source.commit}&path:/packages/learn-anything`,
+  })
 })
 
 test('the package name matches what the bundle and the web client refer to', () => {

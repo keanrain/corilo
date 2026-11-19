@@ -84,8 +84,8 @@ with tempfile.TemporaryDirectory(prefix='tutor-full-web-') as temp:
      editor=page.locator('[contenteditable=true]').first
      editor.fill(text); editor.press('Enter')
     send('FLOW_LEARN：请教我这个知识点，我还没有归纳规则。')
-    expect(page.get_by_role('button',name='Edit target map',exact=True)).to_be_visible(timeout=30000)
-    page.get_by_role('button',name='Edit target map',exact=True).click()
+    expect(page.get_by_role('button',name='Edit my understanding',exact=True)).to_be_visible(timeout=30000)
+    page.get_by_role('button',name='Edit my understanding',exact=True).click()
     page.get_by_label('Your explanation',exact=True).fill('我的规则：新增收入大于新增成本就追加，已经付掉的固定费用不参与比较。')
     page.get_by_label('Personal notes',exact=True).fill('通过真实 DSH 页面编辑的笔记')
     with page.expect_response(lambda r:'/api/learn-anything/target/save' in r.url) as saved:

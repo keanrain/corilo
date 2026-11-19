@@ -148,7 +148,7 @@ test('verification gate: novice until streak + required types, then mastered and
     assert.match(dueText, /^现在 \d{4}-\d\d-\d\d \d\d:\d\d。/, 'review_due gives the tutor the current time')
     assert.match(dueText, /上次答题 60 天前/, 'and when each item was last answered')
     assert.match(await t.learnStatus.execute({}, env), /待复习 1 项/)
-    assert.deepEqual(await t.learnStats(env.cwd, env.now()), { goal: COURSE.goal, due: 1, total: 3, mastered: 1, percent: 33, streak: 0, today: false })
+    assert.deepEqual(await t.learnStats(env.cwd, env.now()), { goal: COURSE.goal, current: { id: 'closure', title: '闭包', phase: 'describe', kind: 'knowledge' }, due: 1, total: 3, mastered: 1, percent: 33, streak: 0, today: false })
   } finally { await cleanup() }
 })
 
@@ -184,6 +184,53 @@ test('a graded answer returns a feedback card: verdict, attribution, level-up an
   } finally { await cleanup() }
 })
 
+test('gentle wrong answers: the first wrong in a verify run stays in verify; repeated attribution or a confident miss goes to assess', async () => {
+  const { env, cleanup } = await workspace()
+  try {
+    await t.courseSave.execute(COURSE, env)
+    await t.kpDefineModels.execute({ kpId: 'scope', models: [{ id: 'map', type: 'associative', input: '引用位置', output: '绑定', reference: 'r' }] }, env)
+    const kpFile = () => store.readJson(join(env.cwd, '.learn/kp/scope.json'))
+    let n = 0
+    const rec = (verdict, extra = {}) => t.verificationRecord.execute({ kpId: 'scope', modelId: 'map', question: `g-${++n}`, questionType: 'scenario', answer: 'a', verdict, hintsUsed: 0, difficulty: 2, ...extra }, env)
+    const toVerify = async () => { for (const phase of ['prescribe', 'build', 'verify']) await t.kpSetPhase.execute({ kpId: 'scope', modelId: 'map', phase, reason: 'r' }, env) }
+    await toVerify()
+    assert.equal((await kpFile()).models[0].phase, 'verify')
+
+    const first = await rec('wrong', { attribution: 'lower-layer-loss', confidence: 'unsure' })
+    assert.match(first, /留在验证阶段/)
+    assert.match(first, /不必马上诊断/)
+    assert.doesNotMatch(first, /回到评估学况/)
+    assert.equal((await kpFile()).models[0].phase, 'verify')
+    assert.equal(parseView(first).flow.next, 1, 'difficulty still drops')
+    assert.equal(parseView(first).flow.last.zone, 'hard')
+
+    const second = await rec('wrong', { attribution: 'lower-layer-loss', confidence: 'unsure' })
+    assert.match(second, /同一归因连续答错.*回到评估学况/)
+    assert.equal((await kpFile()).models[0].phase, 'assess')
+
+    await toVerify()
+    const diff = await rec('wrong', { attribution: 'mismatch' })
+    assert.match(diff, /留在验证阶段/, 'a different attribution after a wrong stays gentle')
+    assert.equal((await kpFile()).models[0].phase, 'verify')
+
+    await rec('correct', { difficulty: 1 })
+    const afterCorrect = await rec('wrong', { attribution: 'mismatch' })
+    assert.match(afterCorrect, /留在验证阶段/, 'a correct answer in between breaks the consecutive run')
+
+    const sure = await rec('wrong', { attribution: 'concept-confusion', confidence: 'sure' })
+    assert.match(sure, /「稳」却答错.*回到评估学况/)
+    assert.equal((await kpFile()).models[0].phase, 'assess')
+
+    await toVerify()
+    assert.equal((await kpFile()).models[0].phase, 'verify')
+
+    await rec('correct', { difficulty: 1 })
+    assert.match(await rec('wrong'), /留在验证阶段/, 'a wrong answer without an attribution starts gentle')
+    assert.match(await rec('wrong'), /同一归因连续答错.*回到评估学况/, 'two consecutive wrong answers without attributions are the same gap')
+    assert.equal((await kpFile()).models[0].phase, 'assess')
+  } finally { await cleanup() }
+})
+
 test('streak counts days in a row with an answer', () => {
   const at = (d, h = 12) => new Date(2026, 9, d, h).toISOString()
   const now = new Date(2026, 9, 22, 20)
@@ -191,6 +238,30 @@ test('streak counts days in a row with an answer', () => {
   assert.deepEqual(t.streakOf(vs, now), { streak: 3, today: false }, 'alive until today ends')
   assert.deepEqual(t.streakOf([...vs, { at: at(22), verdict: 'correct' }], now), { streak: 4, today: true })
   assert.deepEqual(t.streakOf(vs, new Date(2026, 9, 23, 9)), { streak: 0, today: false }, 'a missed day resets it')
+})
+
+test('learnStats names the current knowledge point, its phase and what the gate still needs', async () => {
+  const { env, cleanup } = await workspace()
+  try {
+    await t.courseSave.execute({ ...COURSE, status: 'active' }, env)
+    assert.deepEqual((await t.learnStats(env.cwd, env.now())).current, { id: 'scope', title: '词法作用域', phase: 'describe', kind: 'knowledge' }, 'no model yet: no gate')
+    await t.kpDefineModels.execute({ kpId: 'scope', models: [{ id: 'map', type: 'associative', input: '引用位置', output: '绑定', reference: 'r' }] }, env)
+    for (const phase of ['assess', 'prescribe', 'build', 'verify']) await t.kpSetPhase.execute({ kpId: 'scope', modelId: 'map', phase, reason: 'r' }, env)
+    const rec = (questionType, extra = {}) =>
+      t.verificationRecord.execute({ kpId: 'scope', modelId: 'map', question: `q-${questionType}`, questionType, answer: 'a', verdict: 'correct', hintsUsed: 0, ...extra }, env)
+    await rec('predict')
+    const stats = await t.learnStats(env.cwd, env.now())
+    assert.deepEqual(stats.current, {
+      id: 'scope', title: '词法作用域', phase: 'verify', kind: 'knowledge',
+      gate: { target: 'proficient', streak: { have: 1, need: 3 }, missing: ['discriminate-neg', 'rephrase'] },
+    })
+    assert.doesNotThrow(() => JSON.stringify(stats), 'the projection payload is plain JSON')
+    await rec('discriminate-neg')
+    await rec('rephrase', { expected: { output: '外层的 x' } })
+    const next = (await t.learnStats(env.cwd, env.now())).current
+    assert.deepEqual([next.id, next.phase], ['closure', 'describe'], 'a mastered point hands over to the next one on the route')
+    assert.equal(next.gate, undefined)
+  } finally { await cleanup() }
 })
 
 test('learnStats is null without a course', async () => {

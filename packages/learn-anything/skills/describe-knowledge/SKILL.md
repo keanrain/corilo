@@ -34,5 +34,5 @@ description: Use when the current knowledge point is in the describe phase — s
 需要先熟悉内容时可用 `flashcard_show({kpId, factId})` 翻面自测，展示已保存的问答和来源。先选把握再揭晓，翻面后的自评仅用于安排重现；正式掌握度由未揭晓答案的独立回忆决定，按 `examine` 的回忆流程验证。
 
 ## 4. 保存
-`kp_define_models` 保存后，模型自动进入「评估学况」。然后加载 `diagnose` skill 开始评估。
+`kp_define_models` 保存后，模型自动进入「评估学况」。这一步是备课，不必向用户展示；保存后直接加载 `diagnose` skill，用一张理解练习题卡开始评估（第一个知识点尤其如此）。
 已有验证记录的模型需要改变定义时，使用新模型 id；原定义的学习记录继续保留，不作为新规律的掌握证据。

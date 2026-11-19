@@ -23,7 +23,7 @@ export const learnStatus = {
     const p = store.paths(env.cwd)
     const course = await store.readJson(p.course, null)
     if (!course) {
-      return '尚无课程。进入目标接入：询问学习目标、现有基础、可用时间、学习目的、偏好（先例子还是先规律）、是否有材料（PDF/EPUB/TXT/代码仓库路径），然后按 plan-course 技能规划。'
+      return '尚无课程。进入目标接入：只问一句想学会什么、学会后用来做什么（基础、时间、偏好在学习中通过诊断了解）；用户有材料才导入，联网调研可选，然后按 plan-course 技能出大纲骨架。'
     }
     const kps = await learningKps(env)
     const reviews = await store.readJson(p.reviews, emptyReviews())
@@ -33,7 +33,7 @@ export const learnStatus = {
     if ((await loadVerifications(env.cwd)).some((v) => !verified(v))) lines.push('历史中有未核验来源的旧成绩：保留供回看，不计掌握度；需要重新验证。')
     if (course.learner && Object.keys(course.learner).length) lines.push(`学习者：${JSON.stringify(course.learner)}`)
     if (course.status === 'planning') {
-      lines.push('大纲尚未确认：展示 course_get 的结果，请用户增删改；确认后用 course_save(status="active") 锁定。')
+      lines.push('大纲骨架尚未确认：展示 course_get 的结果，问一句是否这样开始；确认后用 course_save(status="active") 锁定并立即开始第一个知识点。')
     }
     const kp = currentKp(course, kps)
     if (kp) {

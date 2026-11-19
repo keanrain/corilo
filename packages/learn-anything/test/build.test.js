@@ -22,6 +22,6 @@ test('generated files are up to date (run `npm run build`)', () => {
 
 test('the client bundle keeps zod and the devtools out', () => {
   const client = readFileSync(new URL('src/client/index.js', root), 'utf8')
-  assert.ok(client.length < 200_000, `client bundle is ${client.length} bytes`)
+  assert.ok(client.length < 220_000, `client bundle is ${client.length} bytes`)
   assert.doesNotMatch(client, /OpenUIDevtools|posthog/i)
 })

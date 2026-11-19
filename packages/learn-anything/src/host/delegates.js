@@ -16,6 +16,8 @@ export const DELEGATES = [
   {
     name: 'examiner',
     preset: 'learn-examiner',
+    // Read-only child: it may run in the same step as verification_record, so the next question is written while the answer is graded.
+    concurrencySafe: true,
     reasoningEffort: EXAMINER_EFFORT,
     description:
       'The examiner subagent. It cannot see this conversation: put everything it needs in `prompt`. ' +
@@ -46,10 +48,11 @@ function textOf(blocks) {
  * @param subagents - the dsh-subagent service
  * @param provider - local provider name that accepts an independent preset (`spawn`)
  */
-export function delegateTool(subagents, provider, { name, preset, description, reasoningEffort }) {
+export function delegateTool(subagents, provider, { name, preset, description, reasoningEffort, concurrencySafe }) {
   return {
     name,
     description,
+    ...(concurrencySafe ? { concurrencySafe } : {}),
     parameters: name === 'examiner' ? {
       ...PARAMETERS,
       reasoningEffort: { type: 'string', enum: ['low', 'high'], description: '普通出题和判题用 low（默认）；OrderSteps 排序推演、较长的多步计算或需反复核对的复杂约束用 high。保留推理，不改变模型。' },

@@ -27,14 +27,14 @@ npm run pack:learn-anything
 Install the resulting `.tgz` into an existing Web profile, replacing `web` with the profile you actually use:
 
 ```sh
-dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.0.tgz
+dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.1.tgz
 ```
 
 Restart that DSH instance, create a session in an existing workspace, and select the Learning Tutor (学习导师) preset. Learning records live in `.learn/` under the session workspace.
 
 The plugin adds teaching presets, tools, and UI only. It does not create a dedicated profile, switch workspaces automatically, or change the host's default preset, session-log, or plugin-inventory settings. Use normal DSH startup, model configuration, and plugin-update workflows.
 
-`market/index.json` is retained for market distribution after a future npm publication. Its target is an npm package, so use the local `.tgz` above until published. Synchronize `version` / `publishTimestamp` when publishing. Standalone-launcher plans in `PROMPT.md` and `research/` are historical only.
+The DSH plugin market index is in `market/index.json`. GitHub prereleases provide the `.tgz` archive used above. Standalone-launcher plans in `PROMPT.md` and `research/` are historical only.
 
 ## Interactive exercises
 
@@ -42,7 +42,7 @@ The host verifies formal results: `verification_record` obtains the displayed qu
 
 Route selection prioritizes `prerequisites` and rejects dependency cycles. Explicit skip/restore requests use `kp_skip`; skipping does not imply mastery. Difficulty 1 still requires a substantively new situation. Questions without examiner-confirmed novelty do not count as independent mastery.
 
-Cards (route, target map, progress, and grading feedback) appear in reading order alongside text in the **final response**, not during tool execution. The tutor places the display tool's `[title](learn-card:...)` reference unchanged on its own paragraph, with blank lines around it. References correspond to actual tool results from that turn, not copied card JSON or private tutor references. Questions and flip cards remain in the native right-hand Learning workspace, with an opening link in the response. Drafts survive collapsing or asking for help; old exercises can be revisited. Narrow layouts use the native fullscreen presentation.
+Cards (route, target map, progress, and grading feedback) appear in reading order alongside text in the **final response**. The grading feedback card is the exception: it also shows on the `verification_record` tool row as soon as grading returns, so the learner does not wait for the next question; the final-response reference keeps it once the turn folds. The tutor places the display tool's `[title](learn-card:...)` reference unchanged on its own paragraph, with blank lines around it. References correspond to actual tool results from that turn, not copied card JSON or private tutor references. Questions and flip cards remain in the native right-hand Learning workspace, with an opening link in the response. The Learning workspace also keeps a learning overview: with no exercise it shows the goal and mastered progress, the current knowledge point and step, what is left before the next level, and today's due reviews with a one-click start; during an exercise it shows a one-line expandable summary above the card. It reads the existing stats projection, with no extra tool calls and no `.learn/` change. Drafts survive collapsing or asking for help; old exercises can be revisited. Narrow layouts use the native fullscreen presentation.
 
 Diagnosis, explanation, and induction also favor cards for case judgments, comparisons, predictions, and ordering. `quiz_show(purpose="practice")` is a comprehension exercise; submission continues feedback and follow-up without writing verification records or raising mastery. Formal verification uses the default flow. Short checks and complete learner-written generalizations still happen in prose.
 
@@ -76,8 +76,8 @@ Questions distinguishing execution from waiting can explicitly call `quiz_show({
 Verification is a continuous practice sequence based on flow theory:
 
 - **Difficulty follows ability:** each model has levels 1–5. Two consecutive unhinted correct responses move up a level; an incorrect answer moves down; otherwise the level stays. This two-up/one-down staircase tends toward roughly 70% accuracy. The tutor passes level requirements to the examiner, and the card title shows difficulty dots.
-- **Immediate, informative feedback:** grading cards show correctness, confidence calibration, a challenge × skill flow plot, whether the question was balanced/too hard/too easy, the next difficulty and reason, and requirements for the next mastery level. Wrong answers distinguish upper-level rules from lower-level examples/foundations. Private examiner guidance to the tutor is not shown to the learner.
-- **Continuity:** correct or partially correct answers remain in verification and the tutor presents the next question in the same turn; only incorrect answers return to diagnosis.
+- **Immediate, informative feedback:** the grading card appears as soon as grading returns, while the tutor has the examiner pre-generate the next question in parallel (discarded after a wrong answer or a difficulty change); it shows correctness, confidence calibration, a difficulty × my-level plot, whether the question was just right/too hard/too easy, the next difficulty and reason, and requirements for the next mastery level. Wrong answers show whether the rule, the examples or the basics broke. The interface uses everyday wording ("My understanding", "Fails when reworded", "Difficulty N/5"); methodology terms stay in the tutor prompts. Private examiner guidance to the tutor is not shown to the learner.
+- **Continuity:** correct or partially correct answers remain in verification and the tutor presents the next question in the same turn. A wrong answer lowers the difficulty and breaks the streak but stays in verification: the tutor uses one counterexample or follow-up, then continues. Only two consecutive wrong answers with the same attribution (including none), a confident ("sure") wrong answer, or a wrong answer outside a verification run return to diagnosis. The mastery gate is unchanged.
 - **Control:** learners select confidence (sure/somewhat sure/guessing; lucky guesses do not advance mastery), request two prewritten directional hints, ask for an easier/harder question, or take a break.
 
 Learners can also request:

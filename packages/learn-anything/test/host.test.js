@@ -130,3 +130,34 @@ test('registered write tools serialize updates from separate sessions sharing a 
   assert.equal(examples.length, 5)
   assert.equal(new Set(examples.map((example) => example.id)).size, 5)
 })
+
+test('the stats projection carries the current knowledge point and still accepts the old shape', async (t) => {
+  const { call, projections } = await workspace(t)
+  const result = await call('course_get', {})
+  const projection = projections.get('learn-anything/stats')
+  const meta = { learnStats: result.stats }
+  const state = projection.apply(null, { type: 'tool/result', data: { meta } })
+  const parsed = projection.stateSchema.parse(state)
+  assert.deepEqual(parsed.current, { id: 'closure', title: '闭包', phase: 'assess', kind: 'knowledge', gate: { target: 'proficient', streak: { have: 0, need: 3 }, missing: ['discriminate-neg', 'rephrase'] } })
+  assert.deepEqual(projection.wire.viewSchema.parse(projection.wire.view(state)).current, parsed.current)
+  // Sessions recorded before `current` existed, and a finished route, must still validate.
+  const old = { goal: '闭包', due: 0, total: 1, mastered: 0, percent: 0, streak: 2, today: true }
+  assert.deepEqual(projection.stateSchema.parse(old), old)
+  assert.equal(projection.stateSchema.parse({ ...old, current: null }).current, null)
+  assert.equal(projection.stateSchema.parse(null), null)
+  assert.equal(projection.apply(state, { type: 'user/message', data: {} }), state, 'unrelated events keep the last stats')
+})
+
+test('examiner and verification_record share one parallel pool; other writers stay exclusive', async () => {
+  const { tools } = await host()
+  // dsh-tools batch.ts groups only consecutive concurrency-safe calls (and invalid arguments fall back to exclusive):
+  // the next question can be written while grading runs.
+  const calls = {
+    examiner: { description: '出题', prompt: 'p' }, verification_record: { kpId: 'k', question: 'q', questionType: 'scenario' },
+    kp_get: { kpId: 'k' }, checker: { description: '核对', prompt: 'p' },
+    target_map_update: { kpId: 'k' }, course_save: { goal: 'g', status: 'active', chapters: [] }, diagnosis_record: { kpId: 'k', findings: [] },
+  }
+  const parallel = (name) => tools.get(name).isConcurrencySafe?.(calls[name]) === true
+  assert.deepEqual(['examiner', 'verification_record', 'kp_get'].map(parallel), [true, true, true])
+  assert.deepEqual(['checker', 'target_map_update', 'course_save', 'diagnosis_record'].map(parallel), [false, false, false, false])
+})

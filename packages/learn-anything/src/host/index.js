@@ -50,8 +50,13 @@ const MAX_TEXTS = 400
 const SECTION_ORDER = 9500
 
 const userTextsSchema = zod.array(zod.string())
+const gateSchema = zod.object({
+  target: zod.string(), streak: zod.object({ have: zod.number(), need: zod.number() }).optional(), missing: zod.array(zod.string()),
+})
 const statsSchema = zod.object({
-  goal: zod.string(), due: zod.number(), total: zod.number(), mastered: zod.number(), percent: zod.number(),
+  goal: zod.string(),
+  // Added after the first release; sessions recorded before it carry no `current`.
+  current: zod.object({ id: zod.string(), title: zod.string(), phase: zod.string(), kind: zod.string().optional(), gate: gateSchema.optional() }).nullable().optional(), due: zod.number(), total: zod.number(), mastered: zod.number(), percent: zod.number(),
   streak: zod.number().optional(), today: zod.boolean().optional(),
 }).nullable()
 
@@ -116,7 +121,7 @@ export async function apply(ctx, config) {
     parameters: tool.parameters,
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
     execute: tool.execute,
-    ...(tool.readOnly ? { isConcurrencySafe: () => true } : {}),
+    ...(tool.readOnly || tool.concurrencySafe ? { isConcurrencySafe: () => true } : {}),
   }))
 
   for (const tool of [...ALL_TOOLS, ...INGEST_TOOLS]) {
@@ -131,7 +136,7 @@ export async function apply(ctx, config) {
         render: (_args, value) => [{ type: 'text', text: value.text }],
         presentationMeta: (_args, value) => (value.stats === undefined ? null : { learnStats: value.stats }),
       },
-      ...(tool.readOnly ? { isConcurrencySafe: () => true } : {}),
+      ...(tool.readOnly || tool.concurrencySafe ? { isConcurrencySafe: () => true } : {}),
       async execute(args, exec) {
         const session = exec.agent?.session
         const env = {
