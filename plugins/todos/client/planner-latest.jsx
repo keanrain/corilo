@@ -2,6 +2,7 @@ import React from "react";
 import { uiText } from "./i18n.mjs";
 import { priorities } from "./planner-fields.jsx";
 import { exactLabel } from "./planner-time.mjs";
+import { formEnd } from "./planner-form.mjs";
 
 // Include every editable field, including cleared values and original time zones.
 // User text remains verbatim; only labels and enum values are translated.
@@ -27,7 +28,7 @@ export function PlannerLatest({ kind, value, linkedTaskLabel, zone }) {
       </> : <>
         {field("全天", uiText(value.allDay ? "是" : "否"))}
         {field("开始", value.allDay ? value.start : exactLabel(value.start, value.timeZone))}
-        {field(value.allDay ? "结束（全天结束日期不含当天）" : "结束", value.allDay ? value.end : exactLabel(value.end, value.timeZone))}
+        {field("结束", value.allDay ? formEnd(value) : exactLabel(value.end, value.timeZone))}
         {field("日程原时区", value.timeZone)}
         {field("地点", value.location)}
         {field("关联任务", linkedTaskLabel)}

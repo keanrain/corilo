@@ -254,3 +254,10 @@
   .corilo-planner .planner-drawer-toggle { display: inline-flex; flex-shrink: 0; margin-inline-start: -8px; }
   .planner-heading { align-items: center; }
 }
+
+/* Rarely edited fields live in a native disclosure; it opens by itself when they hold data. */
+.planner-editor-more { border-top: 1px solid var(--planner-border); padding-top: 10px; }
+.planner-editor-more > summary { cursor: pointer; width: fit-content; color: var(--planner-muted); font-size: 12px; font-weight: 500; padding: 4px 0; }
+.planner-editor-more > summary:focus-visible { outline: 2px solid var(--planner-focus); outline-offset: 2px; border-radius: 4px; }
+.planner-editor-more-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; padding-top: 12px; }
+.planner-editor-more-fields .planner-editor-description { grid-column: 1 / -1; }

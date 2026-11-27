@@ -1,6 +1,11 @@
 """English UI and native live locale switching; user data stays unchanged."""
 import json, os, pathlib, re, shutil, subprocess, tempfile, time
 from playwright.sync_api import sync_playwright, expect
+
+def more(form):
+ # Folded "更多" fields: open the native disclosure before touching them.
+ form.evaluate("f=>{const d=f.querySelector('details.planner-editor-more');if(d)d.open=true}")
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 def switch_language(page, current, target):
@@ -41,11 +46,13 @@ def run(planner):
                         page.get_by_role('button',name='New task',exact=True).click()
                         form = page.get_by_role('form',name='Item details')
                         form.get_by_label('Title',exact=True).fill(title)
+                        more(form)
                         form.get_by_label('Description',exact=True).fill('未保存 is user content')
                         # Native settings overlay must not remount the editor or lose its draft.
                         switch_language(page, 'English', '中文')
                         form = page.get_by_role('form',name='事项详情')
                         expect(form.get_by_label('标题',exact=True)).to_have_value(title)
+                        more(form)
                         expect(form.get_by_label('说明',exact=True)).to_have_value('未保存 is user content')
                         form.get_by_role('button',name='保存',exact=True).click()
                         expect(page.get_by_role('status')).to_contain_text('已保存')
@@ -54,14 +61,16 @@ def run(planner):
                         switch_language(page, '中文', 'English')
                         page.get_by_role('button',name='All',exact=True).click()
                         expect(page.get_by_role('button',name=title,exact=True)).to_be_visible()
+                        expect(page.get_by_role('button',name='New event',exact=True)).to_have_count(0)
+                        page.get_by_role('button',name='Today',exact=True).first.click()
                         page.get_by_role('button',name='New event',exact=True).click()
                         form = page.get_by_role('form',name='Item details')
                         form.get_by_label('Title',exact=True).fill('全天 event')
-                        end = form.get_by_label('End (all-day end date is exclusive)',exact=True)
+                        end = form.get_by_label('End',exact=True)
                         original_end = end.input_value()
                         end.fill('2000-01-01')
-                        form.get_by_role('button',name='Save',exact=True).click()
-                        expect(page.get_by_role('alert')).to_contain_text('End must be after start')
+                        expect(form.get_by_role('alert')).to_contain_text('End date cannot be before the start date')
+                        expect(form.get_by_role('button',name='Save',exact=True)).to_be_disabled()
                         end.fill(original_end)
                         form.get_by_role('button',name='Save',exact=True).click()
                         expect(page.get_by_role('status')).to_contain_text('Saved')

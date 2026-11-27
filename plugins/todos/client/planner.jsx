@@ -8,6 +8,7 @@ import { PlannerCalendar } from './planner-calendar.jsx';
 import { PlannerReminders } from './planner-reminders.jsx';
 import { PlannerEditor } from './planner-editor.jsx';
 import { PlannerSidebar, plannerViews } from './planner-sidebar.jsx';
+import { eventViews } from './planner-form.mjs';
 
 const zones = [...new Set(['UTC', ...(Intl.supportedValuesOf?.('timeZone') ?? [])])];
 export function Planner({ identity }) {
@@ -44,7 +45,7 @@ export function Planner({ identity }) {
         <button className="planner-icon-button planner-drawer-toggle" aria-label={uiText('打开清单栏')} aria-expanded={s.drawer} onClick={() => set({ drawer: !s.drawer })}><Menu size={18} aria-hidden="true" /></button>
         <div className="planner-heading-title"><h1>{title}</h1>{taskView && <p className="planner-heading-meta">{s.view === 'today' ? date : ''}{s.confirmed && <span>{uiText('{count} 项任务', { count: s.total })}</span>}</p>}</div>
         <div className="planner-toolbar">
-          {s.confirmed && <button className="planner-event-add" disabled={s.busy || Boolean(s.pending)} onClick={() => open('event')}><CalendarDays size={15} aria-hidden="true" /><span>{uiText('新建日程')}</span></button>}
+          {s.confirmed && eventViews.includes(s.view) && <button className="planner-event-add" disabled={s.busy || Boolean(s.pending)} onClick={() => open('event')}><CalendarDays size={15} aria-hidden="true" /><span>{uiText('新建日程')}</span></button>}
           <button className="planner-primary planner-add" disabled={!s.confirmed || s.busy || Boolean(s.pending)} onClick={() => open('task')}><Plus size={16} aria-hidden="true" /><span>{uiText('新建任务')}</span></button>
         </div>
       </header>

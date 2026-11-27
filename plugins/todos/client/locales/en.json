@@ -96,7 +96,6 @@
   "截止时区": "Deadline time zone",
   "全天": "All day",
   "开始": "Start",
-  "结束（全天结束日期不含当天）": "End (all-day end date is exclusive)",
   "日程原时区": "Event time zone",
   "地点": "Location",
   "关联任务": "Linked task",
@@ -248,5 +247,7 @@
   "快速添加任务": "Quick add task",
   "添加任务，回车保存": "Add a task, press Enter to save",
   "打开详情填写更多": "Open details to add more",
-  "已添加": "Added"
+  "已添加": "Added",
+  "更多": "More",
+  "结束日期不能早于开始日期": "End date cannot be before the start date"
 }

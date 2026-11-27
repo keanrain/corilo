@@ -3,6 +3,11 @@ import json, os, pathlib, re, shutil, subprocess, tempfile, time, uuid
 from playwright.sync_api import sync_playwright, expect
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+def more(form):
+ # Folded "更多" fields: open the native disclosure before touching them.
+ form.evaluate("f=>{const d=f.querySelector('details.planner-editor-more');if(d)d.open=true}")
+
 def exact(at, zone):
  # Conflict previews show the wall-clock time in the record's zone plus its offset.
  z=datetime.fromisoformat(at.replace('Z','+00:00')).astimezone(ZoneInfo(zone));o=z.strftime('%z')
@@ -34,6 +39,7 @@ def delayed_save_refresh(page, form, task_id, receipt=False):
   page.route('**/api/corilo-todos/v2/tasks/update',lose,times=1)
  first='receipt snapshot' if receipt else 'normal snapshot'
  second=first+' plus newer draft'
+ more(form)
  form.get_by_label('说明',exact=True).fill(first)
  form.get_by_role('button',name='保存',exact=True).click()
  if receipt:
@@ -45,10 +51,12 @@ def delayed_save_refresh(page, form, task_id, receipt=False):
   if held:break
   page.wait_for_timeout(20)
  assert len(held)==1
+ more(form)
  form.get_by_label('说明',exact=True).fill(second)
  host_plugins.click()
  expect(form).to_have_count(0)
  todos.click()
+ more(form)
  expect(form.get_by_label('说明',exact=True)).to_have_value(second)
  expect(form.get_by_role('button',name='保存中…',exact=True)).to_be_disabled()
  # Enter uses requestSubmit, so it also exercises the synchronous hook guard.
@@ -57,6 +65,7 @@ def delayed_save_refresh(page, form, task_id, receipt=False):
  assert api(page,'tasks/read',{'id':task_id})['body']==first
  held[0].continue_()
  expect(form.get_by_role('button',name='保存',exact=True)).to_be_enabled()
+ more(form)
  expect(form.get_by_label('说明',exact=True)).to_have_value(second)
  form.get_by_role('button',name='保存',exact=True).click()
  expect(page.get_by_role('status')).to_contain_text('已保存')
@@ -118,12 +127,14 @@ def main():
      page.get_by_role('button',name='全部',exact=True).click()
      page.get_by_role('button',name='Review synthetic task',exact=True).click()
      form=page.get_by_role('form',name='事项详情',exact=True)
+     more(form)
      form.get_by_label('说明',exact=True).fill('local draft')
      external=api(page,'tasks/update',{'requestId':str(uuid.uuid4()),'id':task['id'],'expected':task['version'],'patch':{'title':'Remote task title','body':'Remote task body','status':'done','plannedDate':'2027-03-04','list':'Remote list','priority':'urgent','due':{'kind':'date','date':'2027-03-05','timeZone':'Asia/Tokyo'},'reminderAt':'2027-03-04T10:00:00Z'}})
      form.get_by_role('button',name='保存',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('版本冲突')
      latest=form.get_by_role('button',name='查看最新记录',exact=True)
      expect(latest).to_be_visible()
+     more(form)
      form.get_by_label('说明',exact=True).fill('edited after conflict')
      expect(latest).to_be_visible()
      form.get_by_role('button',name='保存',exact=True).click()
@@ -132,6 +143,7 @@ def main():
      preview=form.locator('section').filter(has=page.get_by_role('heading',name='服务器最新内容',exact=True))
      expect(preview).to_be_visible()
      assert_preview(preview,{'标题':'Remote task title','说明':'Remote task body','状态':'完成','计划日期':'2027-03-04','清单':'Remote list','优先级':'紧急','截止类型':'日期','截止':'2027-03-05','截止时区':'Asia/Tokyo','提醒':exact('2027-03-04T10:00:00Z','UTC')})
+     more(form)
      expect(form.get_by_label('说明',exact=True)).to_have_value('edited after conflict')
      assert form.get_by_label('计划日期',exact=True).input_value()=='2026-12-01'
      check_preview_order(page,form,task['id'],external,preview,latest)
@@ -140,6 +152,7 @@ def main():
      form.get_by_role('button',name='关闭详情',exact=True).click()
      page.get_by_role('button',name='Review synthetic task',exact=True).click()
      # Cleared server fields must be visible, and adoption must reset conflict state.
+     more(form)
      form.get_by_label('说明',exact=True).fill('Draft before cleared fields')
      api(page,'tasks/update',{'requestId':str(uuid.uuid4()),'id':task['id'],'expected':persisted['version'],'patch':{'body':'Server cleared optional fields','plannedDate':None,'list':'','due':None,'reminderAt':None}})
      form.get_by_role('button',name='保存',exact=True).click()
@@ -150,6 +163,7 @@ def main():
      expect(latest).to_have_count(0)
      expect(preview).to_have_count(0)
      expect(form.get_by_role('alert')).to_have_count(0)
+     more(form)
      expect(form.get_by_label('说明',exact=True)).to_have_value('Server cleared optional fields')
      expect(form.get_by_label('计划日期',exact=True)).to_have_value('')
      expect(form.get_by_label('提醒日期',exact=True)).to_have_value('')
@@ -163,18 +177,22 @@ def main():
      event=api(page,'calendar/create',{'requestId':str(uuid.uuid4()),'value':{'title':'Conflict event','allDay':False,'start':day+'T09:00:00Z','end':day+'T10:00:00Z','timeZone':'UTC','taskId':task['id']}})
      page.get_by_role('button',name='日历',exact=True).click()
      page.locator('.fc-event').filter(has_text='Conflict event').first.click()
+     more(form)
      form.get_by_label('说明',exact=True).fill('Local event draft')
      remote=api(page,'calendar/update',{'requestId':str(uuid.uuid4()),'id':event['id'],'expected':event['version'],'patch':{'title':'Remote event','body':'Remote event body','status':'cancelled','start':day+'T11:00:00Z','end':day+'T12:00:00Z','timeZone':'Asia/Tokyo','location':'Room 2','taskId':completed['id'],'reminderAt':day+'T10:30:00Z'}})
      form.get_by_role('button',name='保存',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('版本冲突')
+     more(form)
      form.get_by_label('地点',exact=True).fill('Local room')
      expect(latest).to_be_visible()
      latest.click()
      assert_preview(preview,{'标题':'Remote event','说明':'Remote event body','状态':'取消','全天':'否','开始':exact(day+'T11:00:00Z','Asia/Tokyo'),'结束':exact(day+'T12:00:00Z','Asia/Tokyo'),'日程原时区':'Asia/Tokyo','地点':'Room 2','关联任务':completed['title'],'提醒':exact(day+'T10:30:00Z','UTC')})
      form.get_by_role('button',name='采用服务器内容',exact=True).click()
+     more(form)
      linked=form.get_by_label('关联任务',exact=True)
      expect(linked).to_have_value(completed['id'])
      expect(linked.locator('option:checked')).to_have_text(completed['title'])
+     more(form)
      form.get_by_label('说明',exact=True).fill('Edit while preserving the completed task link')
      form.get_by_role('button',name='保存',exact=True).click()
      expect(form.get_by_role('status')).to_have_text('已保存')
@@ -182,14 +200,16 @@ def main():
      assert remote['taskId']==completed['id']
      end=page.evaluate("day=>{const date=new Date(day);date.setUTCDate(date.getUTCDate()+1);return date.toISOString().slice(0,10)}",day)
      api(page,'calendar/update',{'requestId':str(uuid.uuid4()),'id':event['id'],'expected':remote['version'],'patch':{'allDay':True,'start':day,'end':end,'location':'','taskId':None,'reminderAt':None}})
+     more(form)
      form.get_by_label('说明',exact=True).fill('Edit before the second conflict')
      form.get_by_role('button',name='保存',exact=True).click()
      expect(form.get_by_role('status')).to_contain_text('版本冲突')
      latest.click()
-     assert_preview(preview,{'全天':'是','开始':day,'结束（全天结束日期不含当天）':end,'地点':'未设置','关联任务':'独立事件','提醒':'未设置'})
+     assert_preview(preview,{'全天':'是','开始':day,'结束':day,'地点':'未设置','关联任务':'独立事件','提醒':'未设置'})
      form.get_by_role('button',name='采用服务器内容',exact=True).click()
      expect(form.get_by_label('全天',exact=True)).to_be_checked()
      expect(form.get_by_label('开始',exact=True)).to_have_value(day)
+     more(form)
      expect(form.get_by_label('关联任务',exact=True)).to_have_value('')
      expect(latest).to_have_count(0)
      assert not errors,errors

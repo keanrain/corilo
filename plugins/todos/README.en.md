@@ -10,7 +10,7 @@ Planner provides six task views with search, filters, and pagination, plus plann
 
 New source instances enable planner by default. To enable it in an independent DSH overlay, set `planner: true` and point it at a **new, empty root directory**. Existing v1 instances can keep their configuration and database.
 
-A date deadline is `{kind:"date",date:"2026-11-20",timeZone:"Asia/Taipei"}`. An exact deadline is `{kind:"instant",at:"2026-11-20T09:00:00+08:00",timeZone:"Asia/Taipei"}`. All-day ends are exclusive. Exact-time fields need an offset. Enter a separate instant for the reminder or leave it empty. Changing the start preserves duration, and the form can set 30 or 60 minutes directly. Dragging or resizing opens a form for confirmation.
+A date deadline is `{kind:"date",date:"2026-11-20",timeZone:"Asia/Taipei"}`. An exact deadline is `{kind:"instant",at:"2026-11-20T09:00:00+08:00",timeZone:"Asia/Taipei"}`. All-day ends are exclusive in storage and the API; the form shows the inclusive last day. Exact-time fields need an offset. Enter a separate instant for the reminder or leave it empty. Changing the start preserves duration, and the form can set 30 or 60 minutes directly. Dragging or resizing opens a form for confirmation.
 
 Save task details explicitly. Conflict previews list editable server fields. Keeping your input replaces the server version with the current form. Check the receipt when an outcome is unknown, and retry the original request if there is no receipt. Switching panels preserves edits. Save becomes available again when list refresh finishes or times out.
 
