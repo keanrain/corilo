@@ -65,3 +65,46 @@ test('published Cordis and Harness pipeline load notes tools, validate calls and
   assert.equal(ctx.tools.definitions().length,0,'unloading cleans up real registry effects');
   assert.equal((await call('corilo_notes_list',{})).isError,true);
 });
+
+const waitFor = async (check, label) => {
+  for (let n = 0; n < 100; n++) { if (check()) return; await new Promise(resolve => setTimeout(resolve, 20)); }
+  throw new Error(`Timed out waiting for ${label}`);
+};
+const bootWithWorkspaceController = async (t, controller, extra = {}) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'corilo-workspace-'));
+  const ctx = new Context();
+  t.after(async () => { await ctx.fiber.dispose(); await rm(root, { recursive: true, force: true }); });
+  await ctx.plugin(SystemPrompt); await ctx.plugin(Tools);
+  if (controller) ctx.provide('workspaceController', controller);
+  await ctx.plugin(notes, { root, ...extra });
+  return { ctx, root };
+};
+
+test('registers the notes root as a DSH workspace through the optional workspaceController', async t => {
+  const calls = [];
+  const { ctx, root } = await bootWithWorkspaceController(t, { create: async request => { calls.push(request); return { workspace: { id: 'w' }, created: true }; } });
+  await waitFor(() => calls.length > 0, 'workspace create');
+  assert.deepEqual(calls, [{ path: root }]);
+  assert.equal(ctx.tools.definitions().length, 7);
+});
+
+test('registers the workspace for the classic interface too', async t => {
+  const calls = [];
+  await bootWithWorkspaceController(t, { create: async request => { calls.push(request); return { workspace: {}, created: false }; } }, { interface: 'classic' });
+  await waitFor(() => calls.length === 1, 'workspace create');
+});
+
+test('works unchanged when workspaceController is absent', async t => {
+  const { ctx } = await bootWithWorkspaceController(t, null);
+  assert.equal(ctx.tools.definitions().length, 7);
+});
+
+test('a failing workspace registration only warns and keeps the tools', async t => {
+  let attempted = 0;
+  const { ctx } = await bootWithWorkspaceController(t, { create: async () => { attempted++; throw new Error('boom'); } });
+  await waitFor(() => attempted > 0, 'workspace create attempt');
+  await new Promise(resolve => setTimeout(resolve, 50));
+  assert.equal(ctx.tools.definitions().length, 7);
+  const sync = await bootWithWorkspaceController(t, { create() { throw new Error('sync boom'); } });
+  assert.equal(sync.ctx.tools.definitions().length, 7);
+});

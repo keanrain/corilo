@@ -37,7 +37,8 @@
     "vendor/filesmd/",
     "import-todos.mjs",
     "README.zh-CN.md",
-    "QUICKSTART.en.md"
+    "QUICKSTART.en.md",
+    "templates/"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",

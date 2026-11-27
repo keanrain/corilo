@@ -31,6 +31,10 @@ Existing DSH installations can load the entry using the included `notes.patch.ex
 
 If an instance manages DSH through its own package.json, declare `"@deepseek-ai/dsh": "0.2.2-rc.3"`, not npm's default `^0.2.2-rc.3`. Later plugin installation may resolve that range again and upgrade the host. Check the installed version with `npm ls @deepseek-ai/dsh` both before and after installation. For a new isolated installation use `npm install --save-exact --ignore-scripts @deepseek-ai/dsh@0.2.2-rc.3`. Back up instances using a different version and validate a separate installation first; do not directly downgrade or rewrite a live instance.
 
+## Agent workspace and steward rules
+
+The notes directory is registered automatically as a DSH workspace, so Agent sessions can use it directly. Optional: review `templates/AGENTS.en.md` and copy it yourself into the notes root as `AGENTS.md`; DSH loads it automatically. The plugin never writes it for you.
+
 ## Use and upgrades
 
 Use the native file tree, creation, search, title rename, split panes, and checklists as in Files.md. The top save status reports Saved only after host confirmation. The workspace opens the last note read; there is no capture page or Agent button. Agent is reached from the host sidebar and the workspace is preserved on return. Ordinary recording does not call a model.

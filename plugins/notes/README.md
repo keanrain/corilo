@@ -70,6 +70,12 @@ Text/settings limit: 1 MiB. Attachment limit: 16 MiB. Directory list: at most
 special files are refused. Operations involving unsafe descendants fail clearly.
 The root is an instance configuration, not a sandbox for all Harness tools.
 
+## Notes root as the Agent workspace
+
+When the plugin applies, it registers `root` as a DSH workspace (if the host provides the `workspaceController` service; restarts do not create duplicates, a registration failure only logs a warning and never affects notes, and `interface: classic` registers as well). Agent sessions can then use the notes directory as their working directory. The plugin only registers the directory; it never creates files in it.
+
+`templates/AGENTS.en.md` (Chinese: `templates/AGENTS.md`) is a "steward rules" template. Review and edit it, then copy it yourself into the notes root as `AGENTS.md`; DSH loads it automatically as project instructions for every session. The plugin never writes into your notes directory on its own.
+
 ## Existing installations and SQLite todos
 
 Old configs still load, with Files.md as the default interface. To keep the prior

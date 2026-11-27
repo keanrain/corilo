@@ -40,6 +40,12 @@ npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.pat
 
 正文／设置上限 1 MiB，附件 16 MiB。目录列表最多 20000 项、累计读取 64 MiB；递归版本扫描预算为 20 层／20000 项／10 秒。拒绝隐藏路径、路径穿越、软硬链接和特殊文件，涉及危险后代的操作明确失败。root 是实例配置，不是所有 Harness 工具的沙箱。
 
+## 笔记目录即 Agent 工作区
+
+插件启动时会把 `root` 自动登记为 DSH 工作区（宿主提供 `workspaceController` 服务时；重复启动不会产生重复项，登记失败只记录警告，不影响笔记功能；`interface: classic` 同样登记）。这样 Agent 会话可以直接把笔记目录当作工作目录。插件只登记目录，不会在其中创建任何文件。
+
+`templates/AGENTS.md`（英文版 `templates/AGENTS.en.md`）是“管家守则”模板。请先审阅、按需修改，再自行复制到笔记根目录并命名为 `AGENTS.md`；DSH 会把它作为项目指令自动加载到每个会话。插件不会自动写入你的笔记目录。
+
 ## 已有安装与 SQLite 待办
 
 旧配置继续加载，Files.md 为默认界面。要保留旧 React／CodeMirror 6 笔记页，请在插件配置中明确设置 `interface: classic`。旧 `stateRoot` 可接受但当前插件不使用。旧历史、IndexedDB、SQLite、凭据和会话均不自动迁移或删除；classic 恢复工具仅用于已有资料。

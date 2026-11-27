@@ -4,6 +4,11 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## Unreleased
+
+- 启动时把笔记根目录登记为 DSH 工作区（可选的宿主 `workspaceController` 服务；幂等，失败仅警告，缺失时行为不变；两种界面均登记）。新增 `templates/AGENTS.md` / `AGENTS.en.md` 管家守则模板，需用户审阅后自行复制到笔记根目录，插件不会自动写入。
+  On apply, the notes root is registered as a DSH workspace (optional host `workspaceController` service; idempotent, failure only warns, unchanged when absent; both interfaces). Added `templates/AGENTS.md` / `AGENTS.en.md` steward-rules templates to review and copy into the notes root yourself; the plugin never writes them.
+
 ## 0.9.0
 
 - 笔记面板只用于查看和编辑笔记：不再显示收集页和侧栏「收集」入口，去掉工作区顶部的 Agent 按钮。上游打开收集页的各条路径（启动、空闲计时、快捷键、删除当前笔记）改为保持或打开笔记。磁盘上已有的 `Chat.md` 不删除、不改动。
