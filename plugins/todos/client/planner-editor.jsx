@@ -1,12 +1,13 @@
 import { uiText } from './i18n.mjs';
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { X } from 'lucide-react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { plannerDraftChanged } from './planner-present.mjs';
 import { PlannerLatest } from './planner-latest.jsx';
 import { options, priorities, useLinkedTaskLabel } from "./planner-fields.jsx";
 import { strip } from "./planner-record.mjs";
-import { shiftStart, localInstant, Temporal } from "./planner-dates.mjs";
+import { shiftStart, Temporal } from "./planner-dates.mjs";
+import { toggleAllDay, formEnd, storageEnd, eventEndError, moreHasValue } from "./planner-form.mjs";
 import { PlannerTimeField } from "./planner-time-field.jsx";
 import { reminderShortcuts } from "./planner-time.mjs";
 
@@ -32,6 +33,11 @@ export function PlannerEditor({
   const form = useRef(null);
   const wasBusy = useRef(false);
   const dirty = plannerDraftChanged(s.editor);
+  const endError = s.editor.kind === "event" ? eventEndError(s.editor.value) : "";
+  const hasFolded = moreHasValue(s.editor.kind, s.editor.value, s.zone);
+  const [moreOpen, setMoreOpen] = useState(hasFolded);
+  // Data that arrives later (e.g. adopting the server copy) must not stay hidden.
+  useEffect(() => { if (hasFolded) setMoreOpen(true); }, [hasFolded]);
   const taskId = s.editor.value.taskId;
   const previewTaskId = s.editor.latest?.taskId;
   const listedTask = s.items.find((task) => task.id === taskId);
@@ -122,47 +128,9 @@ export function PlannerEditor({
           onChange={(e) => edit("title", e.target.value)}
         />
       </label>
-      <label className="planner-editor-description">{uiText("说明")}<TextareaAutosize
-          minRows={3}
-          maxRows={8}
-          placeholder={uiText("添加说明…")}
-          aria-label={uiText("说明")}
-          maxLength={20000}
-          value={s.editor.value.body}
-          onChange={(e) => edit("body", e.target.value)}
-        />
-      </label>
-      <label>{uiText("状态")}<select
-          aria-label={uiText("状态")}
-          value={s.editor.value.status}
-          onChange={(e) => edit("status", e.target.value)}
-        >
-          {options(
-            s.editor.kind === "task"
-              ? [
-                  ["open", uiText("未完成")],
-                  ["done", uiText("完成")],
-                  ["cancelled", uiText("取消")],
-                ]
-              : [
-                  ["active", uiText("有效")],
-                  ["cancelled", uiText("取消")],
-                ],
-          )}
-        </select>
-      </label>
       {s.editor.kind === "task" ? (
         <div className="planner-editor-properties">
           {field(uiText("计划日期"), "plannedDate", "date")}
-          {field(uiText("清单"), "list")}
-          <label>{uiText("优先级")}<select
-              aria-label={uiText("优先级")}
-              value={s.editor.value.priority}
-              onChange={(e) => edit("priority", e.target.value)}
-            >
-              {options(priorities())}
-            </select>
-          </label>
           <label>{uiText("截止类型")}<select
               aria-label={uiText("截止类型")}
               value={s.editor.value.due?.kind ?? ""}
@@ -209,17 +177,6 @@ export function PlannerEditor({
                   onChange={(at) => edit("due", { ...s.editor.value.due, at })}
                 />
               )}
-              <label>{uiText("截止时区")}<input
-                  list="corilo-planner-zones"
-                  value={s.editor.value.due.timeZone}
-                  onChange={(e) =>
-                    edit("due", {
-                      ...s.editor.value.due,
-                      timeZone: e.target.value,
-                    })
-                  }
-                />
-              </label>
             </>
           )}
         </div>
@@ -229,24 +186,16 @@ export function PlannerEditor({
               type="checkbox"
               checked={s.editor.value.allDay}
               onChange={(e) => {
-                const day = Temporal.Now.plainDateISO(s.zone).toString();
-                set((old) => ({
-                  editor: {
-                    ...old.editor,
-                    value: {
-                      ...old.editor.value,
-                      allDay: e.target.checked,
-                      start: e.target.checked
-                        ? day
-                        : localInstant(`${day}T09:00`, s.zone),
-                      end: e.target.checked
-                        ? Temporal.PlainDate.from(day)
-                            .add({ days: 1 })
-                            .toString()
-                        : localInstant(`${day}T09:30`, s.zone),
-                    },
-                  },
-                }));
+                try {
+                  const next = toggleAllDay(s.editor.value, e.target.checked);
+                  set((old) => ({
+                    editor: { ...old.editor, value: { ...old.editor.value, ...next } },
+                    error: "",
+                    notice: "未保存",
+                  }));
+                } catch (err) {
+                  set({ error: err.message });
+                }
               }}
             />
           </label>
@@ -262,23 +211,11 @@ export function PlannerEditor({
               zone={s.editor.value.timeZone} onChange={moveStart} />
           )}
           {s.editor.value.allDay
-            ? field(uiText("结束（全天结束日期不含当天）"), "end", "date")
+            ? <label>{uiText("结束")}<input type="date" value={formEnd(s.editor.value) ?? ""}
+                aria-invalid={endError ? "true" : undefined}
+                onChange={(e) => edit("end", storageEnd(e.target.value))} /></label>
             : <PlannerTimeField label={uiText("结束")} value={s.editor.value.end}
                 zone={s.editor.value.timeZone} onChange={(end) => edit("end", end)} />}
-          {field(uiText("日程原时区"), "timeZone")}
-          {field(uiText("地点"), "location")}
-          <label>{uiText("关联任务")}<select
-              aria-label={uiText("关联任务")}
-              value={s.editor.value.taskId ?? ""}
-              onChange={(e) => edit("taskId", e.target.value || null)}
-            >
-              {options([
-                ["", uiText("独立事件")],
-                ...(taskId && !listedTask ? [[taskId, linkedTaskLabel]] : []),
-                ...s.items.map((t) => [t.id, t.id === taskId ? linkedTaskLabel : t.title]),
-              ])}
-            </select>
-          </label>
           {!s.editor.value.allDay &&
             [30, 60].map((minutes) => (
               <button
@@ -306,6 +243,7 @@ export function PlannerEditor({
             ))}
         </div>
       )}
+      {endError && <p className="planner-alert" role="alert">{uiText(endError)}</p>}
       <PlannerTimeField label={uiText("提醒")} value={s.editor.value.reminderAt} zone={s.zone}
         clearable warnPast onChange={(at) => edit("reminderAt", at)}>
         <div className="planner-time-shortcuts">
@@ -314,6 +252,85 @@ export function PlannerEditor({
           ))}
         </div>
       </PlannerTimeField>
+      <details className="planner-editor-more" open={moreOpen || undefined}
+        onToggle={(e) => setMoreOpen(e.currentTarget.open)}>
+        <summary>{uiText("更多")}</summary>
+        <div className="planner-editor-more-fields">
+      <label className="planner-editor-description">{uiText("说明")}<TextareaAutosize
+          minRows={3}
+          maxRows={8}
+          placeholder={uiText("添加说明…")}
+          aria-label={uiText("说明")}
+          maxLength={20000}
+          value={s.editor.value.body}
+          onChange={(e) => edit("body", e.target.value)}
+        />
+      </label>
+      <label>{uiText("状态")}<select
+          aria-label={uiText("状态")}
+          value={s.editor.value.status}
+          onChange={(e) => edit("status", e.target.value)}
+        >
+          {options(
+            s.editor.kind === "task"
+              ? [
+                  ["open", uiText("未完成")],
+                  ["done", uiText("完成")],
+                  ["cancelled", uiText("取消")],
+                ]
+              : [
+                  ["active", uiText("有效")],
+                  ["cancelled", uiText("取消")],
+                ],
+          )}
+        </select>
+      </label>
+          {s.editor.kind === "task" ? (
+            <>
+              {field(uiText("清单"), "list")}
+          <label>{uiText("优先级")}<select
+              aria-label={uiText("优先级")}
+              value={s.editor.value.priority}
+              onChange={(e) => edit("priority", e.target.value)}
+            >
+              {options(priorities())}
+            </select>
+          </label>
+              {s.editor.value.due && (
+              <label>{uiText("截止时区")}<input
+                  list="corilo-planner-zones"
+                  value={s.editor.value.due.timeZone}
+                  onChange={(e) =>
+                    edit("due", {
+                      ...s.editor.value.due,
+                      timeZone: e.target.value,
+                    })
+                  }
+                />
+              </label>
+              )}
+            </>
+          ) : (
+            <>
+          {field(uiText("日程原时区"), "timeZone")}
+          {field(uiText("地点"), "location")}
+          <label>{uiText("关联任务")}<select
+              aria-label={uiText("关联任务")}
+              value={s.editor.value.taskId ?? ""}
+              onChange={(e) => edit("taskId", e.target.value || null)}
+            >
+              {options([
+                ["", uiText("独立事件")],
+                ...(taskId && !listedTask ? [[taskId, linkedTaskLabel]] : []),
+                ...s.items.map((t) => [t.id, t.id === taskId ? linkedTaskLabel : t.title]),
+              ])}
+            </select>
+          </label>
+
+            </>
+          )}
+        </div>
+      </details>
       {s.editor.latest && (
         <section>
           <h3>{uiText("服务器最新内容")}</h3>
@@ -357,7 +374,7 @@ export function PlannerEditor({
       )}
       <footer>
         <p className="planner-editor-save-state" role="status">{s.notice ? uiText(s.notice) : ''}</p>
-        <button type="submit" disabled={s.busy || Boolean(s.pending)}>
+        <button type="submit" disabled={s.busy || Boolean(s.pending) || Boolean(endError)}>
           {s.busy ? uiText("保存中…") : uiText("保存")}
         </button>
         <button

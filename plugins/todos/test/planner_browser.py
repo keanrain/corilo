@@ -1,6 +1,11 @@
 """Planner in real pinned Harness; synthetic data only."""
 import json, os, pathlib, re, shutil, subprocess, tempfile, time, uuid
 from playwright.sync_api import sync_playwright, expect
+
+def more(form):
+ # Folded "更多" fields: open the native disclosure before touching them.
+ form.evaluate("f=>{const d=f.querySelector('details.planner-editor-more');if(d)d.open=true}")
+
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 def main():
  with tempfile.TemporaryDirectory(prefix='corilo-planner-browser-') as tmp:
@@ -108,9 +113,12 @@ def main():
      page.get_by_role('button',name='新建任务',exact=True).click()
      form=page.get_by_role('form',name='事项详情')
      form.get_by_label('标题',exact=True).fill('恢复的任务')
+     more(form)
      form.get_by_label('说明',exact=True).fill('合成数据')
      form.get_by_label('计划日期',exact=True).fill('2026-11-15')
+     more(form)
      form.get_by_label('优先级',exact=True).select_option('high')
+     more(form)
      form.get_by_label('清单',exact=True).fill('工作')
      form.get_by_role('button',name='保存',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('已保存')
@@ -119,6 +127,9 @@ def main():
      page.get_by_role('button',name='全部',exact=True).click()
      expect(page.get_by_role('button',name='恢复的任务',exact=True)).to_be_visible()
      page.get_by_role('button',name='恢复的任务',exact=True).click()
+     # This task has a description, a list and high priority: the folded section opens by itself.
+     expect(form.get_by_label('说明',exact=True)).to_be_visible()
+     more(form)
      form.get_by_label('说明',exact=True).fill('丢响应后仍保留')
      # Commit the actual request, then lose only its response.
      def lose(route):
@@ -127,8 +138,10 @@ def main():
      form.get_by_role('button',name='保存',exact=True).click()
      form.get_by_role('button',name='核对操作',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('已保存')
+     more(form)
      expect(form.get_by_label('说明',exact=True)).to_have_value('丢响应后仍保留')
      # A separate authenticated writer wins; local text must survive the conflict.
+     more(form)
      form.get_by_label('说明',exact=True).fill('冲突时保留输入')
      page.evaluate("""async () => {
        const send = async (method,args,id) => (await (await fetch('api/corilo-todos/v2/'+method,{method:'POST',headers:{'content-type':'application/json',...(id?{'x-corilo-todos-id':id}:{})},body:JSON.stringify(args)})).json()).value;
@@ -137,25 +150,71 @@ def main():
      }""")
      form.get_by_role('button',name='保存',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('版本冲突')
+     more(form)
      expect(form.get_by_label('说明',exact=True)).to_have_value('冲突时保留输入')
      form.get_by_role('button',name='查看最新记录',exact=True).click()
      form.get_by_role('button',name='保留输入，按最新版本编辑',exact=True).click()
      form.get_by_role('button',name='保存',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('已保存')
+     more(form)
      form.get_by_label('状态',exact=True).select_option('cancelled')
      form.get_by_role('button',name='保存',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('已保存')
      form.get_by_role('button',name='关闭',exact=True).click()
      page.get_by_role('button',name='已取消',exact=True).click()
      page.get_by_role('button',name='恢复的任务',exact=True).click()
+     more(form)
      form.get_by_label('状态',exact=True).select_option('open')
      form.get_by_role('button',name='保存',exact=True).click()
      expect(page.get_by_role('status')).to_contain_text('已保存')
      form.get_by_role('button',name='关闭',exact=True).click()
+     # Saved events are only visible in Today and Calendar, so the button is offered only there.
+     expect(page.get_by_role('button',name='新建日程',exact=True)).to_have_count(0)
+     side.get_by_role('button',name='今天',exact=True).click()
      page.get_by_role('button',name='新建日程',exact=True).click()
+     # Folded fields start closed for a fresh event and the title stays reachable.
+     expect(form.get_by_label('说明',exact=True)).to_be_hidden()
      form.get_by_label('标题',exact=True).fill('全天安排')
      form.get_by_role('button',name='保存',exact=True).click()
-     expect(page.get_by_role('status')).to_contain_text('已保存')
+     expect(form.get_by_role('status')).to_contain_text('已保存')
+     # A success notice fades on its own after a few seconds.
+     expect(form.get_by_role('status')).to_have_text('',timeout=6000)
+     form.get_by_role('button',name='关闭',exact=True).click()
+     # All-day end is inclusive in the form; unchecking all-day keeps the chosen date.
+     page.get_by_role('button',name='新建日程',exact=True).click()
+     form.get_by_label('标题',exact=True).fill('全天往返')
+     form.get_by_label('开始',exact=True).fill('2027-02-03')
+     expect(form.get_by_label('结束',exact=True)).to_have_value('2027-02-03')
+     form.get_by_label('结束',exact=True).fill('2027-02-02')
+     expect(form.get_by_role('alert')).to_contain_text('结束日期不能早于开始日期')
+     expect(form.get_by_role('button',name='保存',exact=True)).to_be_disabled()
+     # The title's Enter shortcut submits the form directly and must use the same validation.
+     rejected_requests = []
+     def record_create(request):
+      if request.url.endswith('/calendar/create'): rejected_requests.append(request.url)
+     page.on('request', record_create)
+     form.get_by_label('标题',exact=True).press('Enter')
+     expect(form.get_by_role('status')).to_have_text('未保存')
+     page.remove_listener('request', record_create)
+     assert not rejected_requests, rejected_requests
+     form.get_by_label('结束',exact=True).fill('2027-02-04')
+     form.get_by_label('全天',exact=True).uncheck()
+     expect(form.get_by_label('开始日期',exact=True)).to_have_value('2027-02-03')
+     expect(form.get_by_label('开始时间',exact=True)).to_have_value('09:00')
+     expect(form.get_by_label('结束时间',exact=True)).to_have_value('09:30')
+     form.get_by_label('全天',exact=True).check()
+     expect(form.get_by_label('开始',exact=True)).to_have_value('2027-02-03')
+     expect(form.get_by_label('结束',exact=True)).to_have_value('2027-02-03')
+     form.get_by_label('结束',exact=True).fill('2027-02-04')
+     form.get_by_role('button',name='保存',exact=True).click()
+     expect(form.get_by_role('status')).to_contain_text('已保存')
+     saved_allday=page.evaluate("""async () => {
+       const send=async(m,a,id)=>(await(await fetch('api/corilo-todos/v2/'+m,{method:'POST',headers:{'content-type':'application/json',...(id?{'x-corilo-todos-id':id}:{})},body:JSON.stringify(a)})).json()).value;
+       const identity=await send('identity',{});
+       const r=await send('calendar/range',{start:'2027-02-01T00:00:00Z',end:'2027-02-10T00:00:00Z',timeZone:'UTC'},identity.id);
+       return r.items.find(e=>e.title==='全天往返');
+     }""")
+     assert saved_allday['start']=='2027-02-03' and saved_allday['end']=='2027-02-05', saved_allday
      form.get_by_role('button',name='关闭',exact=True).click()
      # Timed events and reminders use date + time controls in the record's zone.
      zone=page.evaluate('Intl.DateTimeFormat().resolvedOptions().timeZone')
@@ -207,6 +266,7 @@ def main():
      sidebar.get_by_role('button',name='加载更多可安排任务',exact=True).click()
      sidebar.get_by_role('button',name='恢复的任务 · 安排',exact=True).click()
      expect(form.get_by_label('标题',exact=True)).to_have_value('恢复的任务')
+     more(form)
      expect(form.get_by_label('关联任务',exact=True)).not_to_have_value('')
      form.get_by_role('button',name='关闭',exact=True).click()
      page.set_viewport_size({'width':390,'height':844})

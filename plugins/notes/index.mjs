@@ -77,6 +77,20 @@ export function noteTools(store) {
   ];
 }
 
+// Optional host service: Cordis has no optional-inject flag, so wait for it in a
+// nested inject that never blocks or fails plugin load. When the service is
+// absent the callback simply never runs. `create` is idempotent over the same
+// directory, so restarts do not duplicate the Workspace. Registers the root
+// only (never writes into it), for both interfaces.
+function registerWorkspace(ctx, root) {
+  const warn = error => ctx.logger('corilo-notes').warn(`Could not register the notes root as a DSH workspace: ${error?.message ?? error}`);
+  try {
+    ctx.inject(['workspaceController'], async scope => {
+      try { await scope.workspaceController.create({ path: root }); } catch (error) { warn(error); }
+    }).catch?.(warn);
+  } catch (error) { warn(error); }
+}
+
 export async function apply(ctx, config) {
   const store = await NotesStore.open(config.root);
   for (const tool of noteTools(store)) ctx.tools.register(tool);
@@ -85,5 +99,6 @@ export async function apply(ctx, config) {
     registerNotesApi(scope, store, { workspace, interface: workspace ? 'filesmd' : 'classic' });
     if (workspace) await registerWorkspaceApi(scope, workspace);
   });
+  registerWorkspace(ctx, config.root);
   ctx.logger('corilo-notes').info('Corilo notes tools registered');
 }

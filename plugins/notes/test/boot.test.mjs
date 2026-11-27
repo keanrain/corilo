@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, rm, realpath } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import os from 'node:os';
@@ -17,7 +17,7 @@ test('published dsh web profile loads the external notes plugin and executes its
     await writeFile(observer,`
       import {writeFile} from 'node:fs/promises';
       import {ToolExecutionPipeline} from ${JSON.stringify(pipeline)};
-      export const inject=['tools'];
+      export const inject=['tools','workspaceController'];
       export async function apply(ctx){
         const names=['corilo_notes_list','corilo_notes_read','corilo_notes_save','corilo_notes_create'];
         for(let n=0;!names.every(name=>ctx.tools.get(name));n++){
@@ -34,7 +34,10 @@ test('published dsh web profile loads the external notes plugin and executes its
         await call('corilo_notes_create',{});
         const read=await call('corilo_notes_read',{path:'boot.md'});
         const list=await call('corilo_notes_list',{});
-        await writeFile(${JSON.stringify(proof)},JSON.stringify({names,text:read.text,paths:list.items.map(x=>x.path)}));
+        const notesRoot=${JSON.stringify(path.join(root,'notes'))};
+        await new Promise(resolve=>setTimeout(resolve,1500));
+        const resolved=await ctx.workspaceController.create({path:notesRoot});
+        await writeFile(${JSON.stringify(proof)},JSON.stringify({workspace:resolved,names,text:read.text,paths:list.items.map(x=>x.path)}));
       }
     `);
     const patch=path.join(root,'notes.patch.yml');
@@ -58,6 +61,8 @@ test('published dsh web profile loads the external notes plugin and executes its
     }
     assert.ok(evidence,'Published host did not register/execute notes tools');
     assert.ok(address,'Published Web profile did not start');
+    assert.equal(evidence.workspace.created,false,'notes plugin already registered its root as a DSH workspace');
+    assert.equal(path.resolve(evidence.workspace.workspace.path),path.resolve(await realpath(path.join(root,'notes'))));
     assert.equal(evidence.names.length,4);assert.equal(evidence.text,'Real Harness host');assert.deepEqual(evidence.paths,['boot.md','未命名.md']);
     assert.equal(await readFile(path.join(root,'notes','未命名.md'),'utf8'),'');
     assert.equal((await fetch(address)).status,401,'published Web host requires its own authentication');

@@ -11,6 +11,11 @@ from playwright.sync_api import sync_playwright, expect
 from core_browser import wait_for
 from i18n_browser import switch_language
 
+def more(form):
+ # Folded "更多" fields: open the native disclosure before touching them.
+ form.evaluate("f=>{const d=f.querySelector('details.planner-editor-more');if(d)d.open=true}")
+
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
@@ -79,10 +84,12 @@ def exercise_interactions(page, panel, dialogs):
     expect(panel.get_by_role('button', name=title, exact=True)).to_contain_text('另一浏览器的新内容')
     panel.get_by_role('button', name=title, exact=True).click()
     form = panel.get_by_role('form', name='事项详情', exact=True)
+    more(form)
     form.get_by_label('说明', exact=True).fill('必须保留的未保存草稿')
     before = len(dialogs)
     page.keyboard.press('Escape')
     assert len(dialogs) == before + 1
+    more(form)
     expect(form.get_by_label('说明', exact=True)).to_have_value('必须保留的未保存草稿')
     form.get_by_role('button', name='保存', exact=True).click()
     expect(panel.get_by_role('status')).to_contain_text('已保存')
@@ -232,6 +239,7 @@ def main():
                                 form = panel.get_by_role('form', name='Item details', exact=True)
                                 long_title = 'Review the interface details and preserve context across every screen'
                                 form.get_by_label('Title', exact=True).fill(long_title)
+                                more(form)
                                 form.get_by_label('Description', exact=True).fill('AnUnbrokenDescription' * 60)
                                 form.get_by_label('List', exact=True).fill('projects-' + 'x' * 91)
                                 form.get_by_label('Title', exact=True).press('Enter')

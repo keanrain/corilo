@@ -12,7 +12,7 @@
 | `plugins/todos` | Tasks and calendar — `@corilo/dsh-todos` | `npm run test:todos` |
 | [`packages/learn-anything`](packages/learn-anything/README.en.md) | Independent learning tutor — `@corilo/learn-anything` | `npm run setup:learn-anything`, `npm run test:learn-anything` |
 
-Each package has its own lockfile, installation, and distribution. The learning tutor is a plugin for existing DSH users: build it with `npm run build:learn-anything` and package it with `npm run pack:learn-anything`. It is not enabled in the default notes + todos setup. `app/`, `android/`, and `p0/` retain legacy implementations and research; root `npm start/test` commands still serve the legacy application.
+Each package has its own lockfile, installation, and distribution. The learning tutor is a plugin for existing DSH users: build it with `npm run build:learn-anything` and package it with `npm run pack:learn-anything`. It is not enabled in the default notes + todos setup. `app/` and `p0/` retain legacy implementations and research (the Android project was removed on 2026-11-27; mobile currently means the DSH web page in a phone browser); root `npm start/test` commands still serve the legacy application.
 
 New instances created from this checkout enable notes + todos planner v2. Existing single-plugin and older dual-plugin configurations keep their original behavior; databases are not migrated automatically.
 

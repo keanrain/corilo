@@ -14,7 +14,7 @@ This page describes current code and development commands. Product rules are in 
 | [scripts/](../scripts/README.en.md) | Design-asset generation and historical development tools; `scripts/corilo.mjs` only forwards to the canonical launcher |
 | `docs/`, `docs/history/` | Current design/development documents and separately identified historical records |
 | `app/host/`, `app/cloud/`, `app/vendor/` | Retained local Pi/cloud services and pinned vendor code; root npm dependencies serve this application |
-| `android/`, `p0/` | Paused projects and historical validation evidence |
+| `p0/` | Paused project and historical validation evidence (the Android project was removed at the user's request on 2026-11-27) |
 | `packages/learn-anything/` | Independent tutor plugin for existing DSH users; root setup/test/build/pack:learn-anything convenience commands |
 
 Instance directories must be outside the repository. Do not commit user notes, SQLite, runtime homes, tokens, model keys, or real test material. Preserve existing legacy-app data without automatic migration.

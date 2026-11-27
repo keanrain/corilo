@@ -14,7 +14,7 @@ New instances default to notes + todos planner. Existing single-plugin and v1 du
 
 Disk files are authoritative for notes and attachments; todos SQLite is authoritative for tasks and calendars. Markdown checklists are not copied automatically into tasks, and Agent execution plans are not personal todos. Ordinary editing and scheduling do not require a model.
 
-The notes panel is for reading and editing notes: retain Files.md file trees, editing, search, renaming, moving, archiving, random opening, split panes, links, journals, and checklists. There is no capture page and no Agent button inside the workspace (Agent is reached from the host sidebar). Existing files such as `Chat.md` stay on disk untouched; the roles of `Later.md`, `journal/`, `media/`, and `config.json` are preserved; classic mode remains compatible.
+The notes panel is for reading and editing notes: retain Files.md file trees, editing, search, renaming, moving, archiving, random opening, split panes, links, journals, and checklists. There is no capture page (the inbox is fed through conversation; see the 2026-11-27 direction below) and no Agent button inside the workspace (Agent is reached from the host sidebar). Existing files such as `Chat.md` stay on disk untouched; the roles of `Later.md`, `journal/`, `media/`, and `config.json` are preserved; classic mode remains compatible.
 
 Existing file limits remain: 1 MiB for text/settings, 16 MiB per attachment, 64 MiB cumulative reads per directory, and scans bounded by 20,000 entries, 20 levels, and 10 seconds. Reject traversal, hidden paths, symbolic/hard links, and special files. Updates check the SHA-256 of the content actually read. Moves/deletes check versions and never overwrite an existing destination. Do not integrate Go sync, Telegram, or automatic external media requests, or relax host-wide CSP.
 
@@ -31,6 +31,25 @@ Reminder facts are persistent and scanned at startup and every 30 seconds. Remin
 Mutations use version checks and request receipts: replaying the same requestId cannot duplicate a write; the same ID with a different payload is rejected. Reconcile unknown outcomes through reads first.
 
 Planner uses v2 and rejects v1 databases. Existing configurations and data are not migrated or cleaned up automatically. Backups must explicitly include notes, todos, and any DSH/tutor data to retain; do not describe a notes backup as a whole-instance backup.
+
+## Product direction (2026-11-27)
+
+The root need is an "external brain" that remembers the user continuously: the user only talks and drops things in; it remembers, organises, and reminds.
+
+Three principles:
+1. One entry: the user talks to the Agent; the notes and planner pages are the manual mode for viewing and small edits.
+2. Memory lives in files: the notes root is the single personal space and source of truth; conversations are disposable; important conclusions are written to files the same day.
+3. Restraint: the Agent reaches out only at the morning brief, the evening review, and due reminders; changes to notes the user wrote need explicit approval.
+
+One rhythm: each morning a scheduled DSH task opens a new main conversation with the brief (today's events, tasks, overdue items, inbox count); each evening a review (done/not done, rescheduling, sorting the inbox into `wiki/` or the journal, one line on what was learned) archives the day into files. The main conversation stays light: heavy work goes to subagents that return short cards, which avoids context rot (inspired by dsh-superagent-prototype, which keeps its main session to compact cards with state outside the conversation).
+
+In the notes root the Agent may write `wiki/`, `收件箱/` (inbox), and `journal/`; everything else is read-only unless approved. The `AGENTS.md` file in the notes root guides the Agent. DSH currently provides no per-subdirectory write permissions. Version checks in the notes tools protect against overwriting changed content. Personal todos (planner SQLite) and the Agent's own work items stay strictly separate; the todo database stays where it is, outside the notes root.
+
+Implemented this round: the notes plugin registers its root as a DSH Workspace automatically; an `AGENTS.md` template ships in `plugins/notes/templates/` for the user to review and copy; planner fixes (success notices auto-dismiss, the all-day toggle keeps the chosen date, the form shows an inclusive all-day end date, simplified forms with a "More" section, "New event" only in the Today and Calendar views); the Android project was removed, and mobile currently means the DSH web page in a phone browser.
+
+Next: a 1-2 week trial using built-in DSH features (agent presets, subagents, scheduled tasks, the karpathy-llm-wiki skill) without new plugin code; afterwards judge by whether the user opens it daily, whether they still need to re-explain context, and whether reminders were missed. Deferred: code-repository management, a file watcher, a Ticket plugin, a phone app/push, and learning-plugin changes.
+
+None of this changes existing rules: no Markdown-to-task sync, no data migration, no vendor edits, no CSP relaxation, and Agent plans are not personal todos.
 
 ## Learning tutor boundaries
 

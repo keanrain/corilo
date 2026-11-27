@@ -10,7 +10,7 @@ Planner provides six task views with search, filters, and pagination, plus plann
 
 New source instances enable planner by default. To enable it in an independent DSH overlay, set `planner: true` and point it at a **new, empty root directory**. Existing v1 instances can keep their configuration and database.
 
-A date deadline is `{kind:"date",date:"2026-11-20",timeZone:"Asia/Taipei"}`. An exact deadline is `{kind:"instant",at:"2026-11-20T09:00:00+08:00",timeZone:"Asia/Taipei"}`. All-day ends are exclusive. Exact-time fields need an offset. Enter a separate instant for the reminder or leave it empty. Changing the start preserves duration, and the form can set 30 or 60 minutes directly. Dragging or resizing opens a form for confirmation.
+A date deadline is `{kind:"date",date:"2026-11-20",timeZone:"Asia/Taipei"}`. An exact deadline is `{kind:"instant",at:"2026-11-20T09:00:00+08:00",timeZone:"Asia/Taipei"}`. All-day ends are exclusive in storage and the API; the form shows the inclusive last day. Exact-time fields need an offset. Enter a separate instant for the reminder or leave it empty. Changing the start preserves duration, and the form can set 30 or 60 minutes directly. Dragging or resizing opens a form for confirmation.
 
 Save task details explicitly. Conflict previews list editable server fields. Keeping your input replaces the server version with the current form. Check the receipt when an outcome is unknown, and retry the original request if there is no receipt. Switching panels preserves edits. Save becomes available again when list refresh finishes or times out.
 
@@ -20,9 +20,9 @@ Run `npm run test:planner:browser` for the real Harness planner browser suite. S
 
 ## v1 compatibility mode
 
-The page, storage, and tool descriptions below apply only to **existing instances that omit `planner`**, retaining the original 0.5.2 mode. New instances default to planner v2 above. Install and distribute the current 0.8.0 package; it does not upgrade old databases automatically. The handwritten overlay below deliberately omits `planner` to continue running v1.
+The page, storage, and tool descriptions below apply only to **existing instances that omit `planner`**, retaining the original 0.5.2 mode. New instances default to planner v2 above. Install and distribute the current 0.8.1 package; it does not upgrade old databases automatically. The handwritten overlay below deliberately omits `planner` to continue running v1.
 
-This independent personal-task plugin supports pinned Harness **0.2.2-rc.3** and Node.js **>=24.9.0**. It uses Node's built-in `node:sqlite`, with no separate database service, ORM, or second Agent loop. Node's SQLite API still emits an experimental notice; keep the tested runtime compatible. Package version 0.8.0 has not been published to npm.
+This independent personal-task plugin supports pinned Harness **0.2.2-rc.3** and Node.js **>=24.9.0**. It uses Node's built-in `node:sqlite`, with no separate database service, ORM, or second Agent loop. Node's SQLite API still emits an experimental notice; keep the tested runtime compatible. Package version 0.8.1 has not been published to npm.
 
 The page creates, reads, edits, completes, and reopens tasks without a model key. Agent tools share the same persistence service. Personal tasks are separate from Harness Agent execution plans. v1 has no dates, calendar, reminder scheduling, or notifications; creating a task does not schedule a notification.
 
@@ -111,7 +111,7 @@ cd plugins/todos
 npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-Recipients run `npm init -y` in their installation directory, then `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.8.0.tgz`. Configure from the example and launch using that directory's `./node_modules/.bin/dsh`. The first installation still downloads pinned production dependencies; retain its lockfile. A packaged installation needs neither source nor esbuild.
+Recipients run `npm init -y` in their installation directory, then `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.8.1.tgz`. Configure from the example and launch using that directory's `./node_modules/.bin/dsh`. The first installation still downloads pinned production dependencies; retain its lockfile. A packaged installation needs neither source nor esbuild.
 
 Source validation:
 
@@ -124,4 +124,4 @@ Style coexistence checks also need `plugins/notes` installed and built. Browser 
 
 ## Updating the package in v1 mode
 
-Save current input, stop the service, and back up the entire task directory before upgrading. Install package 0.8.0, retain the v1 configuration that omits `planner`, reuse the existing data directory, and restart Harness; reload the browser client. No database migration or cleanup occurs. Old browser drafts are readable only by the old version; recovery is not promised by the new version. Do not clear site data and then expect to find old drafts. Cancelled records and associations remain in JSON exports.
+Save current input, stop the service, and back up the entire task directory before upgrading. Install package 0.8.1, retain the v1 configuration that omits `planner`, reuse the existing data directory, and restart Harness; reload the browser client. No database migration or cleanup occurs. Old browser drafts are readable only by the old version; recovery is not promised by the new version. Do not clear site data and then expect to find old drafts. Cancelled records and associations remain in JSON exports.

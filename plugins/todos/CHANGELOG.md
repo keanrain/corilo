@@ -4,6 +4,19 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.8.1
+
+- 「已添加」「已保存」「任务已完成」「任务已恢复」这类成功提示 3 秒后自动消失；错误、版本冲突、结果未知和未保存提示保持到处理完成。
+  Success notices (added, saved, completed, restored) disappear after 3 seconds; errors, conflicts, unknown outcomes and unsaved notices stay until handled.
+- 取消勾选「全天」不再跳到今天：保留事件当前日期，按日程自己的时区设为 09:00–09:30；改回全天时取该时区的日期。时间不存在时报错，不做猜测。
+  Unchecking all-day keeps the event's date (09:00–09:30 in the event's own zone) instead of jumping to today; the reverse uses the date in that zone. A nonexistent time is an error, never a guess.
+- 全天日程的表单与冲突预览显示包含当天的「结束」日期（最后一天），存储和 API 仍为不含当天的结束日期；结束早于开始时显示校验错误并禁用保存。
+  All-day events show an inclusive "End" date (last day) in the form and conflict preview; storage and API keep the exclusive end. An end before the start shows a validation error and disables Save.
+- 编辑表单默认只显示常用字段，其余收进「更多」；已有非默认内容（说明、清单、优先级、状态、地点、关联任务、不同时区）时自动展开。
+  The editor shows common fields by default and folds the rest into "More", which opens automatically when any folded field holds non-default data.
+- 「新建日程」只在「今天」和「日历」视图显示，其他视图看不到已保存的日程。
+  "New event" appears only in Today and Calendar, the views where saved events are visible.
+
 ## 0.8.0
 
 - 改为侧边栏布局：左侧列出今天、未来、收集箱、全部（带未完成计数）、日历、提醒、各个清单（带计数）和已完成／已取消；刷新、导出和显示时区也在侧栏。窄屏时侧栏收为抽屉，标题左侧的菜单按钮打开。
