@@ -7,16 +7,17 @@ import { strip } from "./planner-record.mjs";
 import { plannerDraftChanged } from "./planner-present.mjs";
 import { PLANNER_READ_TIMEOUT_MS } from "./planner-api.mjs";
 import { createNoticeDismisser } from "./planner-notices.mjs";
+import { eventEndError } from "./planner-form.mjs";
 export function usePlannerEditor({ get, set, call, refresh }) {
   const title = useRef(),
     returnFocus = useRef(),
     composing = useRef(false);
   // Success notices fade after a few seconds; everything else persists.
-  const dismiss = useMemo(() => createNoticeDismisser({ get, set }), []);
+  const dismiss = useMemo(() => createNoticeDismisser({ get, set }), [get, set]);
   useEffect(() => {
     dismiss.schedule(get().notice);
     return dismiss.dispose;
-  }, []);
+  }, [dismiss, get]);
   function open(kind, item = null, defaults = {}) {
     const { pending, busy, editor, zone, view, list } = get();
     if (pending || busy) return;
@@ -139,6 +140,7 @@ export function usePlannerEditor({ get, set, call, refresh }) {
     const { busy, pending, editor } = get();
     if (composing.current || pending || busy || !editor) return;
     const { kind, item, value } = editor;
+    if (kind === "event" && eventEndError(value)) return;
     const p = {
       method: `${kind === "task" ? "tasks" : "calendar"}/${item ? "update" : "create"}`,
       args: item

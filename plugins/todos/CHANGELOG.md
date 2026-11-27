@@ -4,7 +4,7 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
-## Unreleased
+## 0.8.1
 
 - 「已添加」「已保存」「任务已完成」「任务已恢复」这类成功提示 3 秒后自动消失；错误、版本冲突、结果未知和未保存提示保持到处理完成。
   Success notices (added, saved, completed, restored) disappear after 3 seconds; errors, conflicts, unknown outcomes and unsaved notices stay until handled.

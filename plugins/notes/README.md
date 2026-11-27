@@ -4,7 +4,7 @@
 
 Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts.
 
-**Version 0.9.0** · [Quick start](QUICKSTART.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
+**Version 0.10.0** · [Quick start](QUICKSTART.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
 
 One plugin supplies the Files.md workspace inside Harness: files, Markdown notes,
 checklists, journals, split editing and media, for reading and editing notes only. The complete pinned upstream
@@ -27,7 +27,7 @@ For a received tarball, in a new installation directory:
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.9.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.10.0.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
@@ -72,7 +72,7 @@ The root is an instance configuration, not a sandbox for all Harness tools.
 
 ## Notes root as the Agent workspace
 
-When the plugin applies, it registers `root` as a DSH workspace (if the host provides the `workspaceController` service; restarts do not create duplicates, a registration failure only logs a warning and never affects notes, and `interface: classic` registers as well). Agent sessions can then use the notes directory as their working directory. The plugin only registers the directory; it never creates files in it.
+When the plugin applies, it registers `root` as a DSH workspace (if the host provides the `workspaceController` service; restarts do not create duplicates, a registration failure only logs a warning and never affects notes, and `interface: classic` registers as well). Agent sessions can then use the notes directory as their working directory. Workspace registration creates no files in the notes directory.
 
 `templates/AGENTS.en.md` (Chinese: `templates/AGENTS.md`) is a "steward rules" template. Review and edit it, then copy it yourself into the notes root as `AGENTS.md`; DSH loads it automatically as project instructions for every session. The plugin never writes into your notes directory on its own.
 

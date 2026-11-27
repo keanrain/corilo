@@ -4,7 +4,7 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
-## Unreleased
+## 0.10.0
 
 - 启动时把笔记根目录登记为 DSH 工作区（可选的宿主 `workspaceController` 服务；幂等，失败仅警告，缺失时行为不变；两种界面均登记）。新增 `templates/AGENTS.md` / `AGENTS.en.md` 管家守则模板，需用户审阅后自行复制到笔记根目录，插件不会自动写入。
   On apply, the notes root is registered as a DSH workspace (optional host `workspaceController` service; idempotent, failure only warns, unchanged when absent; both interfaces). Added `templates/AGENTS.md` / `AGENTS.en.md` steward-rules templates to review and copy into the notes root yourself; the plugin never writes them.

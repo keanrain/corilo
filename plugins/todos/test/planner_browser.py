@@ -188,6 +188,15 @@ def main():
      form.get_by_label('结束',exact=True).fill('2027-02-02')
      expect(form.get_by_role('alert')).to_contain_text('结束日期不能早于开始日期')
      expect(form.get_by_role('button',name='保存',exact=True)).to_be_disabled()
+     # The title's Enter shortcut submits the form directly and must use the same validation.
+     rejected_requests = []
+     def record_create(request):
+      if request.url.endswith('/calendar/create'): rejected_requests.append(request.url)
+     page.on('request', record_create)
+     form.get_by_label('标题',exact=True).press('Enter')
+     expect(form.get_by_role('status')).to_have_text('未保存')
+     page.remove_listener('request', record_create)
+     assert not rejected_requests, rejected_requests
      form.get_by_label('结束',exact=True).fill('2027-02-04')
      form.get_by_label('全天',exact=True).uncheck()
      expect(form.get_by_label('开始日期',exact=True)).to_have_value('2027-02-03')

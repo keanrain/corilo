@@ -1,4 +1,4 @@
-<!-- Steward rules template: review and edit it, then copy it into your notes root as AGENTS.md; DSH loads it automatically as project instructions for every session. The plugin never writes into that directory itself. -->
+<!-- Steward rules template: review and edit it, then copy it into your notes root as AGENTS.md; DSH loads it automatically as project instructions for sessions in that workspace. The plugin never installs this template automatically. -->
 # Steward rules
 
 ## Who you are

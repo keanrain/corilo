@@ -4,7 +4,7 @@
 
 Corilo 自有界面跟随 DSH 语言设置（中文／English），切换不改变用户内容或草稿。
 
-**版本 0.9.0** · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · 尚未发布 npm。
+**版本 0.10.0** · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · 尚未发布 npm。
 
 一个插件在 Harness 中提供 Files.md 工作区：文件、Markdown 笔记、清单、日记、分栏编辑和媒体，只用于查看和编辑笔记。保留固定上游版本的完整 Web 目录与菜单。Harness 提供认证、原生 Agent 会话、模型配置和权限；不启动 Go 同步服务、Pi loop、Telegram 服务或独立模型界面。
 
@@ -23,7 +23,7 @@ node plugins/notes/cli.mjs start --config /absolute/corilo-instance/notes.patch.
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.9.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.10.0.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
@@ -42,7 +42,7 @@ npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.pat
 
 ## 笔记目录即 Agent 工作区
 
-插件启动时会把 `root` 自动登记为 DSH 工作区（宿主提供 `workspaceController` 服务时；重复启动不会产生重复项，登记失败只记录警告，不影响笔记功能；`interface: classic` 同样登记）。这样 Agent 会话可以直接把笔记目录当作工作目录。插件只登记目录，不会在其中创建任何文件。
+插件启动时会把 `root` 自动登记为 DSH 工作区（宿主提供 `workspaceController` 服务时；重复启动不会产生重复项，登记失败只记录警告，不影响笔记功能；`interface: classic` 同样登记）。这样 Agent 会话可以直接把笔记目录当作工作目录。登记工作区的操作不会在笔记目录中创建文件。
 
 `templates/AGENTS.md`（英文版 `templates/AGENTS.en.md`）是“管家守则”模板。请先审阅、按需修改，再自行复制到笔记根目录并命名为 `AGENTS.md`；DSH 会把它作为项目指令自动加载到每个会话。插件不会自动写入你的笔记目录。
 
