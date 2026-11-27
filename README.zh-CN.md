@@ -12,7 +12,7 @@
 | `plugins/todos` | 任务与日程 `@corilo/dsh-todos` | `npm run test:todos` |
 | [`packages/learn-anything`](packages/learn-anything/README.md) | 独立学习导师 `@corilo/learn-anything` | `npm run setup:learn-anything`、`npm run test:learn-anything` |
 
-各包独立依赖锁、安装和分发。学习导师仅供已有 DSH 用户安装，通过 `npm run build:learn-anything` 构建、`npm run pack:learn-anything` 打包，不随默认 notes＋todos 组合自动启用。`app/`、`android/`、`p0/` 保留旧实现与研究；根 `npm start/test` 仍服务旧应用。
+各包独立依赖锁、安装和分发。学习导师仅供已有 DSH 用户安装，通过 `npm run build:learn-anything` 构建、`npm run pack:learn-anything` 打包，不随默认 notes＋todos 组合自动启用。`app/`、`p0/` 保留旧实现与研究（Android 工程已于 2026-11-27 删除，移动端暂以手机浏览器打开 DSH 网页）；根 `npm start/test` 仍服务旧应用。
 
 源码新实例默认启用 notes＋todos planner v2；已有单插件或旧双插件配置按原模式运行，数据库不自动迁移。
 

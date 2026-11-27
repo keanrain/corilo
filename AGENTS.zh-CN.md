@@ -18,7 +18,7 @@
 
 正文为普通 Markdown 与附件。首期常开电脑/主机本机磁盘作为工作目录，NAS 为独立备份目标；不把未经验证的 SMB/NFS 或双向同步目录宣称为可用工作目录。个人版不依赖 Supabase、Corilo 官方账号或 GitHub 绑定。现有 Harness 鉴权、版本保护、导出与旧 notes/state 备份工具有各自边界；整实例一致性备份恢复及目标远程部署仍需单独验收。Tailscale 为建议，尚未部署。用户已选 Linux 小主机/常开电脑为首个部署方向；具体硬件、发行版及远程方式未定，不能宣称所有 NAS 或移动端已兼容。
 
-当前笔记主包是 plugins/notes（Files.md 工作区），plugins/todos 提供 planner v2 并保留 v1 兼容模式。正式任务以其 SQLite 为权威，Markdown 清单保持原文，不自动双向同步。planner 只能使用新的空资料目录；旧库升级工具尚未实现，不在启动时自动改 schema。Markdown 勾选清单不会自动生成任务或提醒。新代码位于 plugins/；旧 app/host、app/cloud、app/vendor、android 和既有配置/数据原样保留，作为迁移前实现，不默认删除或转换数据。旧 Pi 会话、PostgreSQL 任务和 Harness 会话不是同一格式，不自动重放历史工具。品牌与兼容标识（.personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/ 等）保留。旧版本文档标注历史，不继续作为当前路线扩展。
+当前笔记主包是 plugins/notes（Files.md 工作区），plugins/todos 提供 planner v2 并保留 v1 兼容模式。正式任务以其 SQLite 为权威，Markdown 清单保持原文，不自动双向同步。planner 只能使用新的空资料目录；旧库升级工具尚未实现，不在启动时自动改 schema。Markdown 勾选清单不会自动生成任务或提醒。新代码位于 plugins/；旧 app/host、app/cloud、app/vendor 和既有配置/数据原样保留；android 工程已按用户要求于 2026-11-27 删除（移动端暂以手机浏览器打开 DSH 网页）；旧 app/ 的处理不变，作为迁移前实现，不默认删除或转换数据。旧 Pi 会话、PostgreSQL 任务和 Harness 会话不是同一格式，不自动重放历史工具。品牌与兼容标识（.personalos/、personalos 字段、.local/xuye-prototype/、.xuye-local/ 等）保留。旧版本文档标注历史，不继续作为当前路线扩展。
 
 使用现有 checkout，不擅自创建 worktree。保留其他改动；按已授权范围在开发分支提交推送，不 force-push。部署、公开可见性变更及破坏性操作需要对应授权。代码仓库与知识库分开。使用虚构资料和合成凭据测试，不提交或输出真实密钥和用户笔记。
 

@@ -14,7 +14,7 @@
 | [scripts/](../scripts/README.md) | 设计资产生成、历史开发工具；`scripts/corilo.mjs` 只兼容转发至新入口 |
 | `docs/`、`docs/history/` | 当前设计／开发文档与不可混用的历史记录 |
 | `app/host/`、`app/cloud/`、`app/vendor/` | 保留的本机 Pi／云端服务与固定 vendor；根 npm 依赖用于这套应用 |
-| `android/`、`p0/` | 暂停的工程和历史验收证据 |
+| `p0/` | 暂停的工程和历史验收证据（Android 工程已于 2026-11-27 按用户要求删除） |
 | `packages/learn-anything/` | 独立学习插件，仅供已有 DSH 用户；setup/test/build/pack:learn-anything 为根便捷命令 |
 
 实例目录必须在仓库之外。不要提交用户笔记、SQLite、运行 home、token、模型密钥或真实测试资料；保留已有旧应用数据，不自动迁移。

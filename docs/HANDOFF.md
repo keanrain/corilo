@@ -1,6 +1,14 @@
 # Corilo 可里当前交接
 
-更新于 2026-11-19。当前产品规则见 [业务规格](PRODUCT-SPEC.md)，启动和验证命令见 [开发指南](DEVELOPMENT.md)。版本与分发渠道见 [分发指南](RELEASING.md)。
+更新于 2026-11-27。当前产品规则见 [业务规格](PRODUCT-SPEC.md)，启动和验证命令见 [开发指南](DEVELOPMENT.md)。版本与分发渠道见 [分发指南](RELEASING.md)。
+
+## 2026-11-27 Agent 外脑方向第 1 步
+
+分支 `feat/agent-workspace`。产品方向见 [业务规格](PRODUCT-SPEC.md) 的“产品方向（2026-11-27）”：Agent 作为唯一入口，记忆放在笔记根目录的文件里，克制地主动联系。
+
+- 已改：notes 自动把根目录注册为 DSH Workspace，`plugins/notes/templates/` 附 `AGENTS.md` 模板供审阅后复制；planner 修复（成功提示自动消失、全天开关保留日期、全天结束日期含当日、表单简化加“更多”、“新建日程”仅在今天／日历视图）；按用户要求删除 Android 工程及其两个 CI 工作流、`.gitignore` 条目，规则文档同步，移动端暂用手机浏览器打开 DSH 网页。
+- 限制：DSH 沙箱不能按子目录限制写入，Agent 可写区（`wiki/`、`收件箱/`、`journal/`）靠根目录 `AGENTS.md` 与版本冲突保护约束。
+- 待做：用 DSH 自带的预设、子 Agent、定时任务和 karpathy-llm-wiki 技能试用 1–2 周，不新增插件代码；再按是否每天打开、是否仍要重述上下文、是否漏提醒评估。暂缓：代码仓库管理、文件监听、Ticket 插件、手机 App／推送、学习插件改动。
 
 ## 学习导师 0.1.1（2026-11-19）
 
