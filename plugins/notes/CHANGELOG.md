@@ -4,6 +4,13 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.10.1
+
+- 更新中英文管家守则，允许在 `raw/` 中新增外部资料的原文副本。在确认原文副本和 wiki 文章均已保存后，再移除已获准归档的收件箱条目。
+  The bilingual steward templates allow adding source copies to `raw/`. Remove an approved inbox item after verifying that both the source copy and the wiki article were saved.
+- 仓库新增中英文外脑试用指南，涵盖模板、固定版本的 wiki 技能、早间简报和晚间回顾。
+  The repository adds bilingual trial guides for the template, the pinned wiki skill, the morning brief and the evening review.
+
 ## 0.10.0
 
 - 启动时把笔记根目录登记为 DSH 工作区（可选的宿主 `workspaceController` 服务；幂等，失败仅警告，缺失时行为不变；两种界面均登记）。新增 `templates/AGENTS.md` / `AGENTS.en.md` 管家守则模板，需用户审阅后自行复制到笔记根目录，插件不会自动写入。

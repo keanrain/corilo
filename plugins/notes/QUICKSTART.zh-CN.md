@@ -22,7 +22,7 @@ npm run start:corilo -- --directory /absolute/corilo-instance
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.10.0.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.10.1.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
