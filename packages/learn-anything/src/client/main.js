@@ -134,7 +134,7 @@ function OutlineCard({ view: initialView, isStreaming = false, useSession }) {
 }
 
 function modelHeading(m) {
-  return m.type === 'discriminative' ? `判别「${m.concept}」` : `联结「${m.input}」→「${m.output}」`
+  return m.type === 'discriminative' ? t('判别「{concept}」', { concept: m.concept }) : t('联结「{input}」→「{output}」', { input: m.input, output: m.output })
 }
 
 function ModelSection({ model }) {
@@ -143,21 +143,21 @@ function ModelSection({ model }) {
   const [filter, setFilter] = react.useState('all')
   const filtered = filter === 'all' ? examples : examples.filter((e) => e.polarity === filter)
   return h('section', { className: 'la-model', 'aria-label': modelHeading(model) },
-    h('div', { className: 'la-model-top' }, h('span', null, [model.type === 'discriminative' ? '辨清概念边界' : '连接输入与结果', PHASE_LABEL[model.phase] ?? model.phase].filter(Boolean).join(' · ')), h(Badge, { level: model.mastery })),
+    h('div', { className: 'la-model-top' }, h('span', null, [model.type === 'discriminative' ? t('辨清概念边界') : t('连接输入与结果'), PHASE_LABEL[model.phase] ?? model.phase].filter(Boolean).join(' · ')), h(Badge, { level: model.mastery })),
     h('div', { className: 'la-link-map' },
-      h('div', { className: 'la-map-node' }, h('small', null, model.type === 'discriminative' ? t('概念') : '遇到这样的情况'), h('strong', null, model.type === 'discriminative' ? model.concept : model.input)),
-      model.type !== 'discriminative' ? h(react.Fragment, null, h(Icon, { name: 'arrow', className: 'la-map-arrow' }), h('div', { className: 'la-map-node' }, h('small', null, '会得到什么结果'), h('strong', null, model.output))) : null),
+      h('div', { className: 'la-map-node' }, h('small', null, model.type === 'discriminative' ? t('概念') : t('遇到这样的情况')), h('strong', null, model.type === 'discriminative' ? model.concept : model.input)),
+      model.type !== 'discriminative' ? h(react.Fragment, null, h(Icon, { name: 'arrow', className: 'la-map-arrow' }), h('div', { className: 'la-map-node' }, h('small', null, t('会得到什么结果')), h('strong', null, model.output))) : null),
     h('blockquote', { className: 'la-statement', 'data-empty': !model.statement }, h('small', null, t('你的解释')),
-      model.statement ?? `等你用自己的话补上${model.type === 'discriminative' ? '这个概念的内涵' : '这条规律'}。`),
+      model.statement ?? (model.type === 'discriminative' ? t('等你用自己的话补上这个概念的内涵。') : t('等你用自己的话补上这条规律。'))),
     model.annotation ? h('p', { className: 'la-annotation' }, model.annotation) : null,
     examples.length ? h(react.Fragment, null,
-      h('div', { className: 'la-example-head' }, h('strong', null, '用例子检验规律'),
+      h('div', { className: 'la-example-head' }, h('strong', null, t('用例子检验规律')),
         h('div', { className: 'la-filters', role: 'group', 'aria-label': t('筛选例子') }, [['all', t('全部')], ['pos', t('正例')], ['neg', t('反例')]].map(([key, label]) => h('button', {
           key, type: 'button', className: 'la-filter', 'aria-pressed': filter === key, onClick: () => setFilter(key),
         }, label, ' ', key === 'all' ? examples.length : examples.filter((e) => e.polarity === key).length)))),
       h('div', { className: 'la-examples' }, filtered.length ? filtered.map((e) => h('article', { key: e.id, className: 'la-example', 'data-polarity': e.polarity },
         h('div', { className: 'la-example-meta' },
-          h('span', { className: 'la-example-type' }, e.polarity === 'neg' ? '反例 · 看清边界' : e.polarity === 'pos' ? '正例 · 印证规律' : TAG_LABEL[e.tag] ?? e.tag),
+          h('span', { className: 'la-example-type' }, e.polarity === 'neg' ? t('反例 · 看清边界') : e.polarity === 'pos' ? t('正例 · 印证规律') : TAG_LABEL[e.tag] ?? e.tag),
           h('span', null, `${ORIGIN_LABEL[e.origin] ?? e.origin}${e.checked && e.origin !== 'verification' ? t(' · 已校验') : ''}`)),
         h('div', { className: 'la-example-pair' }, h('span', null, e.input ?? ''), h(Icon, { name: 'arrow' }), h('span', null, e.output ?? '')),
         h(Sources, { sources: e.sources }))) : h('p', { className: 'la-empty' }, t('还没有这一类例子。')))) : null,
@@ -175,14 +175,14 @@ function TargetMapCard({ view: initialView, useSession }) {
   const saveEdited = (view) => setSaved({ sessionId, source: initialView, view })
   const kp = view.kp
   return h('section', { className: 'la-card la-target', 'aria-label': t('我的理解') },
-    h(CardHeader, { icon: 'target', label: t('我的理解'), title: kp.title, subtitle: '把你理解的规律，连接到具体的例子。', status: PHASE_LABEL[kp.phase] ?? kp.phase }),
+    h(CardHeader, { icon: 'target', label: t('我的理解'), title: kp.title, subtitle: t('把你理解的规律，连接到具体的例子。'), status: PHASE_LABEL[kp.phase] ?? kp.phase }),
     h(Sources, { sources: view.sources, label: t('参考资料') }),
     kp.kind !== 'information' && view.models.length ? h(TargetEditor, { view, sessionId, onSaved: saveEdited }) : null,
     kp.kind === 'information'
-      ? h('p', { className: 'la-empty' }, '信息类知识点：用记忆卡和间隔复习来记住。')
+      ? h('p', { className: 'la-empty' }, t('信息类知识点：用记忆卡和间隔复习来记住。'))
       : view.models.length
         ? view.models.map((m) => h(ModelSection, { key: m.id, model: m }))
-        : h('p', { className: 'la-empty' }, '这里将长出你的知识模型。先和导师一起，把这个知识点拆开。'))
+        : h('p', { className: 'la-empty' }, t('这里将长出你的知识模型。先和导师一起，把这个知识点拆开。')))
 }
 
 const LEVEL_COLOR = {
@@ -201,14 +201,14 @@ function ProgressCard({ view, useInput, inputActions }) {
     h('div', { className: 'la-progress-main' },
       h('div', { className: 'la-orbit', style: { '--la-progress': `${percent}%` }, role: 'img', 'aria-label': t('已掌握 {percent}%，{done}/{total} 个知识点', { percent, done, total }) },
         h('div', { className: 'la-orbit-inner' }, h('strong', null, `${percent}%`), h('small', null, t('已掌握')))),
-      h('div', { className: 'la-progress-copy' }, h('strong', null, t('{done} / {total} 个知识点', { done, total })), h('p', null, '从见过，到真正会用。'),
+      h('div', { className: 'la-progress-copy' }, h('strong', null, t('{done} / {total} 个知识点', { done, total })), h('p', null, t('从见过，到真正会用。')),
         h('div', { className: 'la-bar', 'aria-hidden': true }, Object.keys(LEVEL_LABEL).map((k) => h('span', { key: k, style: { width: `${((counts[k] ?? 0) / (total || 1)) * 100}%`, background: LEVEL_COLOR[k] } }))),
         h('div', { className: 'la-legend' }, Object.keys(LEVEL_LABEL).map((k) => h('span', { key: k }, h('i', { style: { background: LEVEL_COLOR[k] }, 'aria-hidden': true }), LEVEL_LABEL[k], h('b', null, counts[k] ?? 0)))))),
     h('div', { className: 'la-review-panel' }, h(Icon, { name: 'book' }),
-      h('div', { className: 'la-grow' }, h('strong', null, view.due ? t('今天，回看 {count} 项', { count: view.due }) : t('今天没有到期复习')), h('small', null, view.due ? '趁记忆还热，把理解留住。' : '可以继续探索下一个知识点。')),
+      h('div', { className: 'la-grow' }, h('strong', null, view.due ? t('今天，回看 {count} 项', { count: view.due }) : t('今天没有到期复习')), h('small', null, view.due ? t('趁记忆还热，把理解留住。') : t('可以继续探索下一个知识点。'))),
       view.due > 0 ? h('button', { type: 'button', className: 'la-action', disabled: !inputActions || !draftEmpty, title: !draftEmpty ? t('先发送或清空输入框里的内容') : undefined, onClick: () => { inputActions.setDraft(REVIEW_PROMPT); inputActions.submit() } }, t('开始复习'), h(Icon, { name: 'arrow' })) : null),
     view.weak?.length ? h(react.Fragment, null,
-      h('p', { className: 'la-h' }, '下一步，优先补这里'),
+      h('p', { className: 'la-h' }, t('下一步，优先补这里')),
       h('ul', { className: 'la-weak' }, view.weak.map((w, i) => h('li', { key: i }, h('span', { className: 'la-weak-no' }, String(i + 1).padStart(2, '0')), h('span', null, w.title, h('small', null, w.reason)))))) : null)
 }
 
@@ -233,10 +233,10 @@ function LayerDiagram({ part }) {
     h('span', { key, className: 'la-layer', 'data-broken': part === key }, text),
   ]
   return h('div', { className: 'la-layers' },
-    layer('upper', t('规律'), '规律：用你自己的话说出的内涵'),
+    layer('upper', t('规律'), t('规律：用你自己的话说出的内涵')),
     h('span', { key: 'link-n' }),
     h('span', { key: 'link', className: 'la-layer-link', 'data-broken': part === 'link' }, part === 'link' ? t('↕ 对不上') : '↕'),
-    layer('lower', t('例子'), '例子：具体情境里的判断和预测'),
+    layer('lower', t('例子'), t('例子：具体情境里的判断和预测')),
     layer('base', t('基础'), t('基础知识')))
 }
 

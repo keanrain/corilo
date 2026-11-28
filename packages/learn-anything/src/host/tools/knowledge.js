@@ -149,6 +149,11 @@ export const kpSetPhase = {
     const model = store.findModel(kp, args.modelId)
     const error = transitionError('knowledge', model.phase, args.phase)
     if (error) throw new Error(error)
+    // Formal questions count toward mastery, so the learner states the rule in their own words first.
+    const statement = model.targetMap?.statement
+    if (args.phase === 'verify' && model.phase !== 'verify' && !(statement?.source === 'user' && String(statement.text ?? '').trim())) {
+      throw new Error(`${kp.id}/${model.id} has no rule stated by the learner yet; stay in build: have them write it with "编辑我的理解" on the My understanding card, or record their exact words with target_map_update, then move to verify`)
+    }
     model.phase = args.phase
     await saveKp(env, kp)
     return `${kp.id}/${model.id} → ${args.phase}。${PHASE_GUIDE[args.phase]}`

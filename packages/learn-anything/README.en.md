@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts. Teaching materials, prompts, and answer protocols retain their original language.
+Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts. The English copy is not in the client bundle: it is fetched once from the Host (`GET /api/learn-anything/locale/en`) when the UI is in English, and Chinese shows until it arrives or if the request fails (retried after 30 seconds). Teaching materials, prompts, and answer protocols retain their original language.
 
 A personal learning-tutor plugin for DeepSeek Harness (dsh), using the 渐构 (incremental construction) method for route planning, diagnosis, learning materials, verification in new situations, and spaced review.
 
@@ -27,7 +27,7 @@ npm run pack:learn-anything
 Install the resulting `.tgz` into an existing Web profile, replacing `web` with the profile you actually use:
 
 ```sh
-dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.2.tgz
+dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.3.tgz
 ```
 
 Restart that DSH instance, create a session in an existing workspace, and select the Learning Tutor (学习导师) preset. Learning records live in `.learn/` under the session workspace.
@@ -42,7 +42,7 @@ The host verifies formal results: `verification_record` obtains the displayed qu
 
 Route selection prioritizes `prerequisites` and rejects dependency cycles. Explicit skip/restore requests use `kp_skip`; skipping does not imply mastery. Difficulty 1 still requires a substantively new situation. Questions without examiner-confirmed novelty do not count as independent mastery.
 
-Cards (route, target map, progress, and grading feedback) appear in reading order alongside text in the **final response**. The grading feedback card is the exception: it also shows on the `verification_record` tool row as soon as grading returns, so the learner does not wait for the next question; the final-response reference keeps it once the turn folds. The tutor places the display tool's `[title](learn-card:...)` reference unchanged on its own paragraph, with blank lines around it. References correspond to actual tool results from that turn, not copied card JSON or private tutor references. Questions and flip cards remain in the native right-hand Learning workspace, with an opening link in the response. The Learning workspace also keeps a learning overview: with no exercise it shows the goal and mastered progress, the current knowledge point and step, what is left before the next level, and today's due reviews with a one-click start; during an exercise it shows a one-line expandable summary above the card. It reads the existing stats projection, with no extra tool calls and no `.learn/` change. Drafts survive collapsing or asking for help; old exercises can be revisited. Narrow layouts use the native fullscreen presentation.
+Cards (route, target map, progress, and grading feedback) appear in reading order alongside text in the **final response**. The grading feedback card is the exception: it also shows on the `verification_record` tool row as soon as grading returns, so the learner does not wait for the next question; the final-response reference keeps it once the turn folds. When the reply shares a step with a question, quiz or flashcard (for example a route followed by a probe question), references in that reply also render as cards; any reference that cannot become a card stays as its title text, never a dead link. The tutor places the display tool's `[title](learn-card:...)` reference unchanged on its own paragraph, with blank lines around it. References correspond to actual tool results from that turn, not copied card JSON or private tutor references. Questions and flip cards remain in the native right-hand Learning workspace, with an opening link in the response. The Learning workspace also keeps a learning overview: with no exercise it shows the goal and mastered progress, the current knowledge point and step, what is left before the next level, and today's due reviews with a one-click start; during an exercise it shows a one-line expandable summary above the card. It reads the existing stats projection, with no extra tool calls and no `.learn/` change. Drafts survive collapsing or asking for help; old exercises can be revisited. Narrow layouts use the native fullscreen presentation.
 
 Diagnosis, explanation, and induction also favor cards for case judgments, comparisons, predictions, and ordering. `quiz_show(purpose="practice")` is a comprehension exercise; submission continues feedback and follow-up without writing verification records or raising mastery. Formal verification uses the default flow. Short checks and complete learner-written generalizations still happen in prose.
 

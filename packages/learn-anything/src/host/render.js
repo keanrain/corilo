@@ -20,7 +20,7 @@ export function withCardReference(text, callId) {
   const labels = { outline: '学习路线', 'target-map': '我的理解', progress: '学习进度', feedback: '练习反馈', 'concept-compare': '概念对比' }
   const label = labels[parseView(text)?.view]
   if (!label || !callId) return text
-  return `${text}\n\n展示卡片：在最终回答的合适位置，把下面引用原样独立成段，前后留空行；不要放在思考、工具调用前的过渡文字或代码块中。不必复述卡片，也不要复制工具中的导师私有内容。\n[${label}](learn-card:${encodeURIComponent(callId)})`
+  return `${text}\n\n展示卡片：在最终回答的合适位置，把下面引用原样独立成段，前后留空行；不要放在思考、工具调用前的过渡文字或代码块中。不必复述卡片，也不要复制工具中的导师私有内容。此引用只在本回合有效，之后要再展示请重新调用工具。\n[${label}](learn-card:${encodeURIComponent(callId)})`
 }
 
 function modelHeading(model) {

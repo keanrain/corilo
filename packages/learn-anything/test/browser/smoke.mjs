@@ -53,6 +53,7 @@ const server = createServer(async (req, res) => {
   else if (path === '/playground' || path === '/playground/') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(playgroundHtml) }
   else if (path === '/playground.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(await readFile(join(out, 'playground.js'))) }
   else if (path === '/demo') { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>执行与等待 · 动手补给</title><div id="demo"></div><script type="module" src="/task-demo.js"></script></html>') }
+  else if (path === '/api/learn-anything/locale/en') { res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.end(await readFile(new URL('../../src/client/ui-en.json', import.meta.url))) }
   else if (path === '/task-demo.js') { res.setHeader('Content-Type', 'text/javascript'); res.end(await readFile(join(out, 'task-demo.js'))) }
   else { res.writeHead(404); res.end() }
 })

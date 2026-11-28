@@ -2,6 +2,10 @@
 import { readTargetMap, saveTargetMap } from './target-edit.js'
 import { readOutline, saveOutline } from './tools/course.js'
 import { withWorkspaceWrite, withWorkspaceRead } from './store.js'
+import { readFileSync } from 'node:fs'
+
+// The client's English UI table, served on demand instead of shipping in the client bundle.
+export const ENGLISH_UI = JSON.stringify(JSON.parse(readFileSync(new URL('../client/ui-en.json', import.meta.url), 'utf8')))
 
 export const name = 'learn-anything-ui'
 export function registerLearningApi(ctx, outline) {
@@ -10,6 +14,10 @@ export function registerLearningApi(ctx, outline) {
     'target/save': saveTargetMap,
     ...(outline ? { 'outline/read': outline.readOutline, 'outline/save': outline.saveOutline } : {}),
   }
+  ctx.effect(() => ctx.connection.fetch.register({
+    path: '/api/learn-anything/locale/en', methods: ['GET', 'HEAD'], requestBody: 'buffered',
+    fetch: () => new Response(ENGLISH_UI, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-cache' } }),
+  }))
   for (const [action, run] of Object.entries(actions)) ctx.effect(() => ctx.connection.fetch.register({
     path: `/api/learn-anything/${action}`, methods: ['POST'], requestBody: 'streaming',
     async fetch(request) {

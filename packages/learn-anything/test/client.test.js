@@ -228,6 +228,36 @@ test('a reply waiting for a user question renders its read-only references in th
   }
 })
 
+test('a reply that ends by showing an exercise renders its route card instead of a dead link', () => {
+  const app = client()
+  const outline = app.result('course_save', { view: 'outline', goal: '课程', chapters: [], status: 'planning' })
+  const text = `路线是倒推出来的：\n\n[学习路线](learn-card:${outline.callId})\n\n先做这道摸底题。`
+  const props = { groupPart: 'response', turnProcess: { spec: { answerStep: null } } }
+  for (const name of ['quiz_show', 'flashcard_show']) {
+    const node = { data: { step: 2, status: 'settled', blocks: [{ kind: 'text', text }, { kind: 'tool-call', name, callId: `${name}-1` }] } }
+    const response = app.answer(text, { ...props, node })
+    assert.deepEqual(Array.from(cards(response), (card) => card.props.view.view), ['outline'], name)
+    assert.equal(response.props.children.at(-1).props.node.data.blocks.at(-1).name, name, 'the exercise row keeps its native rendering')
+  }
+})
+
+test('references that cannot become cards render as plain text, never as learn-card links', () => {
+  const app = client()
+  const stale = '前文\n\n[学习路线](learn-card:from-an-earlier-turn)\n\n后文'
+  const node = { data: { step: 1, status: 'settled', blocks: [{ kind: 'text', text: stale }, { kind: 'tool-call', name: 'kp_get', callId: 'kp-1' }] } }
+  for (const props of [
+    { node, groupPart: 'response', turnProcess: { spec: { answerStep: 1 } } },
+    { node: { data: { ...node.data, blocks: [{ kind: 'text', text: stale }] } }, groupPart: 'response', turnProcess: { spec: { answerStep: 1 } } },
+  ]) {
+    const rendered = JSON.stringify(app.answer(stale, props), (key, value) => key === '_owner' || key === '_store' ? undefined : value)
+    assert.doesNotMatch(rendered, /learn-card:/)
+    assert.match(rendered, /学习路线/)
+  }
+  const code = '```md\n[学习路线](learn-card:x)\n```'
+  const inCode = JSON.stringify(app.answer(code, { node: { data: { step: 1, status: 'settled', blocks: [{ kind: 'text', text: code }] } }, groupPart: 'response', turnProcess: { spec: { answerStep: 1 } } }), (key, value) => key === '_owner' || key === '_store' ? undefined : value)
+  assert.match(inCode, /learn-card:x/, 'code blocks stay verbatim')
+})
+
 test('outline tool arguments never render process cards; only confirmed results can be referenced', () => {
   const app = client()
   const callId = 'outline-live'
