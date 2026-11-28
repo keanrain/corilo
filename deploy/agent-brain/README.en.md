@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-This guide uses the Corilo source launcher with Notes 0.10.1 and the built-in DSH tools. Restart the instance with the usual command, for example `npm run start:corilo -- --directory <instance>`. The notes directory appears in the DSH workspace list. Replace `<instance>` in the commands with the launcher's instance directory.
+This guide uses the Corilo source launcher with Notes 0.10.1 or later and the built-in DSH tools. Restart the instance with the usual command, for example `npm run start:corilo -- --directory <instance>`. The notes directory appears in the DSH workspace list. Replace `<instance>` in the commands with the launcher's instance directory.
 
 ## 1. Add the steward rules
 

@@ -4,7 +4,7 @@
 
 Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts.
 
-**Version 0.10.1** · [Quick start](QUICKSTART.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
+**Version 0.10.2** · [Quick start](QUICKSTART.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · MIT · Not published to npm.
 
 One plugin supplies the Files.md workspace inside Harness: files, Markdown notes,
 checklists, journals, split editing and media, for reading and editing notes only. The complete pinned upstream
@@ -27,7 +27,7 @@ For a received tarball, in a new installation directory:
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.10.1.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.10.2.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
