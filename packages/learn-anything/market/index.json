@@ -30,7 +30,7 @@
           "source": {
             "type": "git",
             "url": "https://github.com/keanrain/corilo.git",
-            "commit": "0000000000000000000000000000000000000000",
+            "commit": "d2393140e1168c4ee00ad537cde41f1453e6603a",
             "path": "packages/learn-anything"
           },
           "engines": { "dsh": "0.2.2-rc.5" }
