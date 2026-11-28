@@ -4,6 +4,11 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## 0.1.2
+
+- 改为固定兼容 DSH 0.2.2-rc.5（Node.js ≥24.9.0 不变）。rc.3→rc.5 的宿主改动集中在网页搜索、DeepSeek 模型接入和新增的内容拒绝错误码，本包用到的接口未变；锁文件只更新 DSH 包。在 rc.5 上不再因版本要求被宿主拒绝。数据格式不变，无需迁移；rc.3 实例请继续使用上一版本。
+  Now pinned to DSH 0.2.2-rc.5 (Node.js ≥24.9.0 unchanged). Host changes from rc.3 to rc.5 are in web search, DeepSeek model access and a new content-refused error code; the interfaces this package uses are unchanged, and the lockfile only updates DSH packages. The host no longer rejects it on rc.5. Data formats are unchanged, so no migration; rc.3 instances should stay on the previous version.
+
 ## 0.1.1
 
 - 更快入门：目标接入只问学什么、为什么学；大纲先出骨架（章节加前两个知识点），确认一次即开始；联网调研改为可选；第一个知识点用一张理解练习题卡摸底，不计掌握度。写规律首选在「我的理解」卡里点「编辑我的理解」直接写，不再因逐字不符被拒；不代写规则不变。

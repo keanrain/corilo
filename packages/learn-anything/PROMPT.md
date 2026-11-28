@@ -72,7 +72,7 @@
 - **BYOK**：API Key 只存本地，优先复用 dsh 自带的 Key 配置方式。**MVP 只接 DeepSeek**，选它是因为模型自带搜索能力；以后接其他厂商时，依赖 dsh 自身的模型适配能力。
 - **模型调用**：使用 dsh 内置的 DeepSeek Anthropic 兼容 Messages 接口（`dsh-llm-deepseek`，协议不可配置）。已确认不使用 Responses API，详见 `research/phase1-report.md`。
 - **搜索**：使用 dsh 内置的 `web_search`（`dsh-web-search-deepseek`，Anthropic 格式的 server tool，返回带 URL 的 Sources，界面显示来源卡片）和 `web_fetch`，不额外接搜索服务。
-- **运行时**：Node ≥ 24.9；锁定 dsh 的精确版本（当前 `0.2.2-rc.3`，以 `package.json` 为准）。
+- **运行时**：Node ≥ 24.9；锁定 dsh 的精确版本（当前 `0.2.2-rc.5`，以 `package.json` 为准）。
 - **数据本地化**：SQLite + 文件目录，不依赖云服务。
 - **材料可信度**：AI 生成的例子和讲解可能出错，关键事实要附来源，或经过一次自检（例如另一个模型调用校验例子是否真的符合规律）。
 

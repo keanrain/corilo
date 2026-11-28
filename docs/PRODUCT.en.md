@@ -22,7 +22,7 @@ The learning tutor stores records in `.learn/` in the session workspace and uses
 
 ## Support and unimplemented scope
 
-The runtime is pinned to DSH 0.2.2-rc.3 and requires Node.js ≥24.9.0. The initial deployment target is an always-on Linux host with browser access. Local tests do not establish acceptance on physical phones, NAS hardware, or the target deployment.
+The runtime is pinned to DSH 0.2.2-rc.5 and requires Node.js ≥24.9.0. The initial deployment target is an always-on Linux host with browser access. Local tests do not establish acceptance on physical phones, NAS hardware, or the target deployment.
 
 Existing notes-only and todos v1 configurations remain supported. Planner v2 requires a new directory; there is no v1 upgrade tool or automatic configuration/database migration.
 

@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-The current source composition is notes + todos planner v2 on pinned DSH 0.2.2-rc.3. The [learning tutor](../packages/learn-anything/README.en.md) is another independently distributed plugin for existing DSH users and is not included by default.
+The current source composition is notes + todos planner v2 on pinned DSH 0.2.2-rc.5. The [learning tutor](../packages/learn-anything/README.en.md) is another independently distributed plugin for existing DSH users and is not included by default.
 
 | Directory | Package | Status |
 |---|---|---|

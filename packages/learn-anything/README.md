@@ -14,7 +14,7 @@ Corilo 自有界面跟随 DSH 语言设置（中文／English），切换不改�
 
 ## 安装
 
-仅支持**已有 DSH 用户**。需要 Node.js ≥ 24.9、DSH `0.2.2-rc.3`，以及 DSH 插件管理所需的 pnpm。
+仅支持**已有 DSH 用户**。需要 Node.js ≥ 24.9、DSH `0.2.2-rc.5`，以及 DSH 插件管理所需的 pnpm。
 
 在大仓根目录构建分发包：
 
@@ -27,7 +27,7 @@ npm run pack:learn-anything
 将生成的 `.tgz` 安装到已有 Web profile（把 `web` 换成你实际使用的 profile 名称）：
 
 ```sh
-dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.1.tgz
+dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.2.tgz
 ```
 
 重启该 DSH 实例，在已有工作区中新建会话并选择「学习导师」预设。学习记录保存在会话工作区的 `.learn/` 中。

@@ -30,7 +30,7 @@ The repository retains four npm lockfiles:
 - `plugins/notes/package-lock.json` pins notes runtime/build/test dependencies.
 - `plugins/todos/package-lock.json` pins task runtime/build/test dependencies.
 
-Each subproject keeps its independent lock. notes/todos must run outside the repository with production dependencies only, while the tutor installs into existing DSH. Do not introduce npm workspaces or rely on root hoisting. Install, build, and upgrade per package. Do not independently upgrade Harness or guess compatibility from `latest`; Harness is fixed to `0.2.2-rc.3`.
+Each subproject keeps its independent lock. notes/todos must run outside the repository with production dependencies only, while the tutor installs into existing DSH. Do not introduce npm workspaces or rely on root hoisting. Install, build, and upgrade per package. Do not independently upgrade Harness or guess compatibility from `latest`; Harness is fixed to `0.2.2-rc.5`.
 
 ## Current commands
 
@@ -71,7 +71,7 @@ With two different builds of the Files.md workspace package, run:
 npm_config_cache=/workspace/work/npm-cache node plugins/notes/test/upgrade.mjs /absolute/previous.tgz /absolute/next.tgz
 ```
 
-The script first installs only exact DSH 0.2.2-rc.3 with --save-exact in a temporary directory and boots it. It then installs the old package, writes synthetic data through authenticated APIs, stops the service, installs the new package, and restarts. It checks unchanged overlay bytes, retained data, served host.js matching the new installed file with a changed hash, unauthenticated 401 responses, and clean SIGTERM shutdown. It uses DSH's native entry, not the source launcher. Both packages must contain built assets. Different local builds may have the same version for this rehearsal; do not describe that as an upgrade between publicly published npm versions.
+The script first installs only exact DSH 0.2.2-rc.5 with --save-exact in a temporary directory and boots it. It then installs the old package, writes synthetic data through authenticated APIs, stops the service, installs the new package, and restarts. It checks unchanged overlay bytes, retained data, served host.js matching the new installed file with a changed hash, unauthenticated 401 responses, and clean SIGTERM shutdown. It uses DSH's native entry, not the source launcher. Both packages must contain built assets. Different local builds may have the same version for this rehearsal; do not describe that as an upgrade between publicly published npm versions.
 
 The rehearsal uses a disposable instance and cleans up afterward. Output includes only versions, hashes, and check results; it never upgrades a user's live instance. Target DSH paths, overlays, and deployment environments still require separate checks. `workspace_browser.py` continues to validate browser behavior; HTTP asset checks do not establish browser validation of a second instance.
 

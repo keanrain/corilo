@@ -31,7 +31,7 @@ test('standalone todo tarball installs production dependencies and boots real Ha
   await assert.rejects(access(path.join(install, 'node_modules/esbuild')), { code: 'ENOENT' });
   const plugin = path.join(install, 'node_modules/@corilo/dsh-todos');
   const manifest = JSON.parse(await readFile(path.join(plugin, 'package.json'), 'utf8'));
-  assert.equal(manifest.dependencies['@deepseek-ai/dsh'], '0.2.2-rc.3');
+  assert.equal(manifest.dependencies['@deepseek-ai/dsh'], '0.2.2-rc.5');
   const data = path.join(base, 'todos');
   const proof = await exec(process.execPath, ['--input-type=module', '-e', `
     import {pathToFileURL} from 'node:url';

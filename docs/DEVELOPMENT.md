@@ -30,7 +30,7 @@
 - `plugins/notes/package-lock.json` 固定笔记包运行／构建／测试依赖。
 - `plugins/todos/package-lock.json` 固定待办包运行／构建／测试依赖。
 
-三个子项目保持独立依赖锁；notes／todos 必须可在仓库外仅装生产依赖运行，导师安装到已有 DSH，因此不改为 npm workspace 或依赖根目录 hoist。安装、构建与升级分别在包目录操作；不单独升级 Harness 运行时或依据 `latest` 猜兼容版本。固定 Harness 为 `0.2.2-rc.3`。
+三个子项目保持独立依赖锁；notes／todos 必须可在仓库外仅装生产依赖运行，导师安装到已有 DSH，因此不改为 npm workspace 或依赖根目录 hoist。安装、构建与升级分别在包目录操作；不单独升级 Harness 运行时或依据 `latest` 猜兼容版本。固定 Harness 为 `0.2.2-rc.5`。
 
 ## 当前命令
 
@@ -71,7 +71,7 @@ CI 已接入 notes 的 Files.md／classic／中英切换测试，以及 todos �
 npm_config_cache=/workspace/work/npm-cache node plugins/notes/test/upgrade.mjs /absolute/previous.tgz /absolute/next.tgz
 ```
 
-脚本先在临时目录用 --save-exact 仅安装固定 DSH 0.2.2-rc.3 并实际启动，再安装旧包、通过鉴权 API 写入合成资料，停止服务、安装新包并重启。检查既有 overlay 字节不变、旧资料保留、服务返回的 host.js 与新安装文件完全一致且哈希改变、未认证请求为 401、SIGTERM 正常退出。它从独立 DSH 的原生入口启动，不依赖源码 launcher。两个包须已包含构建资源；可以是同版本的不同本地构建，不能把这种演练写成 npm 公开版本升级。
+脚本先在临时目录用 --save-exact 仅安装固定 DSH 0.2.2-rc.5 并实际启动，再安装旧包、通过鉴权 API 写入合成资料，停止服务、安装新包并重启。检查既有 overlay 字节不变、旧资料保留、服务返回的 host.js 与新安装文件完全一致且哈希改变、未认证请求为 401、SIGTERM 正常退出。它从独立 DSH 的原生入口启动，不依赖源码 launcher。两个包须已包含构建资源；可以是同版本的不同本地构建，不能把这种演练写成 npm 公开版本升级。
 
 整个演练使用可丢弃实例并在结束后清理，输出只有包版本、哈希和检查结果；不会替用户升级真实实例。目标用户 DSH 的路径、overlay 和部署环境仍须单独核对。真实浏览器行为继续由 workspace_browser.py 验收，HTTP 资源检查不等于第二实例浏览器验收。
 

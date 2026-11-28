@@ -20,9 +20,9 @@ planner 提供带搜索、筛选及分页的六个任务视图、计划日期、
 
 ## v1 兼容模式
 
-以下页面、存储格式及工具说明仅适用于**省略 `planner` 的旧实例**，保留原 0.5.2 模式。新实例默认使用上文 planner v2。安装与分发使用当前 0.8.1 包，不自动升级旧数据库；下方手写 overlay 故意省略 `planner`，仅用于继续运行 v1。
+以下页面、存储格式及工具说明仅适用于**省略 `planner` 的旧实例**，保留原 0.5.2 模式。新实例默认使用上文 planner v2。安装与分发使用当前 0.8.2 包，不自动升级旧数据库；下方手写 overlay 故意省略 `planner`，仅用于继续运行 v1。
 
-独立个人待办插件，固定支持 Harness **0.2.2-rc.3**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。当前包版本 0.8.1，目前没有发布到 npm。
+独立个人待办插件，固定支持 Harness **0.2.2-rc.5**，Node.js **>=24.9.0**。使用 Node 自带的 `node:sqlite`，没有额外数据库服务、ORM 或第二个 Agent loop。Node 的 SQLite 接口仍有实验性提示，必须保持所测运行时兼容。当前包版本 0.8.2，目前没有发布到 npm。
 
 页面直接创建、查看、编辑、完成或撤销待办，不需要模型密钥；Agent 工具使用同一持久化服务。个人待办与 Harness 的 Agent 执行计划分开。v1 模式不包含日期、日历、提醒调度或通知，创建待办不代表安排通知。
 
@@ -111,7 +111,7 @@ cd plugins/todos
 npm pack --pack-destination /absolute/existing/output-directory
 ```
 
-收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.8.1.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
+收件人在自己的 npm 安装目录执行 `npm init -y`，再 `npm install --ignore-scripts /absolute/corilo-dsh-todos-0.8.2.tgz`；按示例配置，使用安装目录的 `./node_modules/.bin/dsh` 启动。首次仍需下载固定生产依赖，保留生成的 lockfile；安装包不需要源码或 esbuild。
 
 源码验证：
 
@@ -124,4 +124,4 @@ npm --prefix plugins/todos run test:browser
 
 ## v1 模式更新插件包
 
-升级前先保存当前页面输入，再停止服务并备份整个待办目录。安装 0.8.1 包、保留省略 `planner` 的 v1 配置并沿用现有资料目录并重新启动 Harness；浏览器重新加载客户端。没有数据库迁移或数据清理。旧浏览器草稿只可用旧版本读取，新版不承诺恢复；不要清除站点数据后再寻找旧草稿。取消记录和关联字段仍包含在 JSON 导出中。
+升级前先保存当前页面输入，再停止服务并备份整个待办目录。安装 0.8.2 包、保留省略 `planner` 的 v1 配置并沿用现有资料目录并重新启动 Harness；浏览器重新加载客户端。没有数据库迁移或数据清理。旧浏览器草稿只可用旧版本读取，新版不承诺恢复；不要清除站点数据后再寻找旧草稿。取消记录和关联字段仍包含在 JSON 导出中。

@@ -17,7 +17,7 @@ function fixture(t) {
     mkdirSync(join(input, product), { recursive: true })
     const pkg = { name: `@corilo/${product}`, version: '1.2.3' }
     const bytes = Buffer.from(`synthetic validated archive for ${product}`)
-    const report = { ...pkg, product, filename: `${product}.tgz`, published: false, dsh: '0.2.2-rc.3', node: '>=24.9.0', fileCount: 3, checks: ['build', 'package-tests', 'package-content'], sha256: createHash('sha256').update(bytes).digest('hex') }
+    const report = { ...pkg, product, filename: `${product}.tgz`, published: false, dsh: '0.2.2-rc.5', node: '>=24.9.0', fileCount: 3, checks: ['build', 'package-tests', 'package-content'], sha256: createHash('sha256').update(bytes).digest('hex') }
     writeFileSync(join(repo, relative, 'package.json'), JSON.stringify(pkg))
     writeFileSync(join(input, product, 'release.json'), JSON.stringify(report))
     writeFileSync(join(input, product, report.filename), bytes)

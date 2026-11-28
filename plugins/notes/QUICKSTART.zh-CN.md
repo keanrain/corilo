@@ -22,14 +22,14 @@ npm run start:corilo -- --directory /absolute/corilo-instance
 
 ```sh
 npm init -y
-npm install --ignore-scripts /absolute/corilo-dsh-notes-0.10.1.tgz
+npm install --ignore-scripts /absolute/corilo-dsh-notes-0.10.2.tgz
 npx --no-install corilo-notes init --directory /absolute/corilo-instance
 npx --no-install corilo-notes start --config /absolute/corilo-instance/notes.patch.json
 ```
 
-已有 DSH 可按包内 notes.patch.example.yml 加载入口，指定主机 root。包升级后重启服务并刷新浏览器。固定 Harness 0.2.2-rc.3，不独立升级宿主猜兼容。
+已有 DSH 可按包内 notes.patch.example.yml 加载入口，指定主机 root。包升级后重启服务并刷新浏览器。固定 Harness 0.2.2-rc.5，不独立升级宿主猜兼容。
 
-若 DSH 由实例自己的 package.json 管理，依赖必须写为 `"@deepseek-ai/dsh": "0.2.2-rc.3"`，不要保留 npm 默认生成的 `^0.2.2-rc.3`。后续安装插件可能重新解析该范围并升级宿主；安装前后都用 `npm ls @deepseek-ai/dsh` 核对实际版本。新建隔离安装时使用 `npm install --save-exact --ignore-scripts @deepseek-ai/dsh@0.2.2-rc.3`。已有不同版本的实例先备份并另建验证安装，不直接降级或改写真实实例。
+若 DSH 由实例自己的 package.json 管理，依赖必须写为 `"@deepseek-ai/dsh": "0.2.2-rc.5"`，不要保留 npm 默认生成的 `^0.2.2-rc.5`。后续安装插件可能重新解析该范围并升级宿主；安装前后都用 `npm ls @deepseek-ai/dsh` 核对实际版本。新建隔离安装时使用 `npm install --save-exact --ignore-scripts @deepseek-ai/dsh@0.2.2-rc.5`。已有不同版本的实例先备份并另建验证安装，不直接降级或改写真实实例。
 
 ## Agent 工作区与管家守则
 

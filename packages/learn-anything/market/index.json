@@ -25,6 +25,17 @@
       },
       "versions": [
         {
+          "version": "0.1.2",
+          "publishTimestamp": 1795836818,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/keanrain/corilo.git",
+            "commit": "dc24f6dc173fc89cad46e552d4dae0bf44644d47",
+            "path": "packages/learn-anything"
+          },
+          "engines": { "dsh": "0.2.2-rc.5" }
+        },
+        {
           "version": "0.1.1",
           "publishTimestamp": 1795105834,
           "source": {

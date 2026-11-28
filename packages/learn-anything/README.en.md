@@ -14,7 +14,7 @@ The original source, tests, prompts, skills, research, and market index were mig
 
 ## Installation
 
-Supports **existing DSH users only**. Requires Node.js ≥24.9, DSH `0.2.2-rc.3`, and pnpm for DSH plugin management.
+Supports **existing DSH users only**. Requires Node.js ≥24.9, DSH `0.2.2-rc.5`, and pnpm for DSH plugin management.
 
 Build a distribution package from the repository root:
 
@@ -27,7 +27,7 @@ npm run pack:learn-anything
 Install the resulting `.tgz` into an existing Web profile, replacing `web` with the profile you actually use:
 
 ```sh
-dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.1.tgz
+dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.2.tgz
 ```
 
 Restart that DSH instance, create a session in an existing workspace, and select the Learning Tutor (学习导师) preset. Learning records live in `.learn/` under the session workspace.
