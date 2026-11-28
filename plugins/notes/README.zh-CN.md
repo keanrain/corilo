@@ -10,7 +10,7 @@ Corilo 自有界面跟随 DSH 语言设置（中文／English），切换不改�
 
 ## 安装与运行
 
-需要 Node.js **>=24.9.0**、Harness **0.2.2-rc.3**，使用固定依赖。在源码仓库中执行：
+需要 Node.js **>=24.9.0**、Harness **0.2.2-rc.5**，使用固定依赖。在源码仓库中执行：
 
 ```sh
 npm --prefix plugins/notes ci --ignore-scripts

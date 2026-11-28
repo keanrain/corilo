@@ -46,13 +46,13 @@ try {
   await writeFile(path.join(root, 'Existing.md'), '已有清单\n- [ ] 保留资料\n');
   await writeFile(path.join(install, 'package.json'), JSON.stringify({ name: 'corilo-upgrade-consumer', private: true }));
   const npm = args => exec('npm', [...args, '--save-exact', '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', '--prefer-offline'], { cwd: install, env, timeout: 120000, maxBuffer: 8 * 1024 * 1024 });
-  await npm(['install', '@deepseek-ai/dsh@0.2.2-rc.3']);
+  await npm(['install', '@deepseek-ai/dsh@0.2.2-rc.5']);
   await start(); await stop(); // Real independent DSH boots before Corilo is installed.
   const config = path.join(base, 'notes.patch.json'), entry = path.join(install, 'node_modules/@corilo/dsh-notes');
   const evidence = []; let configBytes;
   for (const [index, archive] of archives.entries()) {
     await npm(['install', archive]);
-    assert.equal(JSON.parse(await readFile(path.join(install, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8')).version, '0.2.2-rc.3', 'Plugin installation must not upgrade the host');
+    assert.equal(JSON.parse(await readFile(path.join(install, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8')).version, '0.2.2-rc.5', 'Plugin installation must not upgrade the host');
     if (index === 0) {
       await exec(process.execPath, [path.join(entry, 'cli.mjs'), 'init', '--root', root, '--config', config], { cwd: install, env });
       configBytes = await readFile(config, 'utf8');
@@ -84,7 +84,7 @@ try {
     await stop();
   }
   assert.notEqual(evidence[0].hostSha256, evidence[1].hostSha256, 'Use distinct builds to prove assets changed');
-  console.log(JSON.stringify({ harness: '0.2.2-rc.3', independentHostBoot: true, upgradeRestart: true, overlayPreserved: true, notesPreserved: true, assets: evidence, modelCalls: 0 }, null, 2));
+  console.log(JSON.stringify({ harness: '0.2.2-rc.5', independentHostBoot: true, upgradeRestart: true, overlayPreserved: true, notesPreserved: true, assets: evidence, modelCalls: 0 }, null, 2));
 } finally {
   await stop(); await rm(base, { recursive: true, force: true });
 }

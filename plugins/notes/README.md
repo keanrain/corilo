@@ -14,7 +14,7 @@ Telegram service or separate model UI is started.
 
 ## Install and run
 
-Node.js **>=24.9.0**, Harness **0.2.2-rc.3**, fixed dependencies. From this checkout:
+Node.js **>=24.9.0**, Harness **0.2.2-rc.5**, fixed dependencies. From this checkout:
 
 ```sh
 npm --prefix plugins/notes ci --ignore-scripts

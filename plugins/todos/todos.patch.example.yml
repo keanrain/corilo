@@ -1,4 +1,4 @@
-# DeepSeek Harness 0.2.2-rc.3 external plugin overlay.
+# DeepSeek Harness 0.2.2-rc.5 external plugin overlay.
 # Replace all absolute paths. Keep SQLite outside notes and Harness homes.
 - insert:
     - id: corilo-todos

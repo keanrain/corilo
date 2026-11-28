@@ -2,14 +2,14 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { releaseMetadata, validatePack, prepareRelease } from '../prepare-release.mjs'
 
-const pkg = { name: '@corilo/example', version: '1.2.3', private: true, engines: { node: '>=24.9.0', dsh: '0.2.2-rc.3' }, exports: { '.': './index.js' } }
+const pkg = { name: '@corilo/example', version: '1.2.3', private: true, engines: { node: '>=24.9.0', dsh: '0.2.2-rc.5' }, exports: { '.': './index.js' } }
 const lock = { name: pkg.name, version: pkg.version, packages: { '': { name: pkg.name, version: pkg.version } } }
 const notes = '# Changes\n\n## 1.2.3\n\n- Keep existing data.\n\n## 1.2.2\n\n- Previous release.\n'
 const pack = { name: pkg.name, version: pkg.version, filename: 'corilo-example-1.2.3.tgz', files: ['package.json', 'README.md', 'index.js'].map((path) => ({ path })) }
 
 test('release notes are limited to the selected independent version', () => {
   const metadata = releaseMetadata(pkg, lock, notes)
-  assert.equal(metadata.dsh, '0.2.2-rc.3')
+  assert.equal(metadata.dsh, '0.2.2-rc.5')
   assert.equal(metadata.private, true)
   assert.match(metadata.notes, /Keep existing data/)
   assert.doesNotMatch(metadata.notes, /Previous release/)

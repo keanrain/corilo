@@ -6,7 +6,7 @@
 
 ## 运行与依赖边界
 
-三个业务插件均适配 DSH 0.2.2-rc.3、Node.js ≥24.9.0。各包保留独立依赖锁与分发产物；根包依赖服务旧 app，不作为插件的共享运行时。没有 npm workspaces 或根依赖提升。
+三个业务插件均适配 DSH 0.2.2-rc.5、Node.js ≥24.9.0。各包保留独立依赖锁与分发产物；根包依赖服务旧 app，不作为插件的共享运行时。没有 npm workspaces 或根依赖提升。
 
 `launcher/` 为新实例组合 notes＋todos planner，并兼容已有配置；它不是第三个发行包。导师包位于 `packages/learn-anything/`，只向已有 DSH 提供插件，不初始化独立 profile，不改变宿主默认预设、日志或插件清单设置。
 

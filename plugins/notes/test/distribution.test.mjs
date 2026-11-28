@@ -133,7 +133,7 @@ test('npm tarball installs outside the checkout with production dependencies and
   await exec('npm', ['install', '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', '--prefer-offline', path.join(base, report.filename)], { cwd: installRoot, env, maxBuffer: 8 * 1024 * 1024, timeout: 120000 });
   const cli = path.join(installRoot, 'node_modules/@corilo/dsh-notes/cli.mjs');
   const installed = JSON.parse(await readFile(path.join(installRoot, 'node_modules/@corilo/dsh-notes/package.json'), 'utf8'));
-  assert.equal(installed.dependencies['@deepseek-ai/dsh'], '0.2.2-rc.3');
+  assert.equal(installed.dependencies['@deepseek-ai/dsh'], '0.2.2-rc.5');
   assert.equal(installed.license, 'MIT');
   const restoreExport = await exec(process.execPath, ['--input-type=module', '-e', `
     import {pathToFileURL} from 'node:url';
@@ -145,7 +145,7 @@ test('npm tarball installs outside the checkout with production dependencies and
   const root = path.join(base, 'notes'), state = path.join(base, 'state'), config = path.join(base, 'notes.patch.json');
   await exec(process.execPath, [cli, 'init', '--root', root, '--state-root', state, '--config', config], { cwd: installRoot, env });
   const checked = await exec(process.execPath, [cli, 'check', '--config', config], { cwd: installRoot, env });
-  assert.equal(JSON.parse(checked.stdout).harness, '0.2.2-rc.3');
+  assert.equal(JSON.parse(checked.stdout).harness, '0.2.2-rc.5');
   // Simulate a side-by-side upgrade: an earlier installation keeps its own
   // overlay; the installed tarball generates a separate overlay for shared data.
   const previousConfig = path.join(base, 'previous-install.patch.json');

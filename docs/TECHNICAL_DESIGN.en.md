@@ -6,7 +6,7 @@
 
 ## Runtime and dependency boundaries
 
-All three plugins target DSH 0.2.2-rc.3 and Node.js ≥24.9.0. Each has independent dependency locks and distribution artifacts. Root dependencies serve the legacy app, not a shared plugin runtime. There are no npm workspaces or root dependency hoisting.
+All three plugins target DSH 0.2.2-rc.5 and Node.js ≥24.9.0. Each has independent dependency locks and distribution artifacts. Root dependencies serve the legacy app, not a shared plugin runtime. There are no npm workspaces or root dependency hoisting.
 
 `launcher/` composes notes + todos planner for new instances and supports existing configurations; it is not another distribution package. `packages/learn-anything/` supplies a plugin to existing DSH users without initializing a dedicated profile or changing host default presets, logging, or package-inventory settings.
 

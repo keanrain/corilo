@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-> Runtime: notes, todos, and the independent learning tutor are pinned to DSH **0.2.2-rc.3**. Install from each package's lockfile rather than relying on npm tags.
+> Runtime: notes, todos, and the independent learning tutor are pinned to DSH **0.2.2-rc.5**. Install from each package's lockfile rather than relying on npm tags.
 
 ## Independent products in one repository
 

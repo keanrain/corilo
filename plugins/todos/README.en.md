@@ -22,7 +22,7 @@ Run `npm run test:planner:browser` for the real Harness planner browser suite. S
 
 The page, storage, and tool descriptions below apply only to **existing instances that omit `planner`**, retaining the original 0.5.2 mode. New instances default to planner v2 above. Install and distribute the current 0.8.1 package; it does not upgrade old databases automatically. The handwritten overlay below deliberately omits `planner` to continue running v1.
 
-This independent personal-task plugin supports pinned Harness **0.2.2-rc.3** and Node.js **>=24.9.0**. It uses Node's built-in `node:sqlite`, with no separate database service, ORM, or second Agent loop. Node's SQLite API still emits an experimental notice; keep the tested runtime compatible. Package version 0.8.1 has not been published to npm.
+This independent personal-task plugin supports pinned Harness **0.2.2-rc.5** and Node.js **>=24.9.0**. It uses Node's built-in `node:sqlite`, with no separate database service, ORM, or second Agent loop. Node's SQLite API still emits an experimental notice; keep the tested runtime compatible. Package version 0.8.1 has not been published to npm.
 
 The page creates, reads, edits, completes, and reopens tasks without a model key. Agent tools share the same persistence service. Personal tasks are separate from Harness Agent execution plans. v1 has no dates, calendar, reminder scheduling, or notifications; creating a task does not schedule a notification.
 

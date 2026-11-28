@@ -1,6 +1,6 @@
 {
   "name": "@corilo/dsh-todos",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -43,14 +43,14 @@
     "test:planner:browser": "python3 test/planner_browser.py && python3 test/planner_visual_browser.py && python3 test/planner_conflict_browser.py"
   },
   "dependencies": {
-    "@deepseek-ai/dsh": "0.2.2-rc.3",
-    "@deepseek-ai/dsh-tools": "0.2.2-rc.3",
+    "@deepseek-ai/dsh": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.5",
     "@deepseek-ai/schemastery": "3.19.0",
     "@js-temporal/polyfill": "0.5.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
-    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.3",
+    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.5",
     "@fullcalendar/core": "6.1.19",
     "@fullcalendar/daygrid": "6.1.19",
     "@fullcalendar/interaction": "6.1.19",

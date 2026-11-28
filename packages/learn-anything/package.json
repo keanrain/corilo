@@ -1,6 +1,6 @@
 {
   "name": "@corilo/learn-anything",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Personal learning tutor for DeepSeek Harness, built on the 渐构 (incremental construction) learning method",
   "type": "module",
   "icon": "./icon.svg",
@@ -24,7 +24,7 @@
   ],
   "engines": {
     "node": ">=24.9.0",
-    "dsh": "0.2.2-rc.3"
+    "dsh": "0.2.2-rc.5"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -44,7 +44,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.1.0",
-    "@deepseek-ai/dsh-tools": "0.2.2-rc.3"
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.5"
   },
   "dsh": {
     "bundle": {
@@ -63,9 +63,9 @@
     }
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-llm": "0.2.2-rc.3",
-    "@deepseek-ai/dsh-plugin-market-index": "0.2.2-rc.3",
-    "@deepseek-ai/dsh-tools": "0.2.2-rc.3",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-plugin-market-index": "0.2.2-rc.5",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.5",
     "@openuidev/lang-core": "1.0.1",
     "@openuidev/react-lang": "1.0.1",
     "esbuild": "^0.28.2",
