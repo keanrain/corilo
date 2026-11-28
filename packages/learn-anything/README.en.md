@@ -27,7 +27,7 @@ npm run pack:learn-anything
 Install the resulting `.tgz` into an existing Web profile, replacing `web` with the profile you actually use:
 
 ```sh
-dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.2.tgz
+dsh plugin --profile web add /absolute/path/corilo-learn-anything-0.1.3.tgz
 ```
 
 Restart that DSH instance, create a session in an existing workspace, and select the Learning Tutor (学习导师) preset. Learning records live in `.learn/` under the session workspace.

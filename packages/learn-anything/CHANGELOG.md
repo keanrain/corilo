@@ -4,7 +4,7 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
-## Unreleased / 未发布
+## 0.1.3
 
 - 修复学习路线等卡片在回复与题卡同一步时显示为点不动的「学习路线」链接：与提问、题卡或闪卡同一步的回复也会显示卡片；无法显示的卡片引用只保留标题文字。
   Fixed route and other cards appearing as an unclickable "Learning route" link when the reply shared a step with a quiz: replies beside a question, quiz or flashcard now render cards, and any reference that cannot become a card stays as plain title text.
