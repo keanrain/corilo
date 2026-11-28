@@ -4,6 +4,11 @@
 
 This records currently distributable code, not an npm publication. Maintain changes and compatibility boundaries separately for each future version.
 
+## Unreleased / 未发布
+
+- 修复学习路线等卡片在回复与题卡同一步时显示为点不动的「学习路线」链接：与提问、题卡或闪卡同一步的回复也会显示卡片；无法显示的卡片引用只保留标题文字。
+  Fixed route and other cards appearing as an unclickable "Learning route" link when the reply shared a step with a quiz: replies beside a question, quiz or flashcard now render cards, and any reference that cannot become a card stays as plain title text.
+
 ## 0.1.2
 
 - 改为固定兼容 DSH 0.2.2-rc.5（Node.js ≥24.9.0 不变）。rc.3→rc.5 的宿主改动集中在网页搜索、DeepSeek 模型接入和新增的内容拒绝错误码，本包用到的接口未变；锁文件只更新 DSH 包。在 rc.5 上不再因版本要求被宿主拒绝。数据格式不变，无需迁移；rc.3 实例请继续使用上一版本。
