@@ -3,7 +3,10 @@ import assert from 'node:assert/strict'
 import * as react from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { Overview, OverviewStrip, gateText } from '../src/client/overview.js'
-import { installLocale } from '../src/client/locale.js'
+import { readFileSync } from 'node:fs'
+import { installLocale, provideEnglish } from '../src/client/locale.js'
+
+provideEnglish(JSON.parse(readFileSync(new URL('../src/client/ui-en.json', import.meta.url), 'utf8')))
 
 const h = react.createElement
 const empty = h('div', { className: 'empty' }, '开始练习后，题目会留在这里。')

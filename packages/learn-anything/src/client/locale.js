@@ -1,17 +1,53 @@
 // UI-only copy. Lesson content and messages sent to the model never use this module.
+// The English table is served by the Host (GET /api/learn-anything/locale/en) and loaded only when
+// the UI is in English, so it stays out of the client bundle; until it arrives the Chinese source shows.
 import { useSyncExternalStore } from 'react'
-import en from './ui-en.json' with { type: 'json' }
+
+export const ENGLISH_URL = '/api/learn-anything/locale/en'
+const RETRY_MS = 30_000
 
 let host = null
+let en = {}
+let loading = null
+let failedAt = 0
+let version = 0
+let unregister = () => {}
 const listeners = new Set()
-const emit = () => listeners.forEach((listener) => listener())
+const emit = () => { version++; listeners.forEach((listener) => listener()) }
 const subscribe = (listener) => { listeners.add(listener); return () => listeners.delete(listener) }
+
+function registerResources() {
+  if (!host) return
+  unregister()
+  unregister = host.register('corilo-learning-ui', { en, zh: Object.fromEntries(Object.keys(en).map((key) => [key, key])) })
+}
+
+/** Use an English table directly (tests and fixtures without the Host route). */
+export function provideEnglish(table) {
+  en = table && typeof table === 'object' ? table : {}
+  loading = null; failedAt = 0
+  registerResources()
+  emit()
+}
+
+function loadEnglish() {
+  if (loading || Object.keys(en).length || Date.now() - failedAt < RETRY_MS || typeof globalThis.fetch !== 'function') return
+  loading = globalThis.fetch(ENGLISH_URL, { credentials: 'same-origin' })
+    .then((response) => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+    .then((table) => provideEnglish(table))
+    .catch(() => { loading = null; failedAt = Date.now() })
+}
+
 export function uiLanguage() {
   const language = host?.getSnapshot().active ?? globalThis.document?.documentElement?.lang ?? 'zh'
-  return /^zh(?:-|$)/i.test(language) ? 'zh' : 'en'
+  if (/^zh(?:-|$)/i.test(language)) return 'zh'
+  loadEnglish()
+  return 'en'
 }
+const snapshot = () => `${uiLanguage()}:${version}`
 export function useUiLocale() {
-  return useSyncExternalStore(subscribe, uiLanguage, uiLanguage)
+  useSyncExternalStore(subscribe, snapshot, snapshot)
+  return uiLanguage()
 }
 export function translateUi(key, language, values = {}) {
   const text = language === 'zh' || !Object.hasOwn(en, key) ? key : en[key]
@@ -26,10 +62,13 @@ export function labels(values) {
 export function installLocale(locale) {
   if (!locale) return () => {}
   host = locale
-  const unregister = locale.register('corilo-learning-ui', {
-    en, zh: Object.fromEntries(Object.keys(en).map((key) => [key, key])),
-  })
+  registerResources()
   const unsubscribe = locale.subscribe(emit)
   emit()
-  return () => { unsubscribe(); unregister(); if (host === locale) host = null; emit() }
+  uiLanguage()
+  return () => {
+    unsubscribe()
+    if (host === locale) { unregister(); unregister = () => {}; host = null }
+    emit()
+  }
 }

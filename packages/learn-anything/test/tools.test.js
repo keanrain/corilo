@@ -94,7 +94,7 @@ test('statement without learner evidence fails closed', async () => {
 })
 
 test('phase transitions are validated', async () => {
-  const { env, cleanup } = await workspace()
+  const { env, cleanup } = await workspace(['函数加上它记住的变量'])
   try {
     await t.courseSave.execute(COURSE, env)
     await t.kpDefineModels.execute({ kpId: 'closure', models: [{ id: 'in', type: 'discriminative', concept: '闭包', reference: 'r' }] }, env)
@@ -104,6 +104,9 @@ test('phase transitions are validated', async () => {
     const course = await store.readJson(join(env.cwd, '.learn/course.json'))
     assert.equal(course.learner.preferOrder, 'example-first')
     assert.match(await t.kpSetPhase.execute({ kpId: 'closure', modelId: 'in', phase: 'build', reason: '材料就绪' }, env), /→ build/)
+    await assert.rejects(t.kpSetPhase.execute({ kpId: 'closure', modelId: 'in', phase: 'verify', reason: '跳过表述' }, env), /no rule stated by the learner yet/)
+    assert.equal((await store.readJson(join(env.cwd, '.learn/kp/closure.json'))).models[0].phase, 'build', 'a refused move leaves the phase alone')
+    await t.targetMapUpdate.execute({ kpId: 'closure', modelId: 'in', statement: '函数加上它记住的变量' }, env)
     await t.kpSetPhase.execute({ kpId: 'closure', modelId: 'in', phase: 'verify', reason: '已写表述' }, env)
   } finally { await cleanup() }
 })
@@ -153,10 +156,11 @@ test('verification gate: novice until streak + required types, then mastered and
 })
 
 test('a graded answer returns a feedback card: verdict, attribution, level-up and the flow state', async () => {
-  const { env, cleanup } = await workspace()
+  const { env, cleanup } = await workspace(['引用位置在定义处决定绑定'])
   try {
     await t.courseSave.execute(COURSE, env)
     await t.kpDefineModels.execute({ kpId: 'scope', models: [{ id: 'map', type: 'associative', input: '引用位置', output: '绑定', reference: 'r' }] }, env)
+    await t.targetMapUpdate.execute({ kpId: 'scope', modelId: 'map', statement: '引用位置在定义处决定绑定' }, env)
     const rec = (questionType, verdict = 'correct', extra = {}) =>
       t.verificationRecord.execute({ kpId: 'scope', modelId: 'map', question: `q-${questionType}`, questionType, answer: 'a', verdict, hintsUsed: 0, feedback: '用 x 的反例追问', ...extra }, env)
     const wrong = parseView(await rec('scenario', 'wrong', { attribution: 'lower-layer-loss' }))
@@ -185,10 +189,11 @@ test('a graded answer returns a feedback card: verdict, attribution, level-up an
 })
 
 test('gentle wrong answers: the first wrong in a verify run stays in verify; repeated attribution or a confident miss goes to assess', async () => {
-  const { env, cleanup } = await workspace()
+  const { env, cleanup } = await workspace(['引用位置在定义处决定绑定'])
   try {
     await t.courseSave.execute(COURSE, env)
     await t.kpDefineModels.execute({ kpId: 'scope', models: [{ id: 'map', type: 'associative', input: '引用位置', output: '绑定', reference: 'r' }] }, env)
+    await t.targetMapUpdate.execute({ kpId: 'scope', modelId: 'map', statement: '引用位置在定义处决定绑定' }, env)
     const kpFile = () => store.readJson(join(env.cwd, '.learn/kp/scope.json'))
     let n = 0
     const rec = (verdict, extra = {}) => t.verificationRecord.execute({ kpId: 'scope', modelId: 'map', question: `g-${++n}`, questionType: 'scenario', answer: 'a', verdict, hintsUsed: 0, difficulty: 2, ...extra }, env)
@@ -241,11 +246,12 @@ test('streak counts days in a row with an answer', () => {
 })
 
 test('learnStats names the current knowledge point, its phase and what the gate still needs', async () => {
-  const { env, cleanup } = await workspace()
+  const { env, cleanup } = await workspace(['引用位置在定义处决定绑定'])
   try {
     await t.courseSave.execute({ ...COURSE, status: 'active' }, env)
     assert.deepEqual((await t.learnStats(env.cwd, env.now())).current, { id: 'scope', title: '词法作用域', phase: 'describe', kind: 'knowledge' }, 'no model yet: no gate')
     await t.kpDefineModels.execute({ kpId: 'scope', models: [{ id: 'map', type: 'associative', input: '引用位置', output: '绑定', reference: 'r' }] }, env)
+    await t.targetMapUpdate.execute({ kpId: 'scope', modelId: 'map', statement: '引用位置在定义处决定绑定' }, env)
     for (const phase of ['assess', 'prescribe', 'build', 'verify']) await t.kpSetPhase.execute({ kpId: 'scope', modelId: 'map', phase, reason: 'r' }, env)
     const rec = (questionType, extra = {}) =>
       t.verificationRecord.execute({ kpId: 'scope', modelId: 'map', question: `q-${questionType}`, questionType, answer: 'a', verdict: 'correct', hintsUsed: 0, ...extra }, env)

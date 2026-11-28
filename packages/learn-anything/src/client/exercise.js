@@ -72,7 +72,7 @@ function QuizRoot({ props, renderNode }) {
         h('p', { className: 'la-eyebrow' }, quiz?.purpose === 'practice' ? t('理解练习') : quiz?.retry ? t('错题重赛') : TYPE_LABEL[props.type] ?? props.type ?? t('互动练习')),
         h('h3', { className: 'la-quiz-title' }, props.title)),
       props.level ? h(Level, { level: props.level }) : null),
-    quiz?.retry ? h('p', { className: 'la-retry-note' }, '换个情境，再试一次。用这次的思路再做一遍。') : null,
+    quiz?.retry ? h('p', { className: 'la-retry-note' }, t('换个情境，再试一次。用这次的思路再做一遍。')) : null,
     h('div', { className: 'la-quiz-body' }, renderNode(props.body)),
     quiz ? h(QuizFooter, { quiz, title: props.title }) : null)
 }

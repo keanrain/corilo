@@ -9,6 +9,18 @@ This records currently distributable code, not an npm publication. Maintain chan
 - 修复学习路线等卡片在回复与题卡同一步时显示为点不动的「学习路线」链接：与提问、题卡或闪卡同一步的回复也会显示卡片；无法显示的卡片引用只保留标题文字。
   Fixed route and other cards appearing as an unclickable "Learning route" link when the reply shared a step with a quiz: replies beside a question, quiz or flashcard now render cards, and any reference that cannot become a card stays as plain title text.
 
+- 英文界面补全：「我的理解」卡、进度卡、分层示意和重试提示里写死的中文改为随界面语言切换；新增测试保证宿主写进判题卡的每句话都有英文。
+  English UI completed: hard-coded Chinese in the My understanding card, progress card, layer diagram and retry note now follows the UI language; a test ensures every sentence the Host writes into feedback cards has an English entry.
+
+- 客户端瘦身：英文文案改由宿主按需提供（`GET /api/learn-anything/locale/en`），不再打进客户端包，产物约小 1.5 万字节，体积上限仍为 220k 字符。
+  Smaller client: the English copy is served by the Host on demand (`GET /api/learn-anything/locale/en`) instead of being bundled, saving about 15 KB; the size guard stays at 220k characters.
+
+- 进入验证前必须有用户亲手写的规律：`kp_set_phase` 拒绝在模型还没有用户表述时切到 `verify`，正式题因此不会在学习者总结之前出现。
+  Verification needs the learner's own rule first: `kp_set_phase` refuses to move a model to `verify` until it has a statement written by the learner, so formal questions cannot come before the learner has summarised.
+
+- 卡片引用只在产生它的回合有效；导师提示说明要再展示前面回合的卡片时须重新调用工具。
+  Card references are valid only in the turn that produced them; the tutor prompt says to call the tool again to show an earlier card.
+
 ## 0.1.2
 
 - 改为固定兼容 DSH 0.2.2-rc.5（Node.js ≥24.9.0 不变）。rc.3→rc.5 的宿主改动集中在网页搜索、DeepSeek 模型接入和新增的内容拒绝错误码，本包用到的接口未变；锁文件只更新 DSH 包。在 rc.5 上不再因版本要求被宿主拒绝。数据格式不变，无需迁移；rc.3 实例请继续使用上一版本。

@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts. Teaching materials, prompts, and answer protocols retain their original language.
+Corilo-owned UI follows the DSH language setting (Chinese/English) without changing user content or drafts. The English copy is not in the client bundle: it is fetched once from the Host (`GET /api/learn-anything/locale/en`) when the UI is in English, and Chinese shows until it arrives or if the request fails (retried after 30 seconds). Teaching materials, prompts, and answer protocols retain their original language.
 
 A personal learning-tutor plugin for DeepSeek Harness (dsh), using the 渐构 (incremental construction) method for route planning, diagnosis, learning materials, verification in new situations, and spaced review.
 

@@ -32,7 +32,7 @@ const button = (tree, name) => elements(tree).find((node) => node.type === 'butt
 const received = (tree, name) => button(tree, name).props['data-received']
 
 test('the demo stays independent and contrasts executing with waiting without duplicate tasks', () => {
-  assert.deepEqual(Object.keys(result.metafile.inputs).sort(), ['src/client/task-demo.js', 'src/quiz/demo.js', 'src/client/locale.js', 'src/client/ui-en.json'].sort())
+  assert.deepEqual(Object.keys(result.metafile.inputs).sort(), ['src/client/task-demo.js', 'src/quiz/demo.js', 'src/client/locale.js'].sort())
   const app = demo()
   button(app.render(), '放入一个任务').props.onClick()
   assert.equal(received(app.render(), '执行区'), true)

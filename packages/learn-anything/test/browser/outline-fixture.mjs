@@ -1,6 +1,7 @@
 // Isolated component fixture: real editor, simulated authenticated route responses.
 import { build } from 'esbuild'
 import { createServer } from 'node:http'
+import { readFileSync } from 'node:fs'
 const result = await build({ stdin: { contents: `
 import React from 'react'; import {createRoot} from 'react-dom/client';
 import {OutlineEditor} from './src/client/outline.js';
@@ -16,6 +17,7 @@ window.renderOutline=(nextSession=session)=>{session=nextSession; root.render(Re
 window.replanOutline=()=>{current={...current,view:{...current.view,status:'planning'}}; window.renderOutline()};
 window.renderOutline();
 `, resolveDir: process.cwd() }, bundle: true, write: false, format: 'esm', platform: 'browser', define: { 'process.env.NODE_ENV': '"production"' } })
-const server = createServer((req,res)=>{res.setHeader('content-type',req.url==='/app.js'?'text/javascript':'text/html');res.end(req.url==='/app.js'?result.outputFiles[0].text:'<!doctype html><html lang="zh"><meta charset="utf-8"><div id="root"></div><script type="module" src="/app.js"></script>')})
+const english = readFileSync(new URL('../../src/client/ui-en.json', import.meta.url))
+const server = createServer((req,res)=>{if(req.url==='/api/learn-anything/locale/en'){res.setHeader('content-type','application/json; charset=utf-8');return res.end(english)}res.setHeader('content-type',req.url==='/app.js'?'text/javascript':'text/html');res.end(req.url==='/app.js'?result.outputFiles[0].text:'<!doctype html><html lang="zh"><meta charset="utf-8"><div id="root"></div><script type="module" src="/app.js"></script>')})
 server.listen(Number(process.env.PORT), '127.0.0.1')
 process.on('SIGTERM',()=>server.close(()=>process.exit()))
