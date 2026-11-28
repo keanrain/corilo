@@ -6,7 +6,7 @@
 
 | 产品选择 | 包目录 | 当前版本 | 当前渠道 |
 |---|---|---|---|
-| `notes` | `plugins/notes` | 0.10.0 | GitHub 预发布及本地包 |
+| `notes` | `plugins/notes` | 0.10.1 | GitHub 预发布及本地包 |
 | `todos` | `plugins/todos` | 0.8.1 | GitHub 预发布及本地包 |
 | `learn-anything` | `packages/learn-anything` | 0.1.1 | GitHub 预发布及本地包，供已有 DSH 用户 |
 
